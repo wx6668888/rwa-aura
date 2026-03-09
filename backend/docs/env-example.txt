@@ -1,0 +1,21 @@
+# 复制到 .env 并修改。总留存 + 链上事件同步需配置 STAKING_CONTRACT_ADDRESS 和 RPC
+# Database
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=rwa_user
+DB_PASSWORD=your_password
+DB_NAME=rwa_protocol
+
+# Server
+PORT=3001
+
+# EventMonitor（npm run dev 时会自动启动，链上质押/提现同步到 DB，总留存才会实时更新）
+STAKING_CONTRACT_ADDRESS=0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0
+BSC_RPC_URL=https://bsc-dataseed.binance.org
+# 本地链示例：
+# RPC_URL=http://127.0.0.1:8545
+
+CONFIRMATION_BLOCKS=12
+POLL_INTERVAL=5000
+
+CORS_ORIGIN=http://localhost:3000
