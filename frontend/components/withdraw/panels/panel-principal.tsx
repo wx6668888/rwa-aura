@@ -1,7 +1,7 @@
 'use client'
 
 import { Briefcase, ArrowLeft, Clock, Info } from 'lucide-react'
-import { useAccount } from 'wagmi'
+import { useAccount, usePublicClient } from 'wagmi'
 import { useState } from 'react'
 import { useStakingContract } from '@/hooks/useStakingContract'
 import { TransactionOverlay } from '../transaction-overlay'
@@ -14,6 +14,7 @@ interface Props {
 
 export function PanelPrincipal({ onMobileBack, data }: Props) {
   const { isConnected } = useAccount()
+  const publicClient = usePublicClient()
   const [amount, setAmount] = useState('')
   const { withdrawFlexibleUSDTPrincipal, withdrawFlexibleRWAPrincipal } = useStakingContract()
   const [showOverlay, setShowOverlay] = useState(false)
@@ -47,12 +48,18 @@ export function PanelPrincipal({ onMobileBack, data }: Props) {
         hash = await withdrawFlexibleUSDTPrincipal(amount)
       }
 
-
       setTxHash(hash)
-      setOverlayStatus('success')
-      setAmount('')
-      // 刷新数据
-      if (data.refetch) data.refetch()
+      
+      // Wait for transaction confirmation
+      const receipt = await publicClient?.waitForTransactionReceipt({ hash: hash as `0x${string}` })
+      
+      if (receipt?.status === 'success') {
+        setOverlayStatus('success')
+        setAmount('')
+        if (data.refetch) data.refetch()
+      } else {
+        throw new Error('交易执行失败，可能是余额不足或权限不足')
+      }
     } catch (err: any) {
       console.error('提取失败:', err)
       
