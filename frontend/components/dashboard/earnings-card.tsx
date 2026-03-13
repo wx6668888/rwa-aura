@@ -134,10 +134,23 @@ export function EarningsCard() {
       const rwaFlexNum = parseFloat(rwaFlexiblePrincipal || '0')
       const usdtFlexNum = parseFloat(usdtFlexiblePrincipal || '0')
       
+      // Calculate total staked from all stakes
+      const totalUSDTStaked = stakes.filter(s => {
+        const isRWA = s.isRWAStake === true || (s.stakeId && s.stakeId.toUpperCase().startsWith('RWA_'))
+        const isFlex = s.lockPeriod === 'flexible'
+        return !isRWA && isFlex
+      }).reduce((sum, s) => sum + parseFloat(s.amount) / 1e18, 0)
+      
+      const totalRWAStaked = stakes.filter(s => {
+        const isRWA = s.isRWAStake === true || (s.stakeId && s.stakeId.toUpperCase().startsWith('RWA_'))
+        const isFlex = s.lockPeriod === 'flexible'
+        return isRWA && isFlex
+      }).reduce((sum, s) => sum + parseFloat(s.amount) / 1e18, 0)
+      
       // Apply FIFO withdrawal logic for flexible stakes
       const sortedStakes = [...stakes].sort((a, b) => a.timestamp - b.timestamp)
-      let remainingUSDTWithdrawn = parseFloat(userStakeInfo?.totalStaked || '0') - usdtFlexNum
-      let remainingRWAWithdrawn = parseFloat(rwaStakeInfo?.totalStakedRWA || '0') - rwaFlexNum
+      let remainingUSDTWithdrawn = totalUSDTStaked - usdtFlexNum
+      let remainingRWAWithdrawn = totalRWAStaked - rwaFlexNum
       
       let activeStakes = sortedStakes.map((s) => {
         const isRWA = s.isRWAStake === true || (s.stakeId && s.stakeId.toUpperCase().startsWith('RWA_'))
