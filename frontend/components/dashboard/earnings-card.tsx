@@ -30,6 +30,19 @@ export function EarningsCard() {
   const { userRewards, userStakeInfo, refetchRewards, rwaStakeInfo, refetchRWAStakeInfo, rwaFlexiblePrincipal, usdtFlexiblePrincipal } = useStakingContract()
   const { stakes, loading: stakesLoading, refetch: refetchStakes } = useStakesContext()
   const { rewards: referralRewards } = useReferralRewards()
+  
+  // Fetch remaining principals from API
+  const [apiData, setApiData] = useState<any>(null)
+  useEffect(() => {
+    if (!address) return
+    const API_BASE = process.env.NEXT_PUBLIC_RELAYER_URL || 'http://localhost:3001'
+    fetch(`${API_BASE}/api/data/${address}/stakes`)
+      .then(res => res.json())
+      .then(json => {
+        if (json.success) setApiData(json.data)
+      })
+      .catch(() => {})
+  }, [address])
 
   // 当用户质押数据变化时，自动刷新质押记录
   useEffect(() => {
