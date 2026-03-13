@@ -469,7 +469,7 @@ export class EventMonitor {
         const txHash = event.transactionHash;
         logger.info(`Processing WithdrawalRequested for user=${user}, tx=${txHash}`);
         const usdtEquiv = (BigInt(amount?.toString() ?? '0') * 85n / 100n).toString();
-        await this.recordTeamWithdrawnAndSync(user.toLowerCase(), txHash, usdtEquiv, 'USDT');
+        await this.recordTeamWithdrawnAndSync(user.toLowerCase(), txHash, usdtEquiv, 'USDT', 'WITHDRAWAL_REQUESTED', Number(timestamp), event.blockNumber);
         await this.syncUserState(user.toLowerCase());
     }
 
@@ -478,7 +478,7 @@ export class EventMonitor {
         const txHash = event.transactionHash;
         logger.info(`Processing RWARewardWithdrawn for user=${user}, tx=${txHash}`);
         const usdtEquiv = (BigInt(amount?.toString() ?? '0') * 85n / 100n).toString();
-        await this.recordTeamWithdrawnAndSync(user.toLowerCase(), txHash, usdtEquiv, 'USDT');
+        await this.recordTeamWithdrawnAndSync(user.toLowerCase(), txHash, usdtEquiv, 'USDT', 'RWA_REWARD_WITHDRAWN', Number(timestamp), event.blockNumber);
         await this.syncRWAStakeState(user.toLowerCase());
     }
 
@@ -488,7 +488,7 @@ export class EventMonitor {
         const txHash = event.transactionHash;
         logger.info(`Processing ${eventName} for user=${user}, tx=${txHash}`);
         const amountUsdtEquiv = this.getWithdrawalAmountUsdtEquiv(eventName, args);
-        await this.recordTeamWithdrawnAndSync(user, txHash, amountUsdtEquiv, 'USDT');
+        await this.recordTeamWithdrawnAndSync(user, txHash, amountUsdtEquiv, 'USDT', eventName, Number(args.timestamp || 0), event.blockNumber);
         await this.syncUserState(user);
         await this.syncRWAStakeState(user);
     }
