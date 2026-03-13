@@ -78,9 +78,6 @@ export function useWithdrawData() {
       const usdtPrincipal = Math.max(0, apiTotalUSDT - totalLockedUSDT)
       const rwaPrincipal = Math.max(0, apiTotalRWA - totalLockedRWA)
       
-      console.log('🔍 Withdraw Data - stakes:', stakes.length, stakes.slice(0, 2))
-      console.log('🔍 Withdraw Data:', { apiTotalUSDT, totalLockedUSDT, usdtPrincipal, apiTotalRWA, totalLockedRWA, rwaPrincipal })
-      
       const addresses = CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]
       let lockedStakes: any[] = []
       
