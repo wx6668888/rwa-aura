@@ -529,7 +529,7 @@ export class EventMonitor {
         }
     }
 
-    /** 幂等：仅当 tx 未记录时写入 withdrawal_log 并更新团队提现 */
+    /** 幂等：仅当 tx 未记录时写入 withdrawal_events 并更新团队提现 */
     private async recordTeamWithdrawnAndSync(
         userAddress: string,
         txHash: string,
@@ -537,7 +537,7 @@ export class EventMonitor {
         _token: string
     ): Promise<void> {
         const existing = await query<{ tx_hash: string }[]>(
-            'SELECT tx_hash FROM withdrawal_log WHERE tx_hash = ?',
+            'SELECT tx_hash FROM withdrawal_events WHERE tx_hash = ?',
             [txHash]
         );
         if (existing.length > 0) return;
@@ -545,7 +545,7 @@ export class EventMonitor {
         const svc = new TeamVolumeService();
         await transaction(async (conn) => {
             await conn.query(
-                'INSERT INTO withdrawal_log (tx_hash, user_address, amount_usdt_equiv) VALUES (?, ?, ?)',
+                'INSERT INTO withdrawal_events (tx_hash, user_address, amount_usdt_equiv) VALUES (?, ?, ?)',
                 [txHash, userAddress, amountUsdtEquiv]
             );
         });
