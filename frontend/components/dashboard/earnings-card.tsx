@@ -135,7 +135,7 @@ export function EarningsCard() {
       const usdtFlexNum = parseFloat(usdtFlexiblePrincipal || '0')
       
       let activeStakes = stakes.filter((s) => {
-        const isRWA = s.isRWAStake === true || (s.stakeId && s.stakeId.startsWith('rwa_'))
+        const isRWA = s.isRWAStake === true || (s.stakeId && s.stakeId.toUpperCase().startsWith('RWA_'))
         const isFlex = s.lockPeriod === 'flexible'
         if (isRWA && isFlex) return rwaFlexNum > 0
         if (!isRWA && isFlex) return usdtFlexNum > 0
