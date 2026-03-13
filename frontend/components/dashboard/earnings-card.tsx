@@ -134,6 +134,8 @@ export function EarningsCard() {
       const rwaFlexNum = parseFloat(rwaFlexiblePrincipal || '0')
       const usdtFlexNum = parseFloat(usdtFlexiblePrincipal || '0')
       
+      console.log('🔍 FIFO Debug - Flexible principals:', { rwaFlexNum, usdtFlexNum })
+      
       // Calculate total staked from all stakes
       const totalUSDTStaked = stakes.filter(s => {
         const isRWA = s.isRWAStake === true || (s.stakeId && s.stakeId.toUpperCase().startsWith('RWA_'))
@@ -147,10 +149,14 @@ export function EarningsCard() {
         return isRWA && isFlex
       }).reduce((sum, s) => sum + parseFloat(s.amount) / 1e18, 0)
       
+      console.log('🔍 FIFO Debug - Total flexible staked:', { totalUSDTStaked, totalRWAStaked })
+      
       // Apply FIFO withdrawal logic for flexible stakes
       const sortedStakes = [...stakes].sort((a, b) => a.timestamp - b.timestamp)
       let remainingUSDTWithdrawn = totalUSDTStaked - usdtFlexNum
       let remainingRWAWithdrawn = totalRWAStaked - rwaFlexNum
+      
+      console.log('🔍 FIFO Debug - Withdrawn amounts:', { remainingUSDTWithdrawn, remainingRWAWithdrawn })
       
       let activeStakes = sortedStakes.map((s) => {
         const isRWA = s.isRWAStake === true || (s.stakeId && s.stakeId.toUpperCase().startsWith('RWA_'))
@@ -179,12 +185,16 @@ export function EarningsCard() {
           }
         }
         
+        console.log('🔍 FIFO Debug - Stake:', s.stakeId, 'Original:', originalAmount, 'Remaining:', remainingAmount)
+        
         return {
           ...s,
           amount: (remainingAmount * 1e18).toString(),
           remainingAmount
         }
       }).filter(s => s.remainingAmount > 0)
+      
+      console.log('🔍 FIFO Debug - Active stakes count:', activeStakes.length)
       
       // 如果 stakes 为空，从合约状态构造数据
       if (activeStakes.length === 0) {
