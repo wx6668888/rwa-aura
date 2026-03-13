@@ -130,11 +130,11 @@ export function EarningsCard() {
       const earnings: StakeEarning[] = []
       let total = 0
       
-      // 已提现的灵活仓位不再显示：灵活 RWA 已提则 rwaFlexiblePrincipal 为 0，灵活 USDT 已提则 usdtFlexiblePrincipal 为 0
-      const rwaFlexNum = parseFloat(rwaFlexiblePrincipal || '0')
-      const usdtFlexNum = parseFloat(usdtFlexiblePrincipal || '0')
+      // Get remaining flexible principals from API instead of contract
+      const apiRemainingUSDT = apiData ? parseFloat(apiData.usdtStaked) / 1e18 : parseFloat(usdtFlexiblePrincipal || '0')
+      const apiRemainingRWA = apiData ? parseFloat(apiData.rwaStaked) / 1e18 : parseFloat(rwaFlexiblePrincipal || '0')
       
-      console.log('🔍 FIFO Debug - Flexible principals:', { rwaFlexNum, usdtFlexNum })
+      console.log('🔍 FIFO Debug - API remaining principals:', { apiRemainingUSDT, apiRemainingRWA })
       
       // Calculate total staked from all stakes
       const totalUSDTStaked = stakes.filter(s => {
@@ -153,8 +153,8 @@ export function EarningsCard() {
       
       // Apply FIFO withdrawal logic for flexible stakes
       const sortedStakes = [...stakes].sort((a, b) => a.timestamp - b.timestamp)
-      let remainingUSDTWithdrawn = totalUSDTStaked - usdtFlexNum
-      let remainingRWAWithdrawn = totalRWAStaked - rwaFlexNum
+      let remainingUSDTWithdrawn = totalUSDTStaked - apiRemainingUSDT
+      let remainingRWAWithdrawn = totalRWAStaked - apiRemainingRWA
       
       console.log('🔍 FIFO Debug - Withdrawn amounts:', { remainingUSDTWithdrawn, remainingRWAWithdrawn })
       
