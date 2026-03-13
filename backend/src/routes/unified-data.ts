@@ -69,16 +69,58 @@ async function getUnifiedData(address: string, dataType: string) {
       
       case 'stakeList': {
         const [events] = await pool.query(
-          `SELECT event_type, amount, UNIX_TIMESTAMP(timestamp) as timestamp, lock_period, block_number FROM stake_events WHERE LOWER(user_address) = LOWER(?) ORDER BY timestamp DESC`,
+          `SELECT event_type, amount, UNIX_TIMESTAMP(timestamp) as timestamp, lock_period, block_number FROM stake_events WHERE LOWER(user_address) = LOWER(?) ORDER BY timestamp ASC`,
           [address]
         );
-        const stakes = (events as any[]).map((e: any) => ({
-          stakeId: `${e.event_type}_${e.timestamp}`,
-          amount: e.amount,
-          timestamp: e.timestamp,
-          lockPeriod: e.lock_period === 0 ? 'flexible' : String(e.lock_period),
-          assetType: e.event_type.includes('USDT') ? 'USDT' : 'RWA',
-        }));
+        
+        // Get total withdrawals by type
+        const [withdrawals] = await pool.query(
+          `SELECT event_type, SUM(CAST(amount AS DECIMAL(38,0))) as total FROM withdrawal_events WHERE LOWER(user_address) = LOWER(?) GROUP BY event_type`,
+          [address]
+        );
+        const withdrawalsArray = withdrawals as Array<{ event_type: string; total: string }>;
+        
+        let usdtWithdrawn = BigInt(withdrawalsArray.find(e => e.event_type.includes('USDT'))?.total || '0');
+        const rwaWithdrawnUSDT = BigInt(withdrawalsArray.find(e => e.event_type.includes('RWA'))?.total || '0');
+        let rwaWithdrawn = (rwaWithdrawnUSDT * 100n) / 85n;
+        
+        // Apply FIFO withdrawal logic
+        const stakes = (events as any[]).map((e: any) => {
+          const isFlexible = e.lock_period === 0;
+          const isRWA = e.event_type.includes('RWA');
+          const originalAmount = BigInt(e.amount);
+          let remainingAmount = originalAmount;
+          
+          // Only apply FIFO to flexible stakes
+          if (isFlexible) {
+            if (isRWA && rwaWithdrawn > 0n) {
+              if (rwaWithdrawn >= originalAmount) {
+                rwaWithdrawn -= originalAmount;
+                remainingAmount = 0n;
+              } else {
+                remainingAmount = originalAmount - rwaWithdrawn;
+                rwaWithdrawn = 0n;
+              }
+            } else if (!isRWA && usdtWithdrawn > 0n) {
+              if (usdtWithdrawn >= originalAmount) {
+                usdtWithdrawn -= originalAmount;
+                remainingAmount = 0n;
+              } else {
+                remainingAmount = originalAmount - usdtWithdrawn;
+                usdtWithdrawn = 0n;
+              }
+            }
+          }
+          
+          return {
+            stakeId: `${e.event_type}_${e.timestamp}`,
+            amount: remainingAmount.toString(),
+            timestamp: e.timestamp,
+            lockPeriod: e.lock_period === 0 ? 'flexible' : String(e.lock_period),
+            assetType: e.event_type.includes('USDT') ? 'USDT' : 'RWA',
+          };
+        }).filter(s => BigInt(s.amount) > 0n); // Only return stakes with remaining balance
+        
         const result = { source: 'database', data: stakes };
         setCache(cacheKey, result);
         return result;
