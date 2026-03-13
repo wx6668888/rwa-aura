@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAccount, usePublicClient } from 'wagmi'
-import { useUserStakes } from './useUserStakes'
+import { useStakesContext } from '@/contexts/StakesContext'
 import { useStakingContract } from './useStakingContract'
 import { formatUnits } from 'viem'
 import { CONTRACT_ADDRESSES } from '@/lib/contracts/addresses'
@@ -10,7 +10,7 @@ import { CONTRACT_ADDRESSES } from '@/lib/contracts/addresses'
 export function useWithdrawData() {
   const { address, isConnected, chainId } = useAccount()
   const publicClient = usePublicClient()
-  const { stakes, loading: stakesLoading } = useUserStakes()
+  const { stakes, loading: stakesLoading } = useStakesContext()
   const { userRewards, rwaStakeInfo, rwaFlexiblePrincipal, usdtFlexiblePrincipal } = useStakingContract()
   
   // Fetch remaining principals from API
@@ -77,6 +77,9 @@ export function useWithdrawData() {
       
       const usdtPrincipal = Math.max(0, apiTotalUSDT - totalLockedUSDT)
       const rwaPrincipal = Math.max(0, apiTotalRWA - totalLockedRWA)
+      
+      console.log('🔍 Withdraw Data - stakes:', stakes.length, stakes.slice(0, 2))
+      console.log('🔍 Withdraw Data:', { apiTotalUSDT, totalLockedUSDT, usdtPrincipal, apiTotalRWA, totalLockedRWA, rwaPrincipal })
       
       const addresses = CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]
       let lockedStakes: any[] = []
