@@ -429,7 +429,7 @@ export function EarningsCard() {
       clearInterval(interval)
       clearInterval(refetchInterval)
     }
-  }, [isConnected, address, totalStakedNum, firstStakeTime, rwaPendingNum, refetchRewards, refetchRWAStakeInfo, refetchStakes, rwaStaked, usdtStaked, userStakeInfo?.firstStakeTime, rwaFlexiblePrincipal, usdtFlexiblePrincipal])
+  }, [isConnected, address, totalStakedNum, firstStakeTime, rwaPendingNum, refetchRewards, refetchRWAStakeInfo, refetchStakes, rwaStaked, usdtStaked, userStakeInfo?.firstStakeTime, rwaFlexiblePrincipal, usdtFlexiblePrincipal, apiData])
   
   const rwaUsdtValue = (totalRwaEarning * 0.85).toFixed(2)
 
