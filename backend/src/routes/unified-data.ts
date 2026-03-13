@@ -97,12 +97,32 @@ async function getUnifiedData(address: string, dataType: string) {
         const teamRWAinUSDT = (teamRWA * 85n) / 100n;
         const totalTeamVolumeUSDT = myUSDT + myRWAinUSDT + teamUSDT + teamRWAinUSDT;
         
+        // Calculate total withdrawn (gross amount before fees)
+        const [myWithdrawals] = await pool.query(
+          `SELECT SUM(CAST(amount AS DECIMAL(38,0))) as total FROM withdrawal_events WHERE LOWER(user_address) = LOWER(?)`,
+          [address]
+        );
+        const myWithdrawn = BigInt((myWithdrawals as any[])[0]?.total || 0);
+        
+        let teamWithdrawn = 0n;
+        if (referralAddresses.length > 0) {
+          const placeholders = referralAddresses.map(() => '?').join(',');
+          const [teamWithdrawals] = await pool.query(
+            `SELECT SUM(CAST(amount AS DECIMAL(38,0))) as total FROM withdrawal_events WHERE LOWER(user_address) IN (${placeholders})`,
+            referralAddresses
+          );
+          teamWithdrawn = BigInt((teamWithdrawals as any[])[0]?.total || 0);
+        }
+        
+        const totalWithdrawn = myWithdrawn + teamWithdrawn;
+        const teamRetained = totalTeamVolumeUSDT - totalWithdrawn;
+        
         const result = {
           source: 'database',
           data: {
             directReferrals: referralAddresses.length,
             teamVolume: totalTeamVolumeUSDT.toString(),
-            teamRetained: totalTeamVolumeUSDT.toString(),
+            teamRetained: teamRetained.toString(),
           }
         };
         setCache(cacheKey, result);
