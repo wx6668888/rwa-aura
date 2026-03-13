@@ -55,7 +55,7 @@ async function getUnifiedData(address: string, dataType: string) {
           stakeId: `${e.event_type}_${e.timestamp}`,
           amount: e.amount,
           timestamp: e.timestamp,
-          lockPeriod: e.lock_period,
+          lockPeriod: e.lock_period === 0 ? 'flexible' : String(e.lock_period),
           assetType: e.event_type.includes('USDT') ? 'USDT' : 'RWA',
         }));
         const result = { source: 'database', data: stakes };
