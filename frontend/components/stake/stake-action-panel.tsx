@@ -10,6 +10,7 @@ import { useStakingContract } from '@/hooks/useStakingContract'
 import { useUSDT } from '@/hooks/useUSDT'
 import { useRWA } from '@/hooks/useRWA'
 import { useUserStakes } from '@/hooks/useUserStakes'
+import { useGaslessStake } from '@/hooks/useGaslessStake'
 import { decodeEventLog } from 'viem'
 import { stakingContractABI } from '@/lib/contracts/stakingContractABI'
 import { CONTRACT_ADDRESSES } from '@/lib/contracts/addresses'
@@ -34,6 +35,7 @@ export function StakeActionPanel() {
   const { balance: usdtBalance, approve, isApproved, refetchBalance, refetchAllowance } = useUSDT()
   const { balance: rwaBalance, approveStaking: approveRWA, isApproved: isRWAApproved, refetchBalance: refetchRWABalance, refetchAllowance: refetchRWAAllowance } = useRWA()
   const { refetch: refetchStakes } = useUserStakes()
+  const { gaslessStake, gaslessStakeRWA } = useGaslessStake()
 
   // Staking mode: 'USDT' or 'RWA' (default to 'RWA' as main recommended entry).
   // RWA minimum (100 USDT equivalent) is enforced here only; contract does not enforce minimum for stakeRWA.
