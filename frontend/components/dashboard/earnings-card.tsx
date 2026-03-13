@@ -133,7 +133,7 @@ export function EarningsCard() {
     }
     
     // 如果还在加载中，等待加载完成
-    if (stakesLoading) {
+    if (stakesLoading || !apiData) {
       return
     }
     
