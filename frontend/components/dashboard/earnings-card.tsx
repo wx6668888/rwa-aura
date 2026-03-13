@@ -149,8 +149,6 @@ export function EarningsCard() {
       const apiTotalUSDT = apiData ? parseFloat(apiData.usdtStaked) / 1e18 : 0
       const apiTotalRWA = apiData ? parseFloat(apiData.rwaStaked) / 1e18 : 0
       
-      console.log('🔍 FIFO Debug - API total remaining:', { apiTotalUSDT, apiTotalRWA })
-      
       // Calculate total flexible staked
       const flexibleUSDTStakes = stakes.filter(s => {
         const isRWA = s.isRWAStake === true || (s.stakeId && s.stakeId.toUpperCase().startsWith('RWA_'))
@@ -184,16 +182,10 @@ export function EarningsCard() {
       const flexRemainingUSDT = Math.max(0, apiTotalUSDT - totalLockedUSDT)
       const flexRemainingRWA = Math.max(0, apiTotalRWA - totalLockedRWA)
       
-      console.log('🔍 FIFO Debug - Flexible staked:', { totalFlexUSDT, totalFlexRWA })
-      console.log('🔍 FIFO Debug - Locked staked:', { totalLockedUSDT, totalLockedRWA })
-      console.log('🔍 FIFO Debug - Flexible remaining:', { flexRemainingUSDT, flexRemainingRWA })
-      
       // Apply FIFO withdrawal logic for flexible stakes only
       const sortedStakes = [...stakes].sort((a, b) => a.timestamp - b.timestamp)
       let remainingUSDTWithdrawn = totalFlexUSDT - flexRemainingUSDT
       let remainingRWAWithdrawn = totalFlexRWA - flexRemainingRWA
-      
-      console.log('🔍 FIFO Debug - Flexible withdrawn:', { remainingUSDTWithdrawn, remainingRWAWithdrawn })
       
       let activeStakes = sortedStakes.map((s) => {
         const isRWA = s.isRWAStake === true || (s.stakeId && s.stakeId.toUpperCase().startsWith('RWA_'))
@@ -222,16 +214,12 @@ export function EarningsCard() {
           }
         }
         
-        console.log('🔍 FIFO Debug - Stake:', s.stakeId, 'Original:', originalAmount, 'Remaining:', remainingAmount)
-        
         return {
           ...s,
           amount: (remainingAmount * 1e18).toString(),
           remainingAmount
         }
       }).filter(s => s.remainingAmount > 0)
-      
-      console.log('🔍 FIFO Debug - Active stakes count:', activeStakes.length)
       
       // 如果 stakes 为空，从合约状态构造数据
       if (activeStakes.length === 0) {
