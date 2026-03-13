@@ -1,4 +1,4 @@
-﻿import { ethers } from 'ethers';
+import { ethers } from 'ethers';
 import { query, transaction } from '../config/database.config';
 import { Stake, EventProcessingState } from '../models/types';
 import logger from '../utils/logger';
@@ -57,9 +57,6 @@ export class EventMonitor {
         );
     }
     
-    /**
-     * Start monitoring events
-     */
     async start(): Promise<void> {
         if (this.isRunning) {
             logger.warn('Event monitor is already running');
@@ -68,27 +65,16 @@ export class EventMonitor {
         
         this.isRunning = true;
         logger.info('Starting event monitor...');
-        
-        // Load last processed block from database
         await this.loadLastProcessedBlock();
-        
-        // Start polling loop
         this.pollEvents();
-        
         logger.info(`Event monitor started. Polling interval: ${this.config.pollInterval}ms`);
     }
     
-    /**
-     * Stop monitoring events
-     */
     stop(): void {
         this.isRunning = false;
         logger.info('Event monitor stopped');
     }
     
-    /**
-     * Load last processed block from database
-     */
     private async loadLastProcessedBlock(): Promise<void> {
         try {
             const result = await query<EventProcessingState[]>(
@@ -99,7 +85,6 @@ export class EventMonitor {
                 this.lastProcessedBlock = result[0].last_processed_block;
                 logger.info(`Resuming from block ${this.lastProcessedBlock}`);
             } else {
-                // Get current block as starting point
                 this.lastProcessedBlock = await this.provider.getBlockNumber();
                 logger.info(`Starting from current block ${this.lastProcessedBlock}`);
             }
@@ -109,9 +94,6 @@ export class EventMonitor {
         }
     }
     
-    /**
-     * Save last processed block to database
-     */
     private async saveLastProcessedBlock(blockNumber: number): Promise<void> {
         try {
             await query(
@@ -125,9 +107,6 @@ export class EventMonitor {
         }
     }
     
-    /**
-     * Poll for new events
-     */
     private async pollEvents(): Promise<void> {
         while (this.isRunning) {
             try {
@@ -135,43 +114,29 @@ export class EventMonitor {
             } catch (error) {
                 logger.error('Error processing blocks:', error);
             }
-            
-            // Wait before next poll
             await this.sleep(this.config.pollInterval);
         }
     }
     
-    /**
-     * Process new blocks with confirmation delay
-     */
     private async processNewBlocks(): Promise<void> {
         const currentBlock = await this.provider.getBlockNumber();
-        
-        // Apply confirmation delay (12 blocks)
         const confirmedBlock = currentBlock - this.config.confirmationBlocks;
         
         if (confirmedBlock <= this.lastProcessedBlock) {
-            // No new confirmed blocks
             return;
         }
         
         logger.info(`Processing blocks ${this.lastProcessedBlock + 1} to ${confirmedBlock}`);
         
-        // Process blocks in batches (100 blocks at a time)
         const batchSize = 100;
         for (let fromBlock = this.lastProcessedBlock + 1; fromBlock <= confirmedBlock; fromBlock += batchSize) {
             const toBlock = Math.min(fromBlock + batchSize - 1, confirmedBlock);
-            
             await this.processBlockRange(fromBlock, toBlock);
             await this.saveLastProcessedBlock(toBlock);
         }
     }
     
-    /**
-     * Process a range of blocks
-     */
     private async processBlockRange(fromBlock: number, toBlock: number): Promise<void> {
-        // Query StakeEvent (USDT) and RWAStakeEvent
         const stakeFilter = this.stakingContract.filters.StakeEvent();
         const rwaStakeFilter = this.stakingContract.filters.RWAStakeEvent();
         
@@ -182,12 +147,10 @@ export class EventMonitor {
         
         logger.info(`Found ${stakeEvents.length} StakeEvent(s) and ${rwaStakeEvents.length} RWAStakeEvent(s) in blocks ${fromBlock}-${toBlock}`);
         
-        // Process USDT stake events
         for (const event of stakeEvents) {
             await this.handleStakeEvent(event as ethers.EventLog);
         }
         
-        // Process RWA stake events
         for (const event of rwaStakeEvents) {
             await this.handleRWAStakeEvent(event as ethers.EventLog);
         }
@@ -256,9 +219,6 @@ export class EventMonitor {
         }
     }
     
-    /**
-     * Handle StakeEvent (USDT staking)
-     */
     private async handleStakeEvent(event: ethers.EventLog): Promise<void> {
         try {
             const { user, amount, referrer, stakeId, timestamp, lockPeriod } = event.args as any;
@@ -267,7 +227,6 @@ export class EventMonitor {
             
             logger.info(`Processing StakeEvent: user=${user}, stakeId=${stakeId}, tx=${txHash}`);
             
-            // Idempotency check: verify tx_hash doesn't exist
             const existing = await query<Stake[]>(
                 'SELECT stake_id FROM stake_events WHERE tx_hash = ?',
                 [txHash]
@@ -278,9 +237,7 @@ export class EventMonitor {
                 return;
             }
             
-            // Store stake record in database
             await transaction(async (connection) => {
-                // Insert stake record (USDT)
                 await connection.query(
                     `INSERT INTO stake_events (stake_id, user_address, amount, lock_period, event_type, tx_hash, block_number, timestamp)
                      VALUES (?, ?, ?, ?, 'USDT', ?, ?, FROM_UNIXTIME(?))`,
@@ -295,37 +252,15 @@ export class EventMonitor {
                     ]
                 );
                 
-                // 🩹 COMMENTED OUT: 不再更新 users 表统计，只记录质押事件
-                // total_staked 始终累加；cumulative_personal_stake 仅在有锁仓(lockPeriod>0)时累加，用于节点等级考核
-                // const lockPeriodNum = Number(lockPeriod?.toString() ?? 0);
-                // const amountForCumulative = Number(lockPeriod?.toString() ?? 0) > 0 ? amount.toString() : '0';
-                // await connection.query(
-                //     `INSERT INTO users (address, total_staked, cumulative_personal_stake, first_stake_time, is_active)
-                //      VALUES (?, ?, ?, FROM_UNIXTIME(?), TRUE)
-                //      ON DUPLICATE KEY UPDATE
-                //         total_staked = total_staked + VALUES(total_staked),
-                //         cumulative_personal_stake = COALESCE(cumulative_personal_stake, 0) + VALUES(cumulative_personal_stake),
-                //         is_active = TRUE`,
-                //     [
-                //         user.toLowerCase(),
-                //         amount.toString(),
-                //         amountForCumulative,
-                //         timestamp.toString()
-                //     ]
-                // );
-                
-                // If referrer exists, bind referral relationship
                 if (referrer !== ethers.ZeroAddress) {
                     await this.bindReferralRelationship(connection, user.toLowerCase(), referrer.toLowerCase());
                 }
             });
             
-            logger.info(`✅ StakeEvent processed: stakeId=${stakeId}, lockPeriod=${lockPeriod}, countedForUpgrade=${lockPeriod ? 'yes' : 'no'}`);
+            logger.info(`✅ StakeEvent processed: stakeId=${stakeId}, lockPeriod=${lockPeriod}`);
             
-            // 总留存：所有充值计入（无锁仓也计）
             await this.updateTeamDeposited(user.toLowerCase(), amount.toString());
             
-            // Trigger reward calculation (async, don't wait) — USDT stake；仅锁仓时更新团队量
             this.triggerRewardCalculation(user.toLowerCase(), amount.toString(), stakeId.toString(), 'USDT', Number(lockPeriod?.toString() ?? 0) > 0)
                 .catch(error => {
                     logger.error(`Failed to trigger reward calculation for stakeId=${stakeId}:`, error);
@@ -337,9 +272,6 @@ export class EventMonitor {
         }
     }
     
-    /**
-     * Handle RWAStakeEvent (RWA staking)
-     */
     private async handleRWAStakeEvent(event: ethers.EventLog): Promise<void> {
         try {
             const { user, amount, referrer, stakeId, timestamp, lockPeriod } = event.args as any;
@@ -348,7 +280,6 @@ export class EventMonitor {
             
             logger.info(`Processing RWAStakeEvent: user=${user}, stakeId=${stakeId}, tx=${txHash}`);
             
-            // Idempotency check: verify tx_hash doesn't exist
             const existing = await query<Stake[]>(
                 'SELECT stake_id FROM stake_events WHERE tx_hash = ?',
                 [txHash]
@@ -359,9 +290,7 @@ export class EventMonitor {
                 return;
             }
             
-            // Store stake record in database
             await transaction(async (connection) => {
-                // Insert stake record (RWA)
                 await connection.query(
                     `INSERT INTO stake_events (stake_id, user_address, amount, lock_period, event_type, tx_hash, block_number, timestamp)
                      VALUES (?, ?, ?, ?, 'RWA', ?, ?, FROM_UNIXTIME(?))`,
@@ -376,31 +305,7 @@ export class EventMonitor {
                     ]
                 );
 
-                // 🩹 COMMENTED OUT: 不再更新 users 表统计
-                // RWA 质押换算为 USDT 等值（0.85）；仅在有锁仓(lockPeriod>0)时计入 cumulative_personal_stake，用于节点等级
-                // const amountBn = BigInt(amount.toString());
-                // const rwaToUsdtEquiv = (amountBn * 85n) / 100n;
-                // const lockPeriodNum = Number(lockPeriod?.toString() ?? 0);
-                // const amountForCumulative = Number(lockPeriod?.toString() ?? 0) > 0 ? rwaToUsdtEquiv.toString() : '0';
-
-                // await connection.query(
-                //     `INSERT INTO users (address, referrer, cumulative_personal_stake, first_stake_time, is_active)
-                //      VALUES (?, ?, ?, FROM_UNIXTIME(?), TRUE)
-                //      ON DUPLICATE KEY UPDATE
-                //         referrer = COALESCE(users.referrer, VALUES(referrer)),
-                //         first_stake_time = COALESCE(users.first_stake_time, VALUES(first_stake_time)),
-                //         cumulative_personal_stake = COALESCE(cumulative_personal_stake, 0) + VALUES(cumulative_personal_stake),
-                //         is_active = TRUE`,
-                //     [
-                //         user.toLowerCase(),
-                //         referrer !== ethers.ZeroAddress ? referrer.toLowerCase() : null,
-                //         amountForCumulative,
-                //         timestamp.toString()
-                //     ]
-                // );
-                
-                // Update or create RWA stake user record
-                const contractAmount = BigInt(amount.toString()) / 2n; // 50% in contract
+                const contractAmount = BigInt(amount.toString()) / 2n;
                 await connection.query(
                     `INSERT INTO rwa_stakes (
                         user_address, total_staked_rwa, referrer, 
@@ -421,7 +326,6 @@ export class EventMonitor {
                     ]
                 );
                 
-                // If lock period > 0, save locked principal
                 if (lockPeriod && lockPeriod > 0) {
                     const lockEndTime = BigInt(timestamp.toString()) + (BigInt(lockPeriod.toString()) * 86400n);
                     await connection.query(
@@ -440,19 +344,16 @@ export class EventMonitor {
                     );
                 }
                 
-                // If referrer exists, bind referral relationship
                 if (referrer !== ethers.ZeroAddress) {
                     await this.bindReferralRelationship(connection, user.toLowerCase(), referrer.toLowerCase());
                 }
             });
             
-            logger.info(`✅ RWAStakeEvent processed: stakeId=${stakeId}, lockPeriod=${lockPeriod}, countedForUpgrade=${Number(lockPeriod?.toString() ?? 0) > 0 ? 'yes' : 'no'}`);
+            logger.info(`✅ RWAStakeEvent processed: stakeId=${stakeId}, lockPeriod=${lockPeriod}`);
             
-            // 总留存：所有充值计入（RWA 按 0.85 折 USDT）
             const rwaToUsdtForRetained = (BigInt(amount.toString()) * 85n / 100n).toString();
             await this.updateTeamDeposited(user.toLowerCase(), rwaToUsdtForRetained);
             
-            // Trigger reward calculation (async, don't wait) — RWA stake；仅锁仓时更新团队量
             this.triggerRewardCalculation(user.toLowerCase(), amount.toString(), stakeId.toString(), 'RWA', Number(lockPeriod?.toString() ?? 0) > 0)
                 .catch(error => {
                     logger.error(`Failed to trigger reward calculation for stakeId=${stakeId}:`, error);
@@ -493,15 +394,9 @@ export class EventMonitor {
         await this.syncRWAStakeState(user);
     }
 
-    /**
-     * 从提现事件解析 USDT 等值金额（总留存用）。
-     * 规则：提现一律按 gross（扣费前、从池子划出的金额）计入。例如提现 100、手续费 8%、到账 92，则按 100 计提现。
-     * - USDT：有 grossAmount 的用 grossAmount；否则用 net/0.92 还原 gross。
-     * - RWA：按 gross 折 0.85 成 USDT；事件只有 net 时 gross = net/0.92。
-     */
     private getWithdrawalAmountUsdtEquiv(eventName: string, args: any): string {
         if (!args) return '0';
-        const FEE_RATE_92 = 92n; // 8% 手续费后净额占 92%
+        const FEE_RATE_92 = 92n;
         const RWA_TO_USDT_85 = 85n;
         const HUNDRED = 100n;
         switch (eventName) {
@@ -514,7 +409,6 @@ export class EventMonitor {
                 return (grossRwa * RWA_TO_USDT_85 / HUNDRED).toString();
             }
             case 'RWAPrincipalWithdrawn': {
-                // 选 RWA 时 amount=net，需按 100 计：gross=net/0.92，USDT=gross*0.85；选 stRWA 时 amount=1.2*本金，无手续费，按 amount/1.2*0.85 更准但事件不区分，统一按 gross 处理即 amt*100/92*0.85
                 const amt = BigInt((args.amount?.toString?.() ?? args.amount ?? '0').toString());
                 const grossRwa = (amt * HUNDRED) / FEE_RATE_92;
                 return (grossRwa * RWA_TO_USDT_85 / HUNDRED).toString();
@@ -529,7 +423,6 @@ export class EventMonitor {
         }
     }
 
-    /** 幂等：仅当 tx 未记录时写入 withdrawal_events 并更新团队提现 */
     private async recordTeamWithdrawnAndSync(
         userAddress: string,
         txHash: string,
@@ -555,7 +448,6 @@ export class EventMonitor {
         await svc.updateTeamWithdrawn(userAddress, amountUsdtEquiv);
     }
 
-    /** 总留存：团队充值累加（每笔质押后调用，USDT 等值） */
     private async updateTeamDeposited(userAddress: string, amountUsdtEquiv: string): Promise<void> {
         const { TeamVolumeService } = await import('./TeamVolumeService');
         const svc = new TeamVolumeService();
@@ -630,9 +522,6 @@ export class EventMonitor {
         );
     }
     
-    /**
-     * Bind referral relationship using stored procedure
-     */
     private async bindReferralRelationship(
         connection: any,
         userAddress: string,
@@ -643,14 +532,12 @@ export class EventMonitor {
             return;
         }
 
-        // Check if relationship already exists
         const [existing] = await connection.query(
             'SELECT referrer FROM users WHERE address = ?',
             [userAddress]
         );
         
         if (existing.length > 0 && existing[0].referrer) {
-            // Referrer already set, skip
             if (existing[0].referrer !== referrerAddress) {
                 logger.warn(
                     `Referrer mismatch for ${userAddress}: db=${existing[0].referrer}, event=${referrerAddress}. Keeping existing referrer.`
@@ -661,19 +548,16 @@ export class EventMonitor {
             return;
         }
         
-        // Update user's referrer
         await connection.query(
             'UPDATE users SET referrer = ? WHERE address = ?',
             [referrerAddress, userAddress]
         );
         
-        // Build referral relations using stored procedure
         await connection.query(
             'CALL sp_build_referral_relations(?, ?)',
             [userAddress, referrerAddress]
         );
         
-        // Update direct referral count
         await connection.query(
             'UPDATE users SET direct_referral_count = direct_referral_count + 1 WHERE address = ?',
             [referrerAddress]
@@ -682,10 +566,6 @@ export class EventMonitor {
         logger.info(`✅ Referral relationship bound: ${userAddress} -> ${referrerAddress}`);
     }
     
-    /**
-     * Trigger reward calculation (placeholder)
-     * This will be implemented in RewardEngine
-     */
     private async triggerRewardCalculation(
         userAddress: string,
         amount: string,
@@ -695,13 +575,11 @@ export class EventMonitor {
     ): Promise<void> {
         logger.info(`Triggering reward calculation for user=${userAddress}, stakeId=${stakeId}, assetType=${assetType}, isLocked=${isLocked}`);
         
-        // Import services dynamically to avoid circular dependencies
         const { RewardEngine } = await import('./RewardEngine');
         const { TeamVolumeService } = await import('./TeamVolumeService');
         const { NodeLevelService } = await import('./NodeLevelService');
         
         try {
-            // 1. 仅当本笔为有锁仓时，才更新团队量（无锁仓不纳入升级考量）；团队量统一用 USDT 等值
             if (isLocked) {
                 const teamVolumeService = new TeamVolumeService();
                 const amountForTeam = assetType === 'RWA'
@@ -710,7 +588,6 @@ export class EventMonitor {
                 await teamVolumeService.updateTeamVolume(userAddress, amountForTeam);
             }
             
-            // 2. Calculate and distribute differential rewards (pass assetType so contract gets rwAmount/usdtAmount correctly)
             const rewardEngine = new RewardEngine({
                 stakingContractAddress: this.config.stakingContractAddress,
                 stakingContractABI: this.STAKING_ABI,
@@ -724,7 +601,6 @@ export class EventMonitor {
             
             await rewardEngine.processStake(userAddress, amount, stakeId, assetType);
             
-            // 3. Check and upgrade node level if requirements are met
             const nodeLevelService = new NodeLevelService({
                 stakingContractAddress: this.config.stakingContractAddress,
                 stakingContractABI: this.STAKING_ABI,
@@ -735,10 +611,8 @@ export class EventMonitor {
                 )
             });
             
-            // Check upgrade for user
             await nodeLevelService.checkAndUpgradeNodeLevel(userAddress);
             
-            // Check upgrade for all ancestors (they might have gained a new qualified direct referral)
             const ancestors = await query<any[]>(
                 'SELECT DISTINCT ancestor_address FROM referral_relations WHERE user_address = ?',
                 [userAddress.toLowerCase()]
@@ -752,20 +626,13 @@ export class EventMonitor {
             
         } catch (error) {
             logger.error(`Failed to process rewards for stakeId=${stakeId}:`, error);
-            // Don't throw - we don't want to stop event processing
         }
     }
     
-    /**
-     * Sleep utility
-     */
     private sleep(ms: number): Promise<void> {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
     
-    /**
-     * Get current status
-     */
     getStatus(): {
         isRunning: boolean;
         lastProcessedBlock: number;
@@ -780,4 +647,3 @@ export class EventMonitor {
 }
 
 export default EventMonitor;
-
