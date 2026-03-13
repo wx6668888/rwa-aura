@@ -31,8 +31,8 @@ export class EventMonitor {
     
     // StakingContract ABI (only events we need)
     private readonly STAKING_ABI = [
-        'event StakeEvent(address indexed user, uint256 amount, address indexed referrer, uint256 indexed stakeId, uint256 timestamp, uint256 lockPeriod)',
-        'event RWAStakeEvent(address indexed user, uint256 amount, address indexed referrer, uint256 indexed stakeId, uint256 timestamp, uint256 lockPeriod)',
+        'event StakeEvent(address indexed user, uint256 amount, address referrer, uint256 stakeId, uint256 timestamp, uint256 lockPeriod)',
+        'event RWAStakeEvent(address indexed user, uint256 amount, address referrer, uint256 stakeId, uint256 timestamp, uint256 lockPeriod)',
         'event ReferralBound(address indexed user, address indexed referrer, uint256 timestamp)',
         'event RewardsUpdated(address indexed user, uint256 rwAmount, uint256 usdtAmount, uint256 indexed stakeId, uint256 timestamp)',
         'event NodeLevelUpdated(address indexed user, uint8 oldLevel, uint8 newLevel, uint256 timestamp)',
