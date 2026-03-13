@@ -143,33 +143,57 @@ export function EarningsCard() {
       const earnings: StakeEarning[] = []
       let total = 0
       
-      // Get remaining flexible principals from API instead of contract
-      const apiRemainingUSDT = apiData ? parseFloat(apiData.usdtStaked) / 1e18 : parseFloat(usdtFlexiblePrincipal || '0')
-      const apiRemainingRWA = apiData ? parseFloat(apiData.rwaStaked) / 1e18 : parseFloat(rwaFlexiblePrincipal || '0')
+      // Get remaining flexible principals from API
+      // Note: API returns TOTAL remaining (flexible + locked), not just flexible
+      // We need to calculate flexible remaining separately
+      const apiTotalUSDT = apiData ? parseFloat(apiData.usdtStaked) / 1e18 : 0
+      const apiTotalRWA = apiData ? parseFloat(apiData.rwaStaked) / 1e18 : 0
       
-      console.log('🔍 FIFO Debug - API remaining principals:', { apiRemainingUSDT, apiRemainingRWA })
+      console.log('🔍 FIFO Debug - API total remaining:', { apiTotalUSDT, apiTotalRWA })
       
-      // Calculate total staked from all stakes
-      const totalUSDTStaked = stakes.filter(s => {
+      // Calculate total flexible staked
+      const flexibleUSDTStakes = stakes.filter(s => {
         const isRWA = s.isRWAStake === true || (s.stakeId && s.stakeId.toUpperCase().startsWith('RWA_'))
         const isFlex = s.lockPeriod === 'flexible'
         return !isRWA && isFlex
-      }).reduce((sum, s) => sum + parseFloat(s.amount) / 1e18, 0)
+      })
       
-      const totalRWAStaked = stakes.filter(s => {
+      const flexibleRWAStakes = stakes.filter(s => {
         const isRWA = s.isRWAStake === true || (s.stakeId && s.stakeId.toUpperCase().startsWith('RWA_'))
         const isFlex = s.lockPeriod === 'flexible'
         return isRWA && isFlex
+      })
+      
+      const totalFlexUSDT = flexibleUSDTStakes.reduce((sum, s) => sum + parseFloat(s.amount) / 1e18, 0)
+      const totalFlexRWA = flexibleRWAStakes.reduce((sum, s) => sum + parseFloat(s.amount) / 1e18, 0)
+      
+      // Calculate locked staked
+      const totalLockedUSDT = stakes.filter(s => {
+        const isRWA = s.isRWAStake === true || (s.stakeId && s.stakeId.toUpperCase().startsWith('RWA_'))
+        const isFlex = s.lockPeriod === 'flexible'
+        return !isRWA && !isFlex
       }).reduce((sum, s) => sum + parseFloat(s.amount) / 1e18, 0)
       
-      console.log('🔍 FIFO Debug - Total flexible staked:', { totalUSDTStaked, totalRWAStaked })
+      const totalLockedRWA = stakes.filter(s => {
+        const isRWA = s.isRWAStake === true || (s.stakeId && s.stakeId.toUpperCase().startsWith('RWA_'))
+        const isFlex = s.lockPeriod === 'flexible'
+        return isRWA && !isFlex
+      }).reduce((sum, s) => sum + parseFloat(s.amount) / 1e18, 0)
       
-      // Apply FIFO withdrawal logic for flexible stakes
+      // Calculate flexible remaining: API total - locked = flexible remaining
+      const flexRemainingUSDT = Math.max(0, apiTotalUSDT - totalLockedUSDT)
+      const flexRemainingRWA = Math.max(0, apiTotalRWA - totalLockedRWA)
+      
+      console.log('🔍 FIFO Debug - Flexible staked:', { totalFlexUSDT, totalFlexRWA })
+      console.log('🔍 FIFO Debug - Locked staked:', { totalLockedUSDT, totalLockedRWA })
+      console.log('🔍 FIFO Debug - Flexible remaining:', { flexRemainingUSDT, flexRemainingRWA })
+      
+      // Apply FIFO withdrawal logic for flexible stakes only
       const sortedStakes = [...stakes].sort((a, b) => a.timestamp - b.timestamp)
-      let remainingUSDTWithdrawn = totalUSDTStaked - apiRemainingUSDT
-      let remainingRWAWithdrawn = totalRWAStaked - apiRemainingRWA
+      let remainingUSDTWithdrawn = totalFlexUSDT - flexRemainingUSDT
+      let remainingRWAWithdrawn = totalFlexRWA - flexRemainingRWA
       
-      console.log('🔍 FIFO Debug - Withdrawn amounts:', { remainingUSDTWithdrawn, remainingRWAWithdrawn })
+      console.log('🔍 FIFO Debug - Flexible withdrawn:', { remainingUSDTWithdrawn, remainingRWAWithdrawn })
       
       let activeStakes = sortedStakes.map((s) => {
         const isRWA = s.isRWAStake === true || (s.stakeId && s.stakeId.toUpperCase().startsWith('RWA_'))
