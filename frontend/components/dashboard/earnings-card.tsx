@@ -264,8 +264,9 @@ export function EarningsCard() {
         for (const stake of activeStakes) {
           // 确保正确识别 RWA 质押
           const isRWAStake = stake.isRWAStake === true || stake.stakeId?.startsWith('rwa_')
-          // 合约统一使用 18 decimals
-          const stakeAmount = parseFloat(formatUnits(BigInt(stake.amount), 18))
+          // 合约统一使用 18 decimals - 先转换为数字再转BigInt避免科学计数法问题
+          const amountNum = typeof stake.amount === 'string' ? parseFloat(stake.amount) : stake.amount
+          const stakeAmount = parseFloat(formatUnits(BigInt(Math.floor(amountNum)), 18))
           const stakeTime = stake.timestamp
           const lockMultiplier = getLockPeriodMultiplier(stake.lockPeriod)
           
