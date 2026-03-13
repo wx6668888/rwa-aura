@@ -529,15 +529,15 @@ export class EventMonitor {
         }
     }
 
-    /** 幂等：仅当 tx 未记录时写入 withdrawal_events 并更新团队提现 */
     private async recordTeamWithdrawnAndSync(
         userAddress: string,
         txHash: string,
         amountUsdtEquiv: string,
-        _token: string
+        _token: string,
+        eventType: string,
+        timestamp: number,
+        blockNumber: number
     ): Promise<void> {
-        const existing = await query<{ tx_hash: string }[]>(
-            'SELECT tx_hash FROM withdrawal_events WHERE tx_hash = ?',
             [txHash]
         );
         if (existing.length > 0) return;
