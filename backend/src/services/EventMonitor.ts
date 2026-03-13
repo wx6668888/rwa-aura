@@ -1,4 +1,4 @@
-import { ethers } from 'ethers';
+﻿import { ethers } from 'ethers';
 import { query, transaction } from '../config/database.config';
 import { Stake, EventProcessingState } from '../models/types';
 import logger from '../utils/logger';
@@ -463,9 +463,9 @@ export class EventMonitor {
             throw error;
         }
     }
+
     private async handleRewardWithdrawal(event: ethers.EventLog): Promise<void> {
         const { user, amount, timestamp } = event.args as any;
-
         const txHash = event.transactionHash;
         logger.info(`Processing WithdrawalRequested for user=${user}, tx=${txHash}`);
         const usdtEquiv = (BigInt(amount?.toString() ?? '0') * 85n / 100n).toString();
@@ -529,6 +529,7 @@ export class EventMonitor {
         }
     }
 
+    /** 幂等：仅当 tx 未记录时写入 withdrawal_events 并更新团队提现 */
     private async recordTeamWithdrawnAndSync(
         userAddress: string,
         txHash: string,
@@ -538,6 +539,8 @@ export class EventMonitor {
         timestamp: number,
         blockNumber: number
     ): Promise<void> {
+        const existing = await query<{ tx_hash: string }[]>(
+            'SELECT tx_hash FROM withdrawal_events WHERE tx_hash = ?',
             [txHash]
         );
         if (existing.length > 0) return;
@@ -545,8 +548,8 @@ export class EventMonitor {
         const svc = new TeamVolumeService();
         await transaction(async (conn) => {
             await conn.query(
-                'INSERT INTO withdrawal_events (tx_hash, user_address, amount_usdt_equiv) VALUES (?, ?, ?)',
-                [txHash, userAddress, amountUsdtEquiv]
+                'INSERT INTO withdrawal_events (user_address, event_type, amount, stake_id, timestamp, block_number, tx_hash) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [userAddress, eventType, amountUsdtEquiv, 0, timestamp, blockNumber, txHash]
             );
         });
         await svc.updateTeamWithdrawn(userAddress, amountUsdtEquiv);
