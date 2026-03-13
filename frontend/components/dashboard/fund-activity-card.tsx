@@ -19,8 +19,6 @@ const FUND_TYPE_KEYS = [
   'stakeUSDT',
   'stakeRWA',
   'withdrawReward',
-  'withdrawPrincipalRWA',
-  'withdrawPrincipalUSDT',
   'flexibleUSDT',
   'flexibleRWA',
   'emergencyWithdraw',
@@ -48,8 +46,6 @@ const TYPE_KEY_VARIANT: Record<FundTypeKey, FundActivityRow['typeVariant']> = {
   stakeUSDT: 'cyan',
   stakeRWA: 'purple',
   withdrawReward: 'orange',
-  withdrawPrincipalRWA: 'rose',
-  withdrawPrincipalUSDT: 'blue',
   flexibleUSDT: 'sky',
   flexibleRWA: 'indigo',
   emergencyWithdraw: 'amber',
@@ -171,9 +167,9 @@ async function parseLogsToRows(
         case 'RWAPrincipalWithdrawn': {
           const amt = args.amount != null ? formatUnits(BigInt(String(args.amount)), 18) : '0'
           amount = `-${parseFloat(amt).toFixed(2)} RWA`
-          amountColor = '#f43f5e'
-          typeKey = 'withdrawPrincipalRWA'
-          typeVariant = 'rose'
+          amountColor = '#6366f1'
+          typeKey = 'flexibleRWA'
+          typeVariant = 'indigo'
           break
         }
         case 'USDTPrincipalWithdrawn': {
@@ -351,7 +347,7 @@ async function fetchStakesFromApi(
       let typeVariant: FundActivityRow['typeVariant']
       
       if (isWithdraw) {
-        typeKey = isRwa ? 'withdrawPrincipalRWA' : 'withdrawPrincipalUSDT'
+        typeKey = isRwa ? 'flexibleRWA' : 'flexibleUSDT'
         summaryType = 'withdraw'
         typeVariant = 'orange'
       } else {
