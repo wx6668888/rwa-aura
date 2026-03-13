@@ -180,7 +180,7 @@ async function parseLogsToRows(
           const net = args.netAmount != null ? formatUnits(BigInt(String(args.netAmount)), 18) : '0'
           amount = `-${parseFloat(net).toFixed(2)} USDT`
           amountColor = '#3b82f6'
-          typeKey = 'withdrawPrincipalUSDT'
+          typeKey = 'flexibleUSDT'
           typeVariant = 'blue'
           break
         }
