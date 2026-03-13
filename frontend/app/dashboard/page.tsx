@@ -1,3 +1,5 @@
+'use client'
+
 import { Navbar } from '@/components/navbar'
 import { BackgroundEffects } from '@/components/background-effects'
 import { WalletBar } from '@/components/dashboard/wallet-bar'
@@ -8,18 +10,15 @@ import { ReinvestRewardsCard } from '@/components/dashboard/reinvest-rewards-car
 import { StatCards } from '@/components/dashboard/stat-cards'
 import { FundActivityCard } from '@/components/dashboard/fund-activity-card'
 import { NodeLevelsInfo } from '@/components/dashboard/node-levels-info'
-
-export const metadata = {
-  title: '仪表板 | RWA Protocol',
-  description: '查看您的质押总额、收益和团队数据',
-}
+import { StakesProvider } from '@/contexts/StakesContext'
 
 export default function DashboardPage() {
   return (
-    <div className="min-h-screen bg-[#0a0a0f] font-sans">
-      <BackgroundEffects />
-      <Navbar />
-      <WalletBar />
+    <StakesProvider>
+      <div className="min-h-screen bg-[#0a0a0f] font-sans">
+        <BackgroundEffects />
+        <Navbar />
+        <WalletBar />
 
       <main className="mx-auto max-w-7xl px-4 pb-[100px] pt-8 lg:px-8">
         {/* Row 1: Portfolio + Earnings — 2 equal columns on desktop */}
@@ -50,5 +49,6 @@ export default function DashboardPage() {
         </div>
       </main>
     </div>
+    </StakesProvider>
   )
 }

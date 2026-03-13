@@ -4,8 +4,9 @@ import { useEffect } from 'react'
 import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
 import { useAccount, useChainId } from 'wagmi'
-import { useLevelInfo } from '@/hooks/useLevelInfo'
+import { useTeamStats } from '@/hooks/useTeamStats'
 import { useStakingContract } from '@/hooks/useStakingContract'
+import { useEstimatedDividend } from '@/hooks/useEstimatedDividend'
 import { getNodeLevelConfig, NODE_LEVELS } from '@/lib/node-levels'
 import { Gift, Loader2 } from 'lucide-react'
 import Link from 'next/link'
@@ -23,20 +24,22 @@ export function ProjectDividendCard() {
   const { t } = useTranslation(locale)
   const { isConnected, address } = useAccount()
   const chainId = useChainId()
-  const { levelInfo } = useLevelInfo()
+  const teamStats = useTeamStats()
   const { userStakeInfo, rwaStakeInfo } = useStakingContract()
 
-  // 与节点页一致：用「实时计算」的等级判断分红资格，不依赖 DB 的 node_level
+  // 使用链上数据计算等级
   const usdtStaked = parseFloat(userStakeInfo?.totalStaked || '0')
   const rwaStaked = parseFloat(rwaStakeInfo?.totalStakedRWA || '0')
   const personalStakeCurrent = usdtStaked + rwaStaked * RWA_PRICE
-  const teamVolumeCurrent = personalStakeCurrent + (levelInfo?.teamVolumeUsdt ?? 0)
+  const teamVolumeCurrent = teamStats.teamVolume
+  const teamRetainedCurrent = teamStats.teamRetained
+  
   let calculatedLevel = 1
   for (let i = NODE_LEVELS.length - 1; i >= 0; i--) {
     const level = NODE_LEVELS[i]
     const meetsPersonal = personalStakeCurrent >= (level.personalStakeUSDT || 0)
     const meetsTeam = teamVolumeCurrent >= level.teamVolumeUSDT
-    const meetsRetained = (levelInfo?.teamRetainedUsdt ?? 0) >= (level.teamRetainedUSDT ?? 0)
+    const meetsRetained = teamRetainedCurrent >= (level.teamRetainedUSDT ?? 0)
     if (meetsPersonal && meetsTeam && meetsRetained) {
       calculatedLevel = level.level
       break
@@ -45,6 +48,9 @@ export function ProjectDividendCard() {
   const nodeLevel = isConnected ? calculatedLevel : 1
   const config = getNodeLevelConfig(nodeLevel)
   const isEligible = config?.projectDividendEligible ?? false
+  
+  // 使用新的 hook 计算预估分红
+  const { estimatedDividend, teamRetained } = useEstimatedDividend(nodeLevel)
 
   const { data: dividendData, refetch: refetchDividend } = useQuery({
     queryKey: ['dividend-user', address?.toLowerCase(), chainId],
@@ -113,35 +119,38 @@ export function ProjectDividendCard() {
         <>
           <div className="mt-4 text-sm text-[#94a3b8]">
             {isZh
-              ? `您当前为 ${config?.code ?? ''}，已参与团队业绩分红。`
-              : `You are ${config?.code ?? ''} and eligible for team performance dividends.`}
+              ? `您当前为 ${config?.code ?? ''}，已参与团队业绩分红（${(config?.dividendWeight ?? 0) * 100}%）。`
+              : `You are ${config?.code ?? ''} and eligible for team performance dividends (${(config?.dividendWeight ?? 0) * 100}%).`}
           </div>
-          {estimated > 0 && (
+          {estimatedDividend > 0 && (
             <div className="mt-3 rounded-xl border border-[#10b98120] bg-[#10b98110] p-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-[#64748b]">
-                  {isZh ? '本月预估分红' : 'Estimated dividend this month'}
+                  {isZh ? '预估分红（实时模拟）' : 'Estimated dividend (real-time)'}
                 </span>
                 <span className="font-[family-name:var(--font-jetbrains-mono)] font-semibold text-[#10b981]">
-                  {estimated.toLocaleString('en-US', {
+                  {estimatedDividend.toLocaleString('en-US', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}{' '}
                   USDT
                 </span>
               </div>
-              {netGrowth > 0 && (
-                <div className="mt-1 flex items-center justify-between text-[11px] text-[#64748b]">
-                  <span>{isZh ? '本月净增业绩' : 'Net growth this month'}</span>
-                  <span className="font-mono text-[#94a3b8]">
-                    {netGrowth.toLocaleString('en-US', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{' '}
-                    USDT
-                  </span>
-                </div>
-              )}
+              <div className="mt-1 flex items-center justify-between text-[11px] text-[#64748b]">
+                <span>{isZh ? '团队总留存' : 'Team retained'}</span>
+                <span className="font-mono text-[#94a3b8]">
+                  {teamRetained.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}{' '}
+                  USDT
+                </span>
+              </div>
+              <div className="mt-2 text-[10px] text-[#64748b]">
+                {isZh 
+                  ? '* 每月1日结算上月数据，结算后可提取' 
+                  : '* Settled on 1st of each month, withdrawable after settlement'}
+              </div>
             </div>
           )}
           {balanceNum > 0 && (

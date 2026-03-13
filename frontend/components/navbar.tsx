@@ -77,7 +77,6 @@ const navGroups: NavGroup[] = [
       { key: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard, description: 'nav.group.assets.desc.dashboard' },
       { key: 'nav.stake', href: '/stake', icon: Coins, description: 'nav.group.assets.desc.stake' },
       { key: 'nav.withdraw', href: '/withdraw', icon: ArrowUpCircle, description: 'nav.group.assets.desc.withdraw' },
-      { key: 'nav.dividend', href: '/dividend', icon: Gift, description: 'nav.group.assetsDesc.dividend' },
     ],
   },
   {

@@ -2,30 +2,32 @@
 
 import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
-
-const statKeys = [
-  { valueKey: 'stats.tvl.value', labelKey: 'stats.tvl.label' },
-  { valueKey: 'stats.stakers.value', labelKey: 'stats.stakers.label' },
-  { valueKey: 'stats.price.value', labelKey: 'stats.price.label' },
-]
+import { useHomepageStats } from '@/hooks/useHomepageStats'
 
 export function StatsBar() {
   const { locale } = useLocale()
   const { t } = useTranslation(locale)
+  const stats = useHomepageStats()
+
+  const statItems = [
+    { value: `${(stats.tvl / 1000000).toFixed(2)}M`, label: t('stats.tvl.label') },
+    { value: stats.users.toLocaleString(), label: t('stats.stakers.label') },
+    { value: `$${stats.price.toFixed(2)}`, label: t('stats.price.label') },
+  ]
 
   return (
     <section className="border-y border-border-subtle">
       <div className="mx-auto grid max-w-7xl grid-cols-3 gap-2 px-4 py-8 sm:gap-4 lg:flex lg:items-center lg:justify-center lg:gap-0 lg:divide-x lg:divide-border-subtle lg:px-8">
-        {statKeys.map((stat, i) => (
+        {statItems.map((stat, i) => (
           <div
             key={i}
             className="flex flex-col items-center lg:px-16"
           >
             <span className="font-[family-name:var(--font-jetbrains-mono)] text-lg font-bold text-plasma-cyan sm:text-2xl lg:text-4xl">
-              {t(stat.valueKey)}
+              {stat.value}
             </span>
             <span className="mt-1 text-[9px] font-medium uppercase tracking-[0.15em] text-text-secondary sm:text-[11px] sm:tracking-[0.2em]">
-              {t(stat.labelKey)}
+              {stat.label}
             </span>
           </div>
         ))}

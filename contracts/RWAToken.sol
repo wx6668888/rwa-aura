@@ -2,12 +2,13 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
 /**
  * @title RWAToken
- * @dev BEP-20 token with transaction tax mechanism
+ * @dev BEP-20 token with transaction tax mechanism and EIP-2612 Permit
  * 
  * Features:
  * - Dynamic sell tax: base rate from weighted avg holding (max 4%) + sell-ratio penalty (above 30% of total, 1% per 1%, no cap)
@@ -16,7 +17,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
  * - Whitelist addresses are exempt from tax and 24h limit
  * - Pausable for emergency situations
  */
-contract RWAToken is ERC20, Ownable, Pausable {
+contract RWAToken is ERC20, ERC20Permit, Ownable, Pausable {
     // Tax configuration
     uint256 public constant SELL_TAX_RATE = 4; // 4% default when no staking info (base rate max 4%)
     uint256 public constant SELL_RATIO_THRESHOLD = 30; // Sell above 30% of total: each 1% above adds 1% tax
@@ -59,7 +60,7 @@ contract RWAToken is ERC20, Ownable, Pausable {
         uint256 _initialSupply,
         address _treasuryAddress,
         address _liquidityFundAddress
-    ) ERC20(_name, _symbol) Ownable(msg.sender) {
+    ) ERC20(_name, _symbol) ERC20Permit(_name) Ownable(msg.sender) {
         require(_treasuryAddress != address(0), "Treasury address cannot be zero");
         require(_liquidityFundAddress != address(0), "Liquidity fund address cannot be zero");
         

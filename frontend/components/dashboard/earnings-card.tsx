@@ -5,8 +5,9 @@ import { useAccount, usePublicClient } from 'wagmi'
 import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
 import { useStakingContract } from '@/hooks/useStakingContract'
-import { useUserStakes } from '@/hooks/useUserStakes'
-import { useState, useEffect, useRef } from 'react'
+import { useStakesContext } from '@/contexts/StakesContext'
+import { useReferralRewards } from '@/hooks/useReferralRewards'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { formatUnits } from 'viem'
 
 interface StakeEarning {
@@ -17,6 +18,7 @@ interface StakeEarning {
   dailyRate: number
   rwaEarning: number
   timestamp: number
+  isRWAStake?: boolean
 }
 
 export function EarningsCard() {
@@ -26,7 +28,8 @@ export function EarningsCard() {
   const { isConnected, address } = useAccount()
   const publicClient = usePublicClient()
   const { userRewards, userStakeInfo, refetchRewards, rwaStakeInfo, refetchRWAStakeInfo, rwaFlexiblePrincipal, usdtFlexiblePrincipal } = useStakingContract()
-  const { stakes, loading: stakesLoading, refetch: refetchStakes } = useUserStakes()
+  const { stakes, loading: stakesLoading, refetch: refetchStakes } = useStakesContext()
+  const { rewards: referralRewards } = useReferralRewards()
 
   // 当用户质押数据变化时，自动刷新质押记录
   useEffect(() => {
@@ -94,6 +97,7 @@ export function EarningsCard() {
   // 计算每笔质押的收益
   const [stakeEarnings, setStakeEarnings] = useState<StakeEarning[]>([])
   const [totalRwaEarning, setTotalRwaEarning] = useState(0)
+  const [unsettledEarning, setUnsettledEarning] = useState(0) // 未结算收益
   const lastUpdateTimeRef = useRef<number>(0)
   const lastRwaPendingRef = useRef<number>(rwaPendingNum)
   
@@ -129,13 +133,43 @@ export function EarningsCard() {
       // 已提现的灵活仓位不再显示：灵活 RWA 已提则 rwaFlexiblePrincipal 为 0，灵活 USDT 已提则 usdtFlexiblePrincipal 为 0
       const rwaFlexNum = parseFloat(rwaFlexiblePrincipal || '0')
       const usdtFlexNum = parseFloat(usdtFlexiblePrincipal || '0')
-      const activeStakes = stakes.filter((s) => {
-        const isRWA = s.isRWAStake === true || s.stakeId.startsWith('rwa_')
+      
+      let activeStakes = stakes.filter((s) => {
+        const isRWA = s.isRWAStake === true || (s.stakeId && s.stakeId.startsWith('rwa_'))
         const isFlex = s.lockPeriod === 'flexible'
         if (isRWA && isFlex) return rwaFlexNum > 0
         if (!isRWA && isFlex) return usdtFlexNum > 0
         return true
       })
+      
+      // 如果 stakes 为空，从合约状态构造数据
+      if (activeStakes.length === 0) {
+        const fallbackStakes = []
+        
+        if (rwaStakeInfo?.totalStakedRWA && parseFloat(rwaStakeInfo.totalStakedRWA) > 0) {
+          fallbackStakes.push({
+            stakeId: `rwa_${rwaStakeInfo.firstStakeTime || Date.now() / 1000}`,
+            amount: rwaStakeInfo.totalStakedRWA,
+            timestamp: Number(rwaStakeInfo.firstStakeTime || Date.now() / 1000),
+            lockPeriod: 'flexible' as const,
+            isRWAStake: true,
+            tokenDecimals: 18,
+          })
+        }
+        
+        if (userStakeInfo?.totalStaked && parseFloat(userStakeInfo.totalStaked) > 0) {
+          fallbackStakes.push({
+            stakeId: `usdt_${userStakeInfo.firstStakeTime || Date.now() / 1000}`,
+            amount: userStakeInfo.totalStaked,
+            timestamp: Number(userStakeInfo.firstStakeTime || Date.now() / 1000),
+            lockPeriod: 'flexible' as const,
+            isRWAStake: false,
+            tokenDecimals: 18,
+          })
+        }
+        
+        activeStakes = fallbackStakes
+      }
 
       // 计算所有质押的收益（包括 USDT 和 RWA 质押，分别处理）
       if (activeStakes.length > 0) {
@@ -150,9 +184,9 @@ export function EarningsCard() {
         })))
         for (const stake of activeStakes) {
           // 确保正确识别 RWA 质押
-          const isRWAStake = stake.isRWAStake === true || stake.stakeId.startsWith('rwa_')
-          const tokenDecimals = stake.tokenDecimals || (isRWAStake ? 18 : 6)
-          const stakeAmount = parseFloat(formatUnits(BigInt(stake.amount), tokenDecimals))
+          const isRWAStake = stake.isRWAStake === true || stake.stakeId?.startsWith('rwa_')
+          // 合约统一使用 18 decimals
+          const stakeAmount = parseFloat(formatUnits(BigInt(stake.amount), 18))
           const stakeTime = stake.timestamp
           const lockMultiplier = getLockPeriodMultiplier(stake.lockPeriod)
           
@@ -162,7 +196,6 @@ export function EarningsCard() {
             isRWAStakeFlag: stake.isRWAStake,
             stakeIdStartsWithRwa: stake.stakeId.startsWith('rwa_'),
             stakeAmount,
-            tokenDecimals,
             stakeTime: new Date(stakeTime * 1000).toLocaleString(),
             lockPeriod: stake.lockPeriod,
             lockMultiplier,
@@ -177,27 +210,33 @@ export function EarningsCard() {
             // RWA 质押：直接基于 RWA 数量计算 RWA 收益
             const dailyRWAYield = stakeAmount * adjustedDailyRate
             const perSecondRWAYield = dailyRWAYield / 86400
-            const elapsedSeconds = currentTime - stakeTime
+            
+            console.log(`    🕐 时间调试:`, {
+              currentTime,
+              stakeTime,
+              rawElapsed: currentTime - stakeTime,
+              currentTimeDate: (currentTime && !isNaN(currentTime)) ? new Date(currentTime * 1000).toISOString() : 'Invalid',
+              stakeTimeDate: (stakeTime && !isNaN(stakeTime)) ? new Date(stakeTime * 1000).toISOString() : 'Invalid',
+            })
+            
+            const elapsedSeconds = Math.max(0, currentTime - stakeTime)
             const elapsedDays = elapsedSeconds / 86400
             
-            if (elapsedSeconds > 0 && elapsedSeconds <= 31536000) {
-              const stakeRWA = perSecondRWAYield * elapsedSeconds
-              total += stakeRWA
-              
-              console.log(`    ✅ RWA 质押收益: ${stakeRWA.toFixed(6)} RWA`)
-              
-              earnings.push({
-                stakeId: stake.stakeId,
-                amount: stakeAmount, // RWA 数量
-                lockPeriod: stake.lockPeriod || 'flexible',
-                elapsedDays,
-                dailyRate: adjustedDailyRate * 100,
-                rwaEarning: stakeRWA,
-                timestamp: stakeTime,
-              })
-            } else {
-              console.log(`    ⚠️  RWA 质押时间异常: elapsedSeconds=${elapsedSeconds}`)
-            }
+            const stakeRWA = perSecondRWAYield * elapsedSeconds
+            total += stakeRWA
+            
+            console.log(`    ✅ RWA 质押收益: ${stakeRWA.toFixed(6)} RWA (经过 ${elapsedDays.toFixed(2)} 天)`)
+            
+            earnings.push({
+              stakeId: stake.stakeId,
+              amount: stakeAmount, // RWA 数量
+              lockPeriod: stake.lockPeriod || 'flexible',
+              elapsedDays,
+              dailyRate: adjustedDailyRate * 100,
+              rwaEarning: stakeRWA,
+              timestamp: stakeTime,
+              isRWAStake: true, // RWA 质押
+            })
           } else {
             // USDT 质押：基于 USDT 数量计算，然后转换为 RWA
             const dailyUSDTYield = stakeAmount * adjustedDailyRate
@@ -220,6 +259,7 @@ export function EarningsCard() {
                 dailyRate: adjustedDailyRate * 100,
                 rwaEarning: stakeRWA,
                 timestamp: stakeTime,
+                isRWAStake: false, // USDT 质押
               })
             } else {
               console.log(`    ⚠️  USDT 质押时间异常: elapsedSeconds=${elapsedSeconds}`)
@@ -291,11 +331,14 @@ export function EarningsCard() {
         }
       }
       
-      // 确保总收益不小于链上数据
-      total = Math.max(rwaPendingNum, total)
+      // 分离已结算和未结算收益
+      // total = 实时计算的总收益
+      // rwaPendingNum = 合约中已结算的收益
+      const unsettled = Math.max(0, total - rwaPendingNum) // 未结算部分
       
       setStakeEarnings(earnings)
-      setTotalRwaEarning(total)
+      setTotalRwaEarning(rwaPendingNum + unsettled) // 总收益 = 已结算 + 未结算
+      setUnsettledEarning(unsettled) // 单独记录未结算部分
     }
     
     // 立即计算一次
@@ -319,13 +362,12 @@ export function EarningsCard() {
       clearInterval(interval)
       clearInterval(refetchInterval)
     }
-  }, [isConnected, address, totalStakedNum, firstStakeTime, rwaPendingNum, refetchRewards, refetchRWAStakeInfo, refetchStakes, stakes, stakesLoading, rwaStaked, usdtStaked, userStakeInfo?.firstStakeTime, rwaFlexiblePrincipal, usdtFlexiblePrincipal])
+  }, [isConnected, address, totalStakedNum, firstStakeTime, rwaPendingNum, refetchRewards, refetchRWAStakeInfo, refetchStakes, rwaStaked, usdtStaked, userStakeInfo?.firstStakeTime, rwaFlexiblePrincipal, usdtFlexiblePrincipal])
   
   const rwaUsdtValue = (totalRwaEarning * 0.85).toFixed(2)
 
-  // USDT 奖励
-  const usdtRewards = userStakeInfo?.usdtRewards || '0'
-  const usdtRewardsNum = parseFloat(usdtRewards)
+  // USDT 推荐奖励（从后端获取）
+  const usdtRewardsNum = referralRewards.matured
 
   return (
     <div
@@ -346,7 +388,9 @@ export function EarningsCard() {
               className="font-mono text-[40px] font-bold leading-none text-[#f1f5f9] transition-all"
               style={{ 
                 animation: 'pulse 2s ease-in-out infinite',
-                textShadow: '0 0 15px rgba(0,245,212,0.3)'
+                textShadow: '0 0 15px rgba(0,245,212,0.3)',
+                minWidth: '280px',
+                display: 'inline-block'
               }}
             >
               {isConnected ? totalRwaEarning.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 }) : '0.00'}
@@ -356,6 +400,18 @@ export function EarningsCard() {
           <p className="mt-1 text-[13px] text-[#64748b]">
             {isConnected ? `≈ $${rwaUsdtValue} USDT` : t('earnings.usdtEquiv')}
           </p>
+          {isConnected && (
+            <div className="mt-2 flex flex-col gap-1 text-[11px]">
+              <div className="flex items-center gap-2">
+                <span className="text-[#64748b]">已结算:</span>
+                <span className="font-mono text-[#00f5d4]">{rwaPendingNum.toFixed(6)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[#64748b]">未结算:</span>
+                <span className="font-mono text-[#fbbf24]">{unsettledEarning.toFixed(6)}</span>
+              </div>
+            </div>
+          )}
           
           {/* 每笔质押明细 - 实时动态显示 */}
           {isConnected && (stakeEarnings.length > 0 || totalRwaEarning > 0) && (
@@ -380,7 +436,7 @@ export function EarningsCard() {
                     // 确保使用唯一的 key，避免 React 合并显示
                     const uniqueKey = `${earning.stakeId}-${earning.timestamp}-${index}`
                     // 计算每秒增长率（用于动画效果）
-                    const isRWAStake = earning.stakeId.startsWith('rwa_') || earning.stakeId.includes('rwa')
+                    const isRWAStake = earning.isRWAStake === true
                     const baseDailyRate = 0.008
                     const lockMultiplier = getLockPeriodMultiplier(earning.lockPeriod)
                     const adjustedDailyRate = baseDailyRate * lockMultiplier
@@ -405,7 +461,7 @@ export function EarningsCard() {
                             : `${earning.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`}
                         </span>
                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                              <span className="text-xs text-[#64748b]">
+                              <span className="text-xs text-[#64748b] whitespace-nowrap">
                           {getLockPeriodLabel(earning.lockPeriod)}
                         </span>
                               <span className="text-[10px] text-[#64748b]">
@@ -417,12 +473,14 @@ export function EarningsCard() {
                             </div>
                           </div>
                         </div>
-                        <div className="text-right ml-3">
+                        <div className="text-right ml-3 flex-shrink-0" style={{ width: '110px' }}>
                           <span 
-                            className="font-mono text-sm font-semibold text-[#00f5d4] transition-all"
+                            className="font-mono text-sm font-semibold text-[#00f5d4] transition-all tabular-nums block"
                             style={{ 
                               animation: 'pulse 2s ease-in-out infinite',
-                              textShadow: '0 0 8px rgba(0,245,212,0.3)'
+                              textShadow: '0 0 8px rgba(0,245,212,0.3)',
+                              fontVariantNumeric: 'tabular-nums',
+                              fontSize: '13px'
                             }}
                           >
                             {earning.rwaEarning.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 })} RWA

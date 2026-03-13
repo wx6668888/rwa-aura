@@ -8,6 +8,8 @@ import { NodeLevelService } from './services/NodeLevelService';
 import { DailyYieldService } from './services/DailyYieldService';
 import { PriceOracleService } from './services/PriceOracleService';
 import { SchedulerService } from './services/SchedulerService';
+import { ReferralRewardListener } from './services/ReferralRewardListener';
+import { ReferralRewardScheduler } from './services/ReferralRewardScheduler';
 import { getPool, closePool } from './config/database.config';
 import logger from './utils/logger';
 import { Server } from 'http';
@@ -34,6 +36,8 @@ class BackendService {
     private dailyYieldService!: DailyYieldService;
     private priceOracleService!: PriceOracleService;
     private schedulerService!: SchedulerService;
+    private referralRewardListener?: ReferralRewardListener;
+    private referralRewardScheduler?: ReferralRewardScheduler;
     private httpServer?: Server;
     
     constructor() {
@@ -170,6 +174,23 @@ class BackendService {
             this.schedulerService.start();
             logger.info('✅ Scheduler started');
             
+            // Start referral reward system
+            logger.info('Starting referral reward system...');
+            const stakingABI = [
+                'event StakeEvent(address indexed user, uint256 amount, address indexed referrer, uint256 indexed stakeId, uint256 timestamp, uint256 lockPeriod)',
+                'event RWAStakeEvent(address indexed user, uint256 amount, address indexed referrer, uint256 indexed stakeId, uint256 timestamp, uint256 lockPeriod)'
+            ];
+            this.referralRewardListener = new ReferralRewardListener(
+                process.env.BSC_RPC_URL || process.env.BSC_TESTNET_RPC_URL!,
+                process.env.STAKING_CONTRACT_ADDRESS!,
+                stakingABI
+            );
+            this.referralRewardListener.startListening();
+            
+            this.referralRewardScheduler = new ReferralRewardScheduler();
+            this.referralRewardScheduler.start();
+            logger.info('✅ Referral reward system started');
+            
             logger.info('');
             logger.info('='.repeat(60));
             logger.info('🚀 Backend service is running');
@@ -207,6 +228,14 @@ class BackendService {
             
             // Stop scheduler
             this.schedulerService.stop();
+            
+            // Stop referral reward system
+            if (this.referralRewardListener) {
+                this.referralRewardListener.stopListening();
+            }
+            if (this.referralRewardScheduler) {
+                this.referralRewardScheduler.stop();
+            }
             
             // Disconnect price oracle
             await this.priceOracleService.disconnect();

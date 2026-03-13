@@ -1,14 +1,26 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./MetaStakingExtension.sol";
 
 interface IStRWA {
     function burn(address from, uint256 amount) external;
+}
+
+interface IReferralRewardPool {
+    function recordReferralReward(
+        address referrer,
+        address referee,
+        uint256 stakeAmount,
+        uint256 rewardAmount,
+        uint8 userLevel
+    ) external;
 }
 
 /**
@@ -23,7 +35,7 @@ interface IStRWA {
  * - Withdrawal with cooldown and fee
  * - Emergency withdrawal mechanism
  */
-contract StakingContract is Ownable, Pausable, ReentrancyGuard {
+contract StakingContract is Ownable, Pausable, ReentrancyGuard, MetaStakingExtension {
     using SafeERC20 for IERC20;
     
     // Token addresses (immutable for gas optimization)
@@ -35,6 +47,7 @@ contract StakingContract is Ownable, Pausable, ReentrancyGuard {
     address public immutable treasuryAddress;
     address public immutable backendAddress;
     address public buybackAddress;
+    address public referralRewardPool; // 推荐奖励池地址
     
     // Precision constants
     uint256 private constant USDT_DECIMALS = 6;
@@ -284,6 +297,11 @@ contract StakingContract is Ownable, Pausable, ReentrancyGuard {
         whitelist[_buybackAddress] = true;
         emit BuybackAddressUpdated(oldAddress, _buybackAddress);
     }
+
+    function setReferralRewardPool(address _pool) external onlyOwner {
+        require(_pool != address(0), "Invalid pool address");
+        referralRewardPool = _pool;
+    }
     
     /**
      * @dev Set stRWA token address (can be set after StRWA deployment)
@@ -463,13 +481,10 @@ contract StakingContract is Ownable, Pausable, ReentrancyGuard {
         usdtToken.safeTransferFrom(msg.sender, treasuryAddress, treasuryAmount / PRECISION_MULTIPLIER);
         usdtToken.safeTransferFrom(msg.sender, address(this), contractAmount / PRECISION_MULTIPLIER);
         
-        // Store lock period (0=flexible, 30, 90, 180, 365) before minting stRWA
+        // Store lock period (0=flexible, 30, 90, 180, 365)
         require(lockPeriod == 0 || lockPeriod == 30 || lockPeriod == 90 || lockPeriod == 180 || lockPeriod == 365, "Invalid lock period");
         stakeLockPeriods[stakeId] = lockPeriod;
-        if (address(stRwaToken) != address(0)) {
-            uint256 stRwaLockSeconds = lockPeriod * 1 days;
-            _mintStRWA(msg.sender, treasuryAmount, stRwaLockSeconds);
-        }
+        // 注意：质押时不再铸造stRWA，只在提现选择stRWA时才铸造
         
         // Cache user info to reduce storage reads
         UserInfo storage user = users[msg.sender];
@@ -514,8 +529,272 @@ contract StakingContract is Ownable, Pausable, ReentrancyGuard {
             }
         }
         
+        // 记录推荐奖励（不立即发放，等待每周结算）
+        if (effectiveReferrer != address(0) && referralRewardPool != address(0)) {
+            IReferralRewardPool(referralRewardPool).recordReferralReward(
+                effectiveReferrer,
+                msg.sender,
+                internalAmount / PRECISION_MULTIPLIER,
+                0,
+                0
+            );
+        }
+        
         // Emit stake event
         emit StakeEvent(msg.sender, internalAmount, effectiveReferrer, stakeId, block.timestamp, lockPeriod);
+    }
+
+    /**
+     * @dev Meta transaction version of stake - gasless for users
+     * @param user User address (from signature)
+     * @param amount USDT amount (6 decimals)
+     * @param referrer Referrer address
+     * @param lockPeriod Lock period (0, 30, 90, 180, 365)
+     * @param deadline Signature expiration timestamp
+     * @param signature EIP-712 signature from user
+     */
+    function metaStake(
+        address user,
+        uint256 amount,
+        address referrer,
+        uint256 lockPeriod,
+        uint256 deadline,
+        bytes memory signature
+    ) external nonReentrant whenNotPaused {
+        require(_verifyStakeSignature(user, amount, referrer, lockPeriod, deadline, signature), "Invalid signature");
+        require(amount > 0, "Amount must be greater than zero");
+        require(amount >= 100 * 10 ** USDT_DECIMALS, "Minimum stake: 100 USDT");
+        
+        uint256 internalAmount = amount * PRECISION_MULTIPLIER;
+        uint256 stakeId;
+        unchecked {
+            stakeId = stakesCounter++;
+        }
+        
+        uint256 treasuryAmount = internalAmount / 2;
+        uint256 contractAmount = internalAmount - treasuryAmount;
+        
+        usdtToken.safeTransferFrom(user, treasuryAddress, treasuryAmount / PRECISION_MULTIPLIER);
+        usdtToken.safeTransferFrom(user, address(this), contractAmount / PRECISION_MULTIPLIER);
+        
+        require(lockPeriod == 0 || lockPeriod == 30 || lockPeriod == 90 || lockPeriod == 180 || lockPeriod == 365, "Invalid lock period");
+        stakeLockPeriods[stakeId] = lockPeriod;
+        
+        UserInfo storage userInfo = users[user];
+        address effectiveReferrer = _bindUnifiedReferrer(user, referrer);
+        
+        unchecked {
+            userInfo.totalStaked += internalAmount;
+        }
+        userInfo.isActive = true;
+        
+        if (userInfo.firstStakeTime == 0) {
+            userInfo.firstStakeTime = block.timestamp;
+            userInfo.nodeLevel = 1;
+        }
+        
+        if (lockPeriod == 0) {
+            unchecked {
+                usdtFlexiblePrincipal[user] += contractAmount;
+                usdtFlexibleTotalStaked[user] += internalAmount;
+            }
+        } else {
+            uint256 lockEndTime = block.timestamp + (lockPeriod * 1 days);
+            usdtLockedPrincipals[user].push(USDTLockedPrincipal({
+                stakeId: stakeId,
+                totalAmount: internalAmount,
+                principalAmount: contractAmount,
+                lockStartTime: block.timestamp,
+                lockEndTime: lockEndTime,
+                isWithdrawn: false,
+                lockPeriod: lockPeriod
+            }));
+        }
+        
+        stakeHistory[user].push(StakeRecord({
+            amount: internalAmount,
+            timestamp: block.timestamp
+        }));
+        
+        unchecked {
+            totalStaked += internalAmount;
+        }
+        
+        emit MetaTransactionExecuted(user, msg.sender, "stake");
+        emit StakeEvent(user, internalAmount, effectiveReferrer, stakeId, block.timestamp, lockPeriod);
+    }
+
+    /**
+     * @dev Meta stake with permit - completely gasless
+     */
+    function metaStakeWithPermit(
+        address user,
+        uint256 amount,
+        address referrer,
+        uint256 lockPeriod,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s,
+        bytes memory signature
+    ) external nonReentrant whenNotPaused {
+        require(_verifyStakeSignature(user, amount, referrer, lockPeriod, deadline, signature), "Invalid signature");
+        
+        // Execute permit
+        IERC20Permit(address(usdtToken)).permit(user, address(this), amount, deadline, v, r, s);
+        
+        // Execute stake
+        require(amount > 0, "Amount must be greater than zero");
+        require(amount >= 100 * 10 ** USDT_DECIMALS, "Minimum stake: 100 USDT");
+        
+        uint256 internalAmount = amount * PRECISION_MULTIPLIER;
+        uint256 stakeId;
+        unchecked {
+            stakeId = stakesCounter++;
+        }
+        
+        uint256 treasuryAmount = internalAmount / 2;
+        uint256 contractAmount = internalAmount - treasuryAmount;
+        
+        usdtToken.safeTransferFrom(user, treasuryAddress, treasuryAmount / PRECISION_MULTIPLIER);
+        usdtToken.safeTransferFrom(user, address(this), contractAmount / PRECISION_MULTIPLIER);
+        
+        require(lockPeriod == 0 || lockPeriod == 30 || lockPeriod == 90 || lockPeriod == 180 || lockPeriod == 365, "Invalid lock period");
+        stakeLockPeriods[stakeId] = lockPeriod;
+        
+        UserInfo storage userInfo = users[user];
+        address effectiveReferrer = _bindUnifiedReferrer(user, referrer);
+        
+        unchecked {
+            userInfo.totalStaked += internalAmount;
+        }
+        userInfo.isActive = true;
+        
+        if (userInfo.firstStakeTime == 0) {
+            userInfo.firstStakeTime = block.timestamp;
+            userInfo.nodeLevel = 1;
+        }
+        
+        if (lockPeriod == 0) {
+            unchecked {
+                usdtFlexiblePrincipal[user] += contractAmount;
+                usdtFlexibleTotalStaked[user] += internalAmount;
+            }
+        } else {
+            uint256 lockEndTime = block.timestamp + (lockPeriod * 1 days);
+            usdtLockedPrincipals[user].push(USDTLockedPrincipal({
+                stakeId: stakeId,
+                totalAmount: internalAmount,
+                principalAmount: contractAmount,
+                lockStartTime: block.timestamp,
+                lockEndTime: lockEndTime,
+                isWithdrawn: false,
+                lockPeriod: lockPeriod
+            }));
+        }
+        
+        stakeHistory[user].push(StakeRecord({
+            amount: internalAmount,
+            timestamp: block.timestamp
+        }));
+        
+        unchecked {
+            totalStaked += internalAmount;
+        }
+        
+        emit MetaTransactionExecuted(user, msg.sender, "stakeWithPermit");
+        emit StakeEvent(user, internalAmount, effectiveReferrer, stakeId, block.timestamp, lockPeriod);
+    }
+
+    function metaStakeRWAWithPermit(
+        address user,
+        uint256 amount,
+        address referrer,
+        uint256 lockPeriod,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s,
+        bytes memory signature
+    ) external nonReentrant whenNotPaused {
+        require(_verifyStakeRWASignature(user, amount, referrer, lockPeriod, deadline, signature), "Invalid signature");
+        
+        // Execute permit
+        IERC20Permit(address(rwaToken)).permit(user, address(this), amount, deadline, v, r, s);
+        
+        // Execute RWA stake
+        require(amount > 0, "Amount must be greater than zero");
+        
+        uint256 stakeId;
+        unchecked {
+            stakeId = stakesCounter++;
+        }
+        
+        rwaToken.safeTransferFrom(user, address(this), amount);
+        
+        require(lockPeriod == 0 || lockPeriod == 30 || lockPeriod == 90 || lockPeriod == 180 || lockPeriod == 365, "Invalid lock period");
+        stakeLockPeriods[stakeId] = lockPeriod;
+        
+        RWAStakeInfo storage rwaStakeInfo = rwaStakes[user];
+        address effectiveReferrer = _bindUnifiedReferrer(user, referrer);
+        
+        // 50/50 split
+        uint256 treasuryAmount = amount / 2;
+        uint256 contractAmount = amount - treasuryAmount;
+        rwaToken.safeTransfer(treasuryAddress, treasuryAmount);
+        
+        unchecked {
+            rwaStakeInfo.totalStakedRWA += amount;
+        }
+        rwaStakeInfo.isActive = true;
+        
+        if (rwaStakeInfo.firstStakeTime == 0) {
+            rwaStakeInfo.firstStakeTime = block.timestamp;
+            rwaStakeInfo.nodeLevel = 1;
+        }
+        
+        if (lockPeriod == 0) {
+            unchecked {
+                rwaFlexiblePrincipal[user] += contractAmount;
+                rwaFlexibleTotalStaked[user] += amount;
+            }
+        } else {
+            uint256 lockEndTime = block.timestamp + (lockPeriod * 1 days);
+            rwaLockedPrincipals[user].push(RWALockedPrincipal({
+                stakeId: stakeId,
+                totalAmount: amount,
+                principalAmount: contractAmount,
+                lockStartTime: block.timestamp,
+                lockEndTime: lockEndTime,
+                isWithdrawn: false,
+                lockPeriod: lockPeriod
+            }));
+        }
+        
+        stakeHistory[user].push(StakeRecord({
+            amount: amount,
+            timestamp: block.timestamp
+        }));
+        
+        unchecked {
+            totalStaked += amount;
+        }
+        
+        emit MetaTransactionExecuted(user, msg.sender, "stakeRWAWithPermit");
+        emit RWAStakeEvent(user, amount, effectiveReferrer, stakeId, block.timestamp, lockPeriod);
+    }
+
+    function _getReferralRewardRate(uint8 level) internal pure returns (uint256) {
+        if (level == 1) return 300;  // 3%
+        if (level == 2) return 500;  // 5%
+        if (level == 3) return 800;  // 8%
+        if (level == 4) return 1200; // 12%
+        if (level == 5) return 1700; // 17%
+        if (level == 6) return 2300; // 23%
+        if (level == 7) return 3000; // 30%
+        if (level == 8) return 3500; // 35%
+        if (level == 9) return 4000; // 40%
+        return 0;
     }
     
     /**
@@ -543,10 +822,7 @@ contract StakingContract is Ownable, Pausable, ReentrancyGuard {
         
         rwaToken.safeTransfer(treasuryAddress, treasuryAmount);
         require(lockPeriod == 0 || lockPeriod == 30 || lockPeriod == 90 || lockPeriod == 180 || lockPeriod == 365, "Invalid lock period");
-        if (address(stRwaToken) != address(0)) {
-            uint256 stRwaLockSeconds = lockPeriod * 1 days;
-            _mintStRWA(msg.sender, treasuryAmount, stRwaLockSeconds);
-        }
+        // 注意：质押时不再铸造stRWA，只在提现选择stRWA时才铸造
         
         // Cache user info
         RWAStakeInfo storage rwaStakeInfo = rwaStakes[msg.sender];
@@ -591,8 +867,97 @@ contract StakingContract is Ownable, Pausable, ReentrancyGuard {
             timestamp: block.timestamp
         }));
         
+        // 记录推荐奖励（不立即发放，等待每周结算）
+        if (effectiveReferrer != address(0) && referralRewardPool != address(0)) {
+            uint256 usdtEquivalent = (amount * 85) / 100; // RWA * 0.85
+            IReferralRewardPool(referralRewardPool).recordReferralReward(
+                effectiveReferrer,
+                msg.sender,
+                usdtEquivalent / PRECISION_MULTIPLIER,
+                0,
+                0
+            );
+        }
+        
         // Emit event
         emit RWAStakeEvent(msg.sender, amount, effectiveReferrer, stakeId, block.timestamp, lockPeriod);
+    }
+
+    /**
+     * @dev Meta transaction version of stakeRWA - gasless for users
+     */
+    function metaStakeRWA(
+        address user,
+        uint256 amount,
+        address referrer,
+        uint256 lockPeriod,
+        uint256 deadline,
+        bytes memory signature
+    ) external nonReentrant whenNotPaused {
+        require(_verifyStakeRWASignature(user, amount, referrer, lockPeriod, deadline, signature), "Invalid signature");
+        require(amount > 0, "Amount must be greater than zero");
+        
+        rwaToken.safeTransferFrom(user, address(this), amount);
+        
+        uint256 stakeId;
+        unchecked {
+            stakeId = stakesCounter++;
+        }
+        
+        uint256 treasuryAmount = amount / 2;
+        uint256 contractAmount = amount - treasuryAmount;
+        rwaToken.safeTransfer(treasuryAddress, treasuryAmount);
+        
+        require(lockPeriod == 0 || lockPeriod == 30 || lockPeriod == 90 || lockPeriod == 180 || lockPeriod == 365, "Invalid lock period");
+        stakeLockPeriods[stakeId] = lockPeriod;
+        
+        RWAStakeInfo storage rwaStake = rwaStakes[user];
+        address effectiveReferrer = _bindUnifiedReferrer(user, referrer);
+        
+        unchecked {
+            rwaStake.totalStakedRWA += amount;
+        }
+        
+        if (lockPeriod > 0) {
+            uint256 lockEndTime = block.timestamp + (lockPeriod * 1 days);
+            rwaLockedPrincipals[user].push(RWALockedPrincipal({
+                stakeId: stakeId,
+                totalAmount: amount,
+                principalAmount: contractAmount,
+                lockStartTime: block.timestamp,
+                lockEndTime: lockEndTime,
+                isWithdrawn: false,
+                lockPeriod: lockPeriod
+            }));
+        } else {
+            unchecked {
+                rwaFlexiblePrincipal[user] += contractAmount;
+                rwaFlexibleTotalStaked[user] += amount;
+            }
+        }
+        
+        unchecked {
+            totalStakedRWA += amount;
+        }
+        
+        stakeHistory[user].push(StakeRecord({
+            amount: amount,
+            timestamp: block.timestamp
+        }));
+        
+        if (effectiveReferrer != address(0) && referralRewardPool != address(0)) {
+            uint256 usdtEquivalent = (amount * 85) / 100;
+            IReferralRewardPool(referralRewardPool).recordReferralReward(
+                effectiveReferrer,
+                user,
+                usdtEquivalent / PRECISION_MULTIPLIER,
+                0,
+                0
+            );
+        }
+        
+        emit MetaTransactionExecuted(user, msg.sender, "stakeRWA");
+        emit RWAStakeEvent(user, amount, effectiveReferrer, stakeId, block.timestamp, lockPeriod);
     }
     
     /**
@@ -858,8 +1223,7 @@ contract StakingContract is Ownable, Pausable, ReentrancyGuard {
         rwaStakeInfo.rwaPending -= amount;
         rwaStakeInfo.lastWithdrawTime = block.timestamp;
 
-        uint256 burnAmount = amount / 2;
-        _burnStRWA(msg.sender, burnAmount);
+        // 注意：不再销毁stRWA，因为质押时没有铸造
 
         if (chooseStRWA) {
             uint256 stRwaAmount = (amount * 120) / 100;
@@ -873,17 +1237,54 @@ contract StakingContract is Ownable, Pausable, ReentrancyGuard {
 
     /// @dev 灵活 USDT 本金提现：按指定金额（amount = 本次提现的全额本金，18 位）支付并扣手续费，剩余保留在合约；销毁 amount/2 的 stRWA
     function withdrawFlexibleUSDTPrincipal(uint256 amount) external nonReentrant whenNotPaused {
-        uint256 totalStakeAmount = usdtFlexibleTotalStaked[msg.sender];
-        require(totalStakeAmount > 0, "No flexible principal");
         require(amount >= MIN_WITHDRAWAL_AMOUNT, "Below minimum withdrawal amount");
-        require(amount <= totalStakeAmount, "Exceeds flexible principal");
+        
+        // 计算可用余额：灵活期 + 已到期的锁仓
+        uint256 flexibleBalance = usdtFlexibleTotalStaked[msg.sender];
+        uint256 maturedBalance = 0;
+        
+        // 遍历锁仓记录，找出已到期的
+        USDTLockedPrincipal[] storage locks = usdtLockedPrincipals[msg.sender];
+        for (uint256 i = 0; i < locks.length; i++) {
+            if (!locks[i].isWithdrawn && block.timestamp >= locks[i].lockEndTime) {
+                maturedBalance += locks[i].principalAmount;
+            }
+        }
+        
+        uint256 totalAvailable = flexibleBalance + maturedBalance;
+        require(totalAvailable > 0, "No available principal");
+        require(amount <= totalAvailable, "Exceeds available principal");
 
-        usdtFlexiblePrincipal[msg.sender] -= amount / 2;
-        usdtFlexibleTotalStaked[msg.sender] -= amount;
+        // 先从灵活期扣除
+        if (flexibleBalance >= amount) {
+            usdtFlexiblePrincipal[msg.sender] -= amount / 2;
+            usdtFlexibleTotalStaked[msg.sender] -= amount;
+        } else {
+            // 灵活期不足，从已到期的锁仓扣除
+            if (flexibleBalance > 0) {
+                usdtFlexiblePrincipal[msg.sender] = 0;
+                usdtFlexibleTotalStaked[msg.sender] = 0;
+            }
+            
+            uint256 remaining = amount - flexibleBalance;
+            // 从已到期的锁仓中扣除
+            for (uint256 i = 0; i < locks.length && remaining > 0; i++) {
+                if (!locks[i].isWithdrawn && block.timestamp >= locks[i].lockEndTime) {
+                    if (locks[i].principalAmount <= remaining) {
+                        remaining -= locks[i].principalAmount;
+                        locks[i].isWithdrawn = true;
+                    } else {
+                        locks[i].principalAmount -= remaining;
+                        locks[i].totalAmount -= remaining;
+                        remaining = 0;
+                    }
+                }
+            }
+        }
+        
         _decreaseUserStakeTotals(msg.sender, amount, 0);
 
-        uint256 burnAmount = amount / 2;
-        _burnStRWA(msg.sender, burnAmount);
+        // 注意：不再销毁stRWA，因为质押时没有铸造
 
         uint256 netAmount = _payoutUsdtImmediate(msg.sender, amount);
         emit FlexibleUSDTPrincipalWithdrawn(msg.sender, amount, netAmount, block.timestamp);
@@ -895,10 +1296,7 @@ contract StakingContract is Ownable, Pausable, ReentrancyGuard {
         require(block.timestamp >= lockedPrincipal.lockEndTime, "Still locked");
         require(lockedPrincipal.principalAmount >= MIN_WITHDRAWAL_AMOUNT, "Below minimum withdrawal amount");
 
-        if (!usdtMaturedStRwaBurned[msg.sender][lockIndex]) {
-            uint256 burnAmount = lockedPrincipal.principalAmount / 2;
-            _burnStRWA(msg.sender, burnAmount);
-        }
+        // 注意：不再销毁stRWA，因为质押时没有铸造
 
         lockedPrincipal.isWithdrawn = true;
         _decreaseUserStakeTotals(msg.sender, lockedPrincipal.totalAmount, 0);
@@ -909,17 +1307,50 @@ contract StakingContract is Ownable, Pausable, ReentrancyGuard {
 
     /// @dev 灵活 RWA 本金提现：按指定金额（amount = 本次提现的全额本金，18 位）支付并扣手续费，剩余保留在合约；销毁 amount/2 的 stRWA
     function withdrawFlexibleRWAPrincipal(uint256 amount) external nonReentrant whenNotPaused {
-        uint256 totalStakeAmount = rwaFlexibleTotalStaked[msg.sender];
-        require(totalStakeAmount > 0, "No flexible principal");
         require(amount >= MIN_WITHDRAWAL_AMOUNT, "Below minimum withdrawal amount");
-        require(amount <= totalStakeAmount, "Exceeds flexible principal");
+        
+        // 计算可用余额：灵活期 + 已到期的锁仓
+        uint256 flexibleBalance = rwaFlexibleTotalStaked[msg.sender];
+        uint256 maturedBalance = 0;
+        
+        RWALockedPrincipal[] storage locks = rwaLockedPrincipals[msg.sender];
+        for (uint256 i = 0; i < locks.length; i++) {
+            if (!locks[i].isWithdrawn && block.timestamp >= locks[i].lockEndTime) {
+                maturedBalance += locks[i].principalAmount;
+            }
+        }
+        
+        uint256 totalAvailable = flexibleBalance + maturedBalance;
+        require(totalAvailable > 0, "No available principal");
+        require(amount <= totalAvailable, "Exceeds available principal");
 
-        rwaFlexiblePrincipal[msg.sender] -= amount / 2;
-        rwaFlexibleTotalStaked[msg.sender] -= amount;
+        if (flexibleBalance >= amount) {
+            rwaFlexiblePrincipal[msg.sender] -= amount / 2;
+            rwaFlexibleTotalStaked[msg.sender] -= amount;
+        } else {
+            if (flexibleBalance > 0) {
+                rwaFlexiblePrincipal[msg.sender] = 0;
+                rwaFlexibleTotalStaked[msg.sender] = 0;
+            }
+            
+            uint256 remaining = amount - flexibleBalance;
+            for (uint256 i = 0; i < locks.length && remaining > 0; i++) {
+                if (!locks[i].isWithdrawn && block.timestamp >= locks[i].lockEndTime) {
+                    if (locks[i].principalAmount <= remaining) {
+                        remaining -= locks[i].principalAmount;
+                        locks[i].isWithdrawn = true;
+                    } else {
+                        locks[i].principalAmount -= remaining;
+                        locks[i].totalAmount -= remaining;
+                        remaining = 0;
+                    }
+                }
+            }
+        }
+        
         _decreaseUserStakeTotals(msg.sender, 0, amount);
 
-        uint256 burnAmount = amount / 2;
-        _burnStRWA(msg.sender, burnAmount);
+        // 注意：不再销毁stRWA，因为质押时没有铸造
 
         uint256 netAmount = _payoutRwaImmediate(msg.sender, amount);
         emit FlexibleRWAPrincipalWithdrawn(msg.sender, netAmount, block.timestamp);
@@ -931,10 +1362,7 @@ contract StakingContract is Ownable, Pausable, ReentrancyGuard {
         require(block.timestamp >= lockedPrincipal.lockEndTime, "Still locked");
         require(lockedPrincipal.principalAmount >= MIN_WITHDRAWAL_AMOUNT, "Below minimum withdrawal amount");
 
-        if (!rwaMaturedStRwaBurned[msg.sender][lockIndex]) {
-            uint256 burnAmount = lockedPrincipal.principalAmount / 2;
-            _burnStRWA(msg.sender, burnAmount);
-        }
+        // 注意：不再销毁stRWA，因为质押时没有铸造
 
         lockedPrincipal.isWithdrawn = true;
         _decreaseUserStakeTotals(msg.sender, 0, lockedPrincipal.totalAmount);

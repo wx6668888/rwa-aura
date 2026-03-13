@@ -1,10 +1,11 @@
 'use client'
 
+import React from 'react'
 import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
 import { useAccount } from 'wagmi'
 import { useStakingContract } from '@/hooks/useStakingContract'
-import { useLevelInfo } from '@/hooks/useLevelInfo'
+import { useTeamStats } from '@/hooks/useTeamStats'
 import { NODE_LEVELS, formatTeamVolumeRequirement, formatTeamRetainedRequirement } from '@/lib/node-levels'
 import { MiniNodeHexIcon } from '@/components/nodes/node-hex-icon'
 import { ChevronDown } from 'lucide-react'
@@ -15,7 +16,7 @@ export function RewardRatesTable() {
   const { t } = useTranslation(locale)
   const { isConnected } = useAccount()
   const { userStakeInfo, rwaStakeInfo } = useStakingContract()
-  const { levelInfo } = useLevelInfo()
+  const teamStats = useTeamStats()
   const [expandedLevel, setExpandedLevel] = useState<number | null>(null)
 
   // RWA 价格
@@ -27,9 +28,9 @@ export function RewardRatesTable() {
   const rwaStakedInUSDT = rwaStaked * rwaPrice
   const personalStakeCurrent = usdtStaked + rwaStakedInUSDT
 
-  // 计算团队总业绩(链上个人 + 后端团队)
-  const teamVolumeOnly = levelInfo.teamVolumeUsdt
-  const teamVolumeCurrent = personalStakeCurrent + teamVolumeOnly
+  // 使用链上团队数据
+  const teamVolumeCurrent = teamStats.teamVolume
+  const teamRetainedCurrent = teamStats.teamRetained
 
   // 根据实际数据计算当前等级
   let calculatedLevel = 1
@@ -37,7 +38,7 @@ export function RewardRatesTable() {
     const level = NODE_LEVELS[i]
     const meetsPersonal = personalStakeCurrent >= (level.personalStakeUSDT || 0)
     const meetsTeam = teamVolumeCurrent >= level.teamVolumeUSDT
-    const meetsRetained = levelInfo.teamRetainedUsdt >= (level.teamRetainedUSDT || 0)
+    const meetsRetained = teamRetainedCurrent >= (level.teamRetainedUSDT || 0)
     
     if (meetsPersonal && meetsTeam && meetsRetained) {
       calculatedLevel = level.level
@@ -87,9 +88,8 @@ export function RewardRatesTable() {
               const retainedText = (level.teamRetainedUSDT ?? 0) > 0 ? formatTeamRetainedRequirement(level.teamRetainedUSDT) : null
 
               return (
-                <>
+                <React.Fragment key={level.code}>
                   <tr
-                    key={level.code}
                     className={`border-b border-[#00f5d420] transition-colors cursor-pointer ${
                       isCurrent ? 'bg-[#13131e]' : 'hover:bg-[#0d0d1480]'
                     }`}
@@ -203,7 +203,7 @@ export function RewardRatesTable() {
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               )
             })}
           </tbody>

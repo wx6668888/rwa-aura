@@ -3,6 +3,11 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import apiRoutes from './routes/api';
+import unifiedDataRoutes from './routes/unified-data';
+import homepageStatsRoutes from './routes/homepage-stats';
+import referralRewardsRoutes from './routes/referral-rewards';
+import historyRoutes from './routes/history';
+import relayerRoutes from './routes/relayer';
 import logger from './utils/logger';
 
 const app: Application = express();
@@ -36,7 +41,12 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
-// API 路由
+// API 路由 - 具体路由在前，模糊路由在后
+app.use('/api/history', historyRoutes);
+app.use('/api', relayerRoutes);
+app.use('/api', homepageStatsRoutes);
+app.use('/api', referralRewardsRoutes);
+app.use('/api', unifiedDataRoutes);
 app.use('/api', apiRoutes);
 
 // 404 处理

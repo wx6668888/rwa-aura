@@ -22,6 +22,15 @@ const nextConfig = {
     maxInactiveAge: 25 * 1000,
     pagesBufferLength: 2,
   },
+  // API 代理：将前端请求转发到后端
+  async rewrites() {
+    return [
+      {
+        source: '/api/relayer/:path*',
+        destination: 'http://localhost:3001/:path*',
+      },
+    ]
+  },
   // 允许 unsafe-eval 用于开发环境（某些库需要）
   // 注意：Next.js 16 中 headers 配置可能需要不同的方式
   // 如果仍有问题，可以暂时注释掉这部分

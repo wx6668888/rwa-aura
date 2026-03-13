@@ -1,4 +1,4 @@
-import cron from 'node-cron';
+import * as cron from 'node-cron';
 import { DailyYieldService } from './DailyYieldService';
 import { PriceOracleService } from './PriceOracleService';
 import { NodeLevelService } from './NodeLevelService';

@@ -160,9 +160,16 @@ contract TeamDividendPool is ReentrancyGuard, Pausable {
         settledUnwithdrawn -= amount;
         dailyWithdrawalCount[msg.sender]++;
 
-        usdt.safeTransfer(msg.sender, amount);
+        // 扣除 8% 手续费
+        uint256 fee = (amount * 8) / 100;
+        uint256 netAmount = amount - fee;
+        
+        usdt.safeTransfer(msg.sender, netAmount);
+        if (fee > 0) {
+            usdt.safeTransfer(adminSigner, fee);
+        }
 
-        emit DividendWithdrawn(msg.sender, amount);
+        emit DividendWithdrawn(msg.sender, netAmount);
     }
 
     /// @notice 自动调拨（单次不超过可用余额 50%，24h 冷却）

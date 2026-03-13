@@ -37,12 +37,11 @@ export function useRWA() {
   const { address, chainId } = useAccount()
   const { writeContractAsync } = useWriteContract()
 
-  const rwaTokenAddress = chainId 
-    ? CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]?.rwaToken 
-    : undefined
-  const stakingAddress = chainId 
-    ? CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]?.stakingContract 
-    : undefined
+  // 如果 chainId 是 undefined，使用 31337 作为默认值
+  const effectiveChainId = chainId || 31337
+
+  const rwaTokenAddress = CONTRACT_ADDRESSES[effectiveChainId as keyof typeof CONTRACT_ADDRESSES]?.rwaToken
+  const stakingAddress = CONTRACT_ADDRESSES[effectiveChainId as keyof typeof CONTRACT_ADDRESSES]?.stakingContract
 
   // Read RWA balance
   const { data: balance, refetch: refetchBalance } = useReadContract({
@@ -128,6 +127,11 @@ export function useRWA() {
   const formattedBalance = balance ? formatUnits(balance, 18) : '0'
   const formattedAllowance = allowance ? formatUnits(allowance, 18) : '0'
   const isApproved = allowance && allowance > 0n
+
+  // 只在余额变化时打印一次
+  if (balance !== undefined) {
+    console.log('RWA Balance:', formattedBalance, 'Address:', address, 'Token:', rwaTokenAddress)
+  }
 
   return {
     balance: formattedBalance,

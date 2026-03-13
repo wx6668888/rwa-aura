@@ -10,6 +10,8 @@ import { UsdtRewardsCard } from '@/components/withdraw/usdt-rewards-card'
 import { StRWAUnlockCard } from '@/components/withdraw/st-rwa-unlock-card'
 import { InvestmentSharesCard } from '@/components/withdraw/investment-shares-card'
 import { ProjectDividendCard } from '@/components/dividend/project-dividend-card'
+import { DividendWithdrawCard } from '@/components/withdraw/dividend-withdraw-card'
+import { ReferralWithdrawCard } from '@/components/withdraw/referral-withdraw-card'
 import { TxOverlay } from '@/components/withdraw/tx-overlay'
 
 export function WithdrawPageClient() {
@@ -60,9 +62,14 @@ export function WithdrawPageClient() {
           <InvestmentSharesCard />
         </div>
 
-        {/* Card 6 — 项目分红（L2+ 参与） */}
+        {/* Card 6 — 提取项目分红 */}
         <div className="mt-4">
-          <ProjectDividendCard />
+          <DividendWithdrawCard />
+        </div>
+
+        {/* Card 7 — 提取推荐奖励 */}
+        <div className="mt-4">
+          <ReferralWithdrawCard />
         </div>
 
         <div className="mt-4 flex items-start gap-2">

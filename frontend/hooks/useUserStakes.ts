@@ -4,6 +4,8 @@ import { decodeEventLog } from 'viem'
 import { CONTRACT_ADDRESSES } from '@/lib/contracts/addresses'
 import { stakingContractABI } from '@/lib/contracts/stakingContractABI'
 
+const API_BASE = process.env.NEXT_PUBLIC_RELAYER_URL || 'http://localhost:3001'
+
 export interface UserStake {
   stakeId: string
   amount: string // raw amount (both StakeEvent / RWAStakeEvent are handled as 18-decimal in this contract)
@@ -42,6 +44,42 @@ export function useUserStakes() {
 
       setLoading(true)
       try {
+        const normalizedUser = address.toLowerCase()
+        console.log('🔍 [useUserStakes] 开始查询质押，用户:', normalizedUser)
+        
+        // 1. 先从后端获取
+        let backendStakes: UserStake[] = []
+        try {
+          const apiUrl = `${API_BASE}/stakes/${address}?chainId=${chainId}`
+          console.log('📡 [useUserStakes] 从后端获取:', apiUrl)
+          const res = await fetch(apiUrl)
+          if (res.ok) {
+            const json = await res.json()
+            if (json.success && json.data?.stakes && Array.isArray(json.data.stakes)) {
+              backendStakes = json.data.stakes.map((s: any) => ({
+                stakeId: s.stakeId || s.id,
+                amount: s.amount,
+                timestamp: Number(s.timestamp || s.created_at || 0),
+                lockPeriod: mapLockPeriod(s.lockPeriod || s.lock_period || 0),
+                isRWAStake: s.assetType === 'RWA' || s.asset_type === 'RWA',
+                tokenDecimals: 18,
+              }))
+              console.log('✅ [useUserStakes] 后端返回', backendStakes.length, '条记录')
+            }
+          }
+        } catch (err) {
+          console.warn('⚠️ [useUserStakes] 后端获取失败，回退到链上查询:', err)
+        }
+
+        // 2. 如果后端有数据，直接使用
+        if (backendStakes.length > 0) {
+          setStakes(backendStakes)
+          setLoading(false)
+          return
+        }
+
+        // 3. 后端无数据，从链上查询（保留原逻辑）
+        console.log('📡 [useUserStakes] 后端无数据，从链上查询')
         const stakingAddress = CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]?.stakingContract
         if (!stakingAddress) {
           setStakes([])
@@ -49,13 +87,17 @@ export function useUserStakes() {
           return
         }
 
-        const normalizedUser = address.toLowerCase()
         console.log('🔍 [useUserStakes] 开始查询质押事件，用户地址:', normalizedUser)
         console.log('🔍 [useUserStakes] StakingContract 地址:', stakingAddress)
         
+        // 获取当前区块号
+        const currentBlock = await publicClient.getBlockNumber()
+        // 只查询最近 100,000 个区块（约 8 小时），避免 RPC 限制
+        const fromBlock = currentBlock > 100000n ? currentBlock - 100000n : 0n
+        
         const rawLogs = await publicClient.getLogs({
               address: stakingAddress as `0x${string}`,
-              fromBlock: 0n,
+              fromBlock,
               toBlock: 'latest',
             })
             

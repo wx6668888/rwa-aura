@@ -16,8 +16,10 @@ import * as path from "path";
 async function main() {
     console.log("\n=== 开始本地测试部署 ===\n");
 
-    const [deployer] = await ethers.getSigners();
+    const [deployer, backendSigner, adminSigner] = await ethers.getSigners();
     console.log("部署账户:", deployer.address);
+    console.log("后端签名者:", backendSigner.address);
+    console.log("管理员签名者:", adminSigner.address);
     const balance = await ethers.provider.getBalance(deployer.address);
     console.log("账户余额:", ethers.formatEther(balance), "ETH\n");
 
@@ -130,8 +132,8 @@ async function main() {
         const reservedGasUsdt = ethers.parseUnits("1000", 6); // 1000 USDT 预留
         const teamDividendPool = await TeamDividendPoolFactory.deploy(
             usdtAddress,
-            deployer.address, // backendSigner（本地测试用部署账户）
-            deployer.address, // adminSigner（本地测试用部署账户，生产需分离）
+            backendSigner.address, // backendSigner
+            adminSigner.address, // adminSigner
             reservedGasUsdt
         );
         await teamDividendPool.waitForDeployment();

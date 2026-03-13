@@ -78,7 +78,7 @@ export function useDirectReferrals() {
             args: {
               referrer: address,
             },
-            fromBlock: 0n,
+            fromBlock: currentBlock > 10000n ? currentBlock - 10000n : 0n,
             toBlock: 'latest',
           })
           if (allLogs.length > 0) {

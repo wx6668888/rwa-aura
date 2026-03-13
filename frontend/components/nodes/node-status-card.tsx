@@ -4,7 +4,7 @@ import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
 import { useAccount } from 'wagmi'
 import { useStakingContract } from '@/hooks/useStakingContract'
-import { useLevelInfo } from '@/hooks/useLevelInfo'
+import { useTeamStats } from '@/hooks/useTeamStats'
 import { useDirectReferrals } from '@/hooks/useDirectReferrals'
 import { NODE_LEVELS, getNodeLevelConfig, getNextLevelConfig, formatTeamVolumeRequirement, formatTeamRetainedRequirement } from '@/lib/node-levels'
 import { NodeHexIcon } from '@/components/nodes/node-hex-icon'
@@ -169,25 +169,20 @@ function RequirementsCard({ currentLevel }: { currentLevel: number }) {
   const { t } = useTranslation(locale)
   const { isConnected } = useAccount()
   const { userStakeInfo, rwaStakeInfo } = useStakingContract()
-  const { levelInfo } = useLevelInfo()
+  const teamStats = useTeamStats()
 
   // RWA 价格（用于转换）
   const rwaPrice = 0.85
 
   // 个人总质押 = USDT 质押 + RWA 质押（转换为 USDT 等值）
-  // 始终使用链上实时数据,确保准确性
   const usdtStaked = parseFloat(userStakeInfo?.totalStaked || '0')
   const rwaStaked = parseFloat(rwaStakeInfo?.totalStakedRWA || '0')
   const rwaStakedInUSDT = rwaStaked * rwaPrice
   const personalStakeCurrent = usdtStaked + rwaStakedInUSDT
 
-  // 团队总业绩 = 个人质押(链上) + 团队下级质押(后端)
-  // 优先使用链上个人数据 + 后端团队数据,避免数据库不同步问题
-  const teamVolumeOnly = levelInfo.teamVolumeUsdt  // 后端:团队下级质押(不含个人)
-  const teamVolumeCurrent = personalStakeCurrent + teamVolumeOnly  // 链上个人 + 后端团队
-
-  // 总留存（团队充值-团队提现）
-  const teamRetainedCurrent = levelInfo.teamRetainedUsdt
+  // 使用链上团队数据
+  const teamVolumeCurrent = teamStats.teamVolume
+  const teamRetainedCurrent = teamStats.teamRetained
 
   // 获取下一级要求
   const nextLevelConfig = NODE_LEVELS.find((l) => l.level === currentLevel + 1)
@@ -341,7 +336,7 @@ export function NodeStatusCard() {
   const { t } = useTranslation(locale)
   const { isConnected } = useAccount()
   const { userStakeInfo, rwaStakeInfo } = useStakingContract()
-  const { levelInfo } = useLevelInfo()
+  const teamStats = useTeamStats()
   const { count: directRefsCount } = useDirectReferrals()
 
   // RWA 价格
@@ -353,9 +348,9 @@ export function NodeStatusCard() {
   const rwaStakedInUSDT = rwaStaked * rwaPrice
   const personalStakeCurrent = usdtStaked + rwaStakedInUSDT
 
-  // 计算团队总业绩(链上个人 + 后端团队)
-  const teamVolumeOnly = levelInfo.teamVolumeUsdt
-  const teamVolumeCurrent = personalStakeCurrent + teamVolumeOnly
+  // 使用链上团队数据
+  const teamVolumeCurrent = teamStats.teamVolume
+  const teamRetainedCurrent = teamStats.teamRetained
 
   // 根据实际数据计算当前等级
   let calculatedLevel = 1
@@ -363,10 +358,9 @@ export function NodeStatusCard() {
     const level = NODE_LEVELS[i]
     const meetsPersonal = personalStakeCurrent >= (level.personalStakeUSDT || 0)
     const meetsTeam = teamVolumeCurrent >= level.teamVolumeUSDT
-    const meetsRefs = directRefsCount >= (level.directReferralsRequired || 0)
-    const meetsRetained = levelInfo.teamRetainedUsdt >= (level.teamRetainedUSDT || 0)
+    const meetsRetained = teamRetainedCurrent >= (level.teamRetainedUSDT || 0)
     
-    if (meetsPersonal && meetsTeam && meetsRefs && meetsRetained) {
+    if (meetsPersonal && meetsTeam && meetsRetained) {
       calculatedLevel = level.level
       break
     }

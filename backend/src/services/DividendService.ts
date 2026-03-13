@@ -9,7 +9,7 @@ import logger from '../utils/logger';
 import { computeUserDividend } from './DividendCalculator';
 import { getCurrentMonth } from '../utils/time';
 import { getRateConfig as getRateConfigForMonth } from './DynamicRateAdjuster';
-import { formatUsdt, calculateDividendAmount } from '../utils/bigint';
+import { formatUsdt } from '../utils/bigint';
 
 const USDT_DECIMALS = 6;
 const CAP = 100_000n * 10n ** BigInt(USDT_DECIMALS);
@@ -83,11 +83,11 @@ function getPoolContract(chainId?: number): ethers.Contract | null {
 /** 从 DB 获取用户的所有团队成员（下级，不含自己） */
 export async function getTeamMembers(userAddress: string): Promise<string[]> {
   const pool = getPool();
-  const [rows] = await pool.query<{ user_address: string }[]>(
+  const [rows] = await pool.query(
     `SELECT user_address FROM referral_relations WHERE ancestor_address = ?`,
     [userAddress.toLowerCase()]
-  );
-  return [...new Set(rows.map((r) => r.user_address))];
+  ) as any;
+  return [...new Set(rows.map((r: any) => r.user_address))] as string[];
 }
 
 /** 获取用户链上分红余额 */
@@ -279,7 +279,7 @@ export async function getPoolStatus(): Promise<PoolStatus & {
   else if (ratio >= 1.0) healthStatus = '不足';
 
   const config = determineRateConfig(available, estimated);
-  const nextMonthRate: PoolStatus['nextMonthRate'] = config
+  const nextMonthRate: any = config
     ? {
         ...Object.fromEntries(
           Object.entries(config.rates).map(([k, v]) => [`L${k}`, v])

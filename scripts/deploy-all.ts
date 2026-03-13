@@ -1,172 +1,79 @@
-import { ethers } from "hardhat";
-import * as dotenv from "dotenv";
-
-dotenv.config();
+import { ethers } from "hardhat"
 
 async function main() {
-  const [deployer] = await ethers.getSigners();
+  const [deployer] = await ethers.getSigners()
   
-  console.log("=".repeat(60));
-  console.log("🚀 RWA Protocol - Complete Deployment Script");
-  console.log("=".repeat(60));
-  console.log("\nDeploying contracts with account:", deployer.address);
-  console.log("Account balance:", ethers.formatEther(await ethers.provider.getBalance(deployer.address)), "BNB");
-  console.log("\n");
+  console.log("=== 部署合约 ===\n")
+  console.log("部署账户:", deployer.address)
   
-  // ========== Step 0: Deploy TestUSDT (if needed for localhost) ==========
-  const network = await ethers.provider.getNetwork();
-  let usdtTokenAddress = process.env.USDT_TOKEN_ADDRESS;
-  let testUSDTDeployed = false;
+  // 1. 部署 USDT
+  console.log("\n1. 部署 USDT...")
+  const USDT = await ethers.getContractFactory("MockERC20")
+  const usdt = await USDT.deploy("USDT", "USDT", 6)
+  await usdt.waitForDeployment()
+  const usdtAddr = await usdt.getAddress()
+  console.log("USDT:", usdtAddr)
   
-  // 对于本地网络，总是部署新的 TestUSDT 以确保可用
-  if (network.chainId === 31337n) {
-    console.log("📦 Step 0: Deploying TestUSDT (for localhost)...");
-    const TestUSDT = await ethers.getContractFactory("TestUSDT");
-    const testUSDT = await TestUSDT.deploy();
-    await testUSDT.waitForDeployment();
-    usdtTokenAddress = await testUSDT.getAddress();
-    testUSDTDeployed = true;
-    console.log("✅ TestUSDT deployed to:", usdtTokenAddress);
-    console.log("");
-  } else {
-    // 对于非本地网络，检查 USDT 地址
-    if (!usdtTokenAddress || usdtTokenAddress === "0x0000000000000000000000000000000000000000") {
-      throw new Error("USDT_TOKEN_ADDRESS must be provided for non-localhost networks");
-    }
-  }
+  // 2. 部署 RWA
+  console.log("\n2. 部署 RWA...")
+  const RWA = await ethers.getContractFactory("MockERC20")
+  const rwa = await RWA.deploy("RWA", "RWA", 18)
+  await rwa.waitForDeployment()
+  const rwaAddr = await rwa.getAddress()
+  console.log("RWA:", rwaAddr)
   
-  // ========== Step 1: Deploy RWAToken ==========
-  console.log("📦 Step 1: Deploying RWAToken...");
-  const RWAToken = await ethers.getContractFactory("RWAToken");
-  const rwaToken = await RWAToken.deploy(
-    "RWA Token",
-    "RWA",
-    ethers.parseEther("1000000000"), // 10亿
-    process.env.TREASURY_ADDRESS || deployer.address,
-    process.env.LIQUIDITY_FUND_ADDRESS || deployer.address
-  );
-  await rwaToken.waitForDeployment();
-  const rwaTokenAddress = await rwaToken.getAddress();
-  console.log("✅ RWAToken deployed to:", rwaTokenAddress);
-  console.log("");
+  // 3. 部署 StakingContract
+  console.log("\n3. 部署 StakingContract...")
+  const Staking = await ethers.getContractFactory("StakingContract")
+  const staking = await Staking.deploy(
+    usdtAddr,
+    rwaAddr,
+    deployer.address, // treasury
+    deployer.address  // backend
+  )
+  await staking.waitForDeployment()
+  const stakingAddr = await staking.getAddress()
+  console.log("StakingContract:", stakingAddr)
   
-  // ========== Step 2: Deploy StRWA ==========
-  console.log("📦 Step 2: Deploying StRWA...");
-  const StRWA = await ethers.getContractFactory("StRWA");
-  const stRWA = await StRWA.deploy();
-  await stRWA.waitForDeployment();
-  const stRWAAddress = await stRWA.getAddress();
-  console.log("✅ StRWA deployed to:", stRWAAddress);
-  console.log("");
+  // 4. 部署 ReferralRewardPool
+  console.log("\n4. 部署 ReferralRewardPool...")
+  const Pool = await ethers.getContractFactory("ReferralRewardPool")
+  const pool = await Pool.deploy(usdtAddr, stakingAddr)
+  await pool.waitForDeployment()
+  const poolAddr = await pool.getAddress()
+  console.log("ReferralRewardPool:", poolAddr)
   
-  // ========== Step 3: Deploy StakingContract ==========
-  console.log("📦 Step 3: Deploying StakingContract...");
-  const StakingContract = await ethers.getContractFactory("StakingContract");
-  const stakingContract = await StakingContract.deploy(
-    usdtTokenAddress!,
-    rwaTokenAddress,
-    process.env.TREASURY_ADDRESS || deployer.address,
-    process.env.BACKEND_ADDRESS || deployer.address
-  );
-  await stakingContract.waitForDeployment();
-  const stakingContractAddress = await stakingContract.getAddress();
-  console.log("✅ StakingContract deployed to:", stakingContractAddress);
-  console.log("");
+  // 5. 部署 TeamDividendPool
+  console.log("\n5. 部署 TeamDividendPool...")
+  const [, account1] = await ethers.getSigners()
+  const Dividend = await ethers.getContractFactory("TeamDividendPool")
+  const dividend = await Dividend.deploy(
+    usdtAddr,
+    deployer.address, // backendSigner
+    account1.address,  // adminSigner (使用不同地址)
+    ethers.parseUnits("1000", 6) // reservedGas: 1000 USDT
+  )
+  await dividend.waitForDeployment()
+  const dividendAddr = await dividend.getAddress()
+  console.log("TeamDividendPool:", dividendAddr)
   
-  // ========== Step 4: Configure StRWA and StakingContract ==========
-  console.log("⚙️  Step 4: Configuring contract relationships...");
+  // 6. 配置
+  console.log("\n6. 配置合约...")
+  await staking.setReferralRewardPool(poolAddr)
+  console.log("✅ 已设置推荐奖励池")
   
-  // Set StRWA's stakingContract
-  console.log("   - Setting StRWA stakingContract...");
-  await stRWA.setStakingContract(stakingContractAddress);
-  console.log("   ✅ StRWA stakingContract set");
+  // 7. 铸造测试代币
+  console.log("\n7. 铸造测试代币...")
+  await usdt.mint(deployer.address, ethers.parseUnits("100000", 6))
+  await rwa.mint(deployer.address, ethers.parseUnits("100000", 18))
+  console.log("✅ 已铸造 100,000 USDT 和 100,000 RWA")
   
-  // Set StakingContract's stRWA token
-  console.log("   - Setting StakingContract stRWA token...");
-  await stakingContract.setStRWAToken(stRWAAddress);
-  console.log("   ✅ StakingContract stRWA token set");
-  console.log("");
-  
-  // ========== Step 5: Deploy SwapContract ==========
-  console.log("📦 Step 5: Deploying SwapContract...");
-  const SwapContract = await ethers.getContractFactory("SwapContract");
-  const swapContract = await SwapContract.deploy(
-    rwaTokenAddress,
-    stRWAAddress
-  );
-  await swapContract.waitForDeployment();
-  const swapContractAddress = await swapContract.getAddress();
-  console.log("✅ SwapContract deployed to:", swapContractAddress);
-  console.log("");
-  
-  // ========== Step 6: Initialize SwapContract Pool (Optional) ==========
-  if (process.env.INITIAL_LIQUIDITY_RWA && process.env.INITIAL_LIQUIDITY_ST_RWA) {
-    console.log("⚙️  Step 6: Initializing SwapContract pool...");
-    const rwaAmount = ethers.parseEther(process.env.INITIAL_LIQUIDITY_RWA);
-    const stRwaAmount = ethers.parseEther(process.env.INITIAL_LIQUIDITY_ST_RWA);
-    
-    // Approve tokens
-    await rwaToken.approve(swapContractAddress, rwaAmount);
-    
-    // For pool initialization, we need stRWA tokens
-    // Since stRWA can only be minted by stakingContract, we temporarily
-    // set deployer as stakingContract, mint, then restore
-    console.log("   - Temporarily setting deployer as stakingContract for minting...");
-    await stRWA.setStakingContract(deployer.address);
-    await stRWA.mint(deployer.address, stRwaAmount);
-    await stRWA.setStakingContract(stakingContractAddress);
-    console.log("   ✅ StRWA minted and stakingContract restored");
-    await stRWA.approve(swapContractAddress, stRwaAmount);
-    
-    // Initialize pool
-    await swapContract.initializePool(rwaAmount, stRwaAmount);
-    console.log("✅ SwapContract pool initialized");
-    console.log("   - RWA Pool:", ethers.formatEther(rwaAmount));
-    console.log("   - stRWA Pool:", ethers.formatEther(stRwaAmount));
-    console.log("");
-  } else {
-    console.log("ℹ️  Step 6: Skipping pool initialization (set INITIAL_LIQUIDITY_RWA and INITIAL_LIQUIDITY_ST_RWA in .env)");
-    console.log("");
-  }
-  
-  // ========== Deployment Summary ==========
-  console.log("=".repeat(60));
-  console.log("✅ Deployment Summary");
-  console.log("=".repeat(60));
-  console.log("RWAToken:", rwaTokenAddress);
-  console.log("StRWA:", stRWAAddress);
-  console.log("StakingContract:", stakingContractAddress);
-  console.log("SwapContract:", swapContractAddress);
-  console.log("");
-  
-  // ========== Next Steps ==========
-  console.log("=".repeat(60));
-  console.log("📋 Next Steps");
-  console.log("=".repeat(60));
-  console.log("1. Update .env file with contract addresses:");
-  console.log(`   RWA_TOKEN_ADDRESS=${rwaTokenAddress}`);
-  console.log(`   ST_RWA_ADDRESS=${stRWAAddress}`);
-  console.log(`   STAKING_CONTRACT_ADDRESS=${stakingContractAddress}`);
-  console.log(`   SWAP_CONTRACT_ADDRESS=${swapContractAddress}`);
-  if (usdtTokenAddress) {
-    console.log(`   USDT_TOKEN_ADDRESS=${usdtTokenAddress}`);
-  }
-  console.log("");
-  console.log("2. Update frontend contract addresses in:");
-  console.log("   frontend/lib/contracts/addresses.ts");
-  console.log("");
-  console.log("3. Test on testnet:");
-  console.log("   npx hardhat run scripts/deploy-all.ts --network bscTestnet");
-  console.log("");
-  console.log("4. Verify contracts on BSCScan (if on testnet/mainnet)");
-  console.log("");
-  console.log("=".repeat(60));
+  console.log("\n=== 部署完成 ===")
+  console.log("USDT:", usdtAddr)
+  console.log("RWA:", rwaAddr)
+  console.log("StakingContract:", stakingAddr)
+  console.log("ReferralRewardPool:", poolAddr)
+  console.log("TeamDividendPool:", dividendAddr)
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error("\n❌ Deployment failed:");
-    console.error(error);
-    process.exit(1);
-  });
+main().catch(console.error)

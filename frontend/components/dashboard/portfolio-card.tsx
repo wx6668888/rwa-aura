@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { ExternalLink } from 'lucide-react'
 import { useAccount, useChainId } from 'wagmi'
 import { useLocale } from '@/components/locale-provider'
@@ -7,6 +8,7 @@ import { useTranslation } from '@/lib/i18n'
 import { useStakingContract } from '@/hooks/useStakingContract'
 import { useStRWA } from '@/hooks/useStRWA'
 import { useLevelInfo } from '@/hooks/useLevelInfo'
+import { useTeamStats } from '@/hooks/useTeamStats'
 import { NodeHexIcon } from '@/components/nodes/node-hex-icon'
 import { getNodeLevelConfig, getNextLevelConfig, NODE_LEVELS } from '@/lib/node-levels'
 
@@ -40,7 +42,7 @@ function CircleProgress({ percent, size = 60, strokeWidth = 4 }: { percent: numb
           strokeDashoffset={offset}
           style={{ transition: 'stroke-dashoffset 0.6s ease' }}
         />
-        {/* center text — counter-rotate */}
+        {/* center text - counter-rotate */}
         <text
           x={size / 2}
           y={size / 2}
@@ -103,30 +105,40 @@ function computeEffectiveLevel(
 export function PortfolioCard() {
   const { locale } = useLocale()
   const { t } = useTranslation(locale)
-  const { isConnected } = useAccount()
+  const { isConnected, address } = useAccount()
   const chainId = useChainId()
   const { userStakeInfo, rwaStakeInfo } = useStakingContract()
   const { stRWABalance } = useStRWA()
-  const { levelInfo } = useLevelInfo()
+  const teamStats = useTeamStats()
+  
+  // 优先从后端 API 读取质押数据
+  const [apiData, setApiData] = useState<any>(null)
+  useEffect(() => {
+    if (!address) return
+    const API_BASE = process.env.NEXT_PUBLIC_RELAYER_URL || 'http://localhost:3001'
+    fetch(`${API_BASE}/api/portfolio/${address}`)
+      .then(res => res.json())
+      .then(json => {
+        if (json.success) setApiData(json.data)
+      })
+      .catch(() => {}) // 失败时使用合约数据
+  }, [address])
 
   // RWA 价格（用于转换）
   const rwaPrice = 0.85 // 1 RWA ≈ 0.85 USDT
 
-  // 用户数据：合并 USDT 和 RWA 质押，转换为 RWA 显示（用于“我的资产”等）
-  const usdtStaked = parseFloat(userStakeInfo?.totalStaked || '0')
-  const rwaStaked = parseFloat(rwaStakeInfo?.totalStakedRWA || '0')
+  // 用户数据：优先使用 API，回退到合约
+  const usdtStaked = apiData ? parseFloat(apiData.usdtStaked) / 1e18 : parseFloat(userStakeInfo?.totalStaked || '0')
+  const rwaStaked = apiData ? parseFloat(apiData.rwaStaked) / 1e18 : parseFloat(rwaStakeInfo?.totalStakedRWA || '0')
   const usdtStakedInRWA = usdtStaked / rwaPrice // USDT 质押转换为 RWA
   const totalStakedRWA = usdtStakedInRWA + rwaStaked // 合并总质押（RWA）
   const totalStakedUSDT = totalStakedRWA * rwaPrice // 转换为 USDT 等值（用于小字显示）
 
-  // 升级条件数据来源
-  // 个人质押：使用链上实时数据(最准确)
-  // 团队下级：使用后端数据
-  // 总留存：使用后端数据
-  const cumulativePersonalUsdt = totalStakedUSDT  // 链上实时个人质押
-  const teamVolumeOnlyUsdt = levelInfo.teamVolumeUsdt  // 后端团队下级质押
-  const teamRetainedUsdt = levelInfo.teamRetainedUsdt  // 后端总留存
-  const teamTotalUsdt = teamVolumeOnlyUsdt + cumulativePersonalUsdt  // 团队总 = 个人(链上) + 下级(后端)
+  // 升级条件数据来源：全部使用链上数据
+  const cumulativePersonalUsdt = totalStakedUSDT  // 链上个人质押
+  const teamVolumeOnlyUsdt = teamStats.teamVolume - cumulativePersonalUsdt  // 链上团队下级质押
+  const teamRetainedUsdt = teamStats.teamRetained  // 链上总留存
+  const teamTotalUsdt = teamStats.teamVolume  // 链上团队总质押
   const effectiveLevel = computeEffectiveLevel(cumulativePersonalUsdt, teamVolumeOnlyUsdt, teamRetainedUsdt)
 
   const referrer = rwaStakeInfo?.referrer || userStakeInfo?.referrer || ''

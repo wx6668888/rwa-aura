@@ -321,40 +321,57 @@ async function parseStRWABurnLogs(
   return rows
 }
 
-/** 从后端 /api/stakes 拉取并转为资金活动行（链上无数据时的回退） */
+/** 从后端 /api/history 拉取并转为资金活动行（链上无数据时的回退） */
 async function fetchStakesFromApi(
   userAddress: string,
   locale: string,
   limit: number
 ): Promise<FundActivityRow[]> {
   try {
-    const res = await fetch(`${API_BASE}/api/stakes/${userAddress}?limit=${limit}`)
+    const res = await fetch(`${API_BASE}/api/history/${userAddress}?limit=${limit}`)
     if (!res.ok) return []
     const json = await res.json()
-    const stakes = json?.data?.stakes ?? []
+    const stakes = json?.data?.history ?? []
     const localeKey = locale === 'zh' ? 'zh-CN' : locale === 'ko' ? 'ko-KR' : 'en-US'
-    const rows: FundActivityRow[] = stakes.map((s: { amount: string; assetType?: string; blockNumber?: number; timestamp?: string; createdAt?: string; txHash?: string }) => {
-      const isRwa = (s.assetType || '').toUpperCase() === 'RWA'
+    const rows: FundActivityRow[] = stakes.map((s: any) => {
+      const isWithdraw = s.type === 'withdrawal'
+      const isRwa = s.event_type?.includes('RWA')
       const amt = (Number(s.amount) / 1e18).toFixed(2)
-      const timeStr = (s.timestamp || s.createdAt)
-        ? new Date(s.timestamp || s.createdAt).toLocaleString(localeKey, {
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-          })
-        : '—'
+      const timeStr = new Date(s.timestamp * 1000).toLocaleString(localeKey, {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+      
+      // 根据 type 和 event_type 确定类型
+      let typeKey: string
+      let summaryType: SummaryType
+      let typeVariant: FundActivityRow['typeVariant']
+      
+      if (isWithdraw) {
+        typeKey = isRwa ? 'withdrawPrincipalRWA' : 'withdrawPrincipalUSDT'
+        summaryType = 'withdraw'
+        typeVariant = 'orange'
+      } else {
+        typeKey = isRwa ? 'stakeRWA' : 'stakeUSDT'
+        summaryType = 'stake'
+        typeVariant = isRwa ? 'purple' : 'cyan'
+      }
+      
       return {
-        blockNumber: BigInt(s.blockNumber ?? 0),
+        blockNumber: BigInt(s.block_number ?? 0),
         logIndex: 0,
         time: timeStr,
-        typeKey: isRwa ? 'stakeRWA' : 'stakeUSDT',
-        summaryType: 'stake' as const,
-        typeVariant: isRwa ? 'purple' : 'cyan',
-        amount: isRwa ? `+${amt} RWA` : `+${amt} USDT`,
-        amountColor: isRwa ? '#8b5cf6' : '#00f5d4',
-        txHash: s.txHash as `0x${string}` | undefined,
+        typeKey,
+        summaryType,
+        typeVariant,
+        amount: isWithdraw 
+          ? (isRwa ? `-${amt} RWA` : `-${amt} USDT`)
+          : (isRwa ? `+${amt} RWA` : `+${amt} USDT`),
+        amountColor: isWithdraw ? '#f97316' : (isRwa ? '#8b5cf6' : '#00f5d4'),
+        txHash: s.tx_hash as `0x${string}` | undefined,
       }
     })
     rows.sort((a, b) => Number(b.blockNumber - a.blockNumber))
@@ -436,6 +453,7 @@ export function FundActivityCard() {
             }),
           ])
           stakingLogs = [...usdtLogs, ...rwaLogs]
+          console.log('📊 [FundActivity] USDT事件:', usdtLogs.length, '条, RWA事件:', rwaLogs.length, '条')
         } catch {
           try {
             stakingLogs = await publicClient.getLogs({
@@ -485,12 +503,25 @@ export function FundActivityCard() {
     setLoading(true)
     const currentBlockPromise = publicClient.getBlockNumber()
     currentBlockPromise.then((currentBlock) => {
-      // 本地链(31337/1337)从 0 开始查，否则只查最近 5000 块，避免漏掉早期质押
-      const isLocalChain = chainId === 31337 || chainId === 1337
-      const fromBlock = isLocalChain ? 0n : (currentBlock > 5000n ? currentBlock - 5000n : 0n)
-      fetchActivities(fromBlock, 50)
+      // 优先使用后端 API（速度快，无区块限制）
+      fetchStakesFromApi(address, locale, 5)
+        .then((apiRows) => {
+          if (apiRows.length > 0) {
+            console.log('[FundActivity] 使用后端 API，条数:', apiRows.length)
+            setRows(apiRows)
+            setLoading(false)
+            return
+          }
+          
+          // API 无数据时，回退到链上查询
+          console.log('[FundActivity] 后端 API 无数据，使用链上查询')
+          const isLocalChain = chainId === 31337 || chainId === 1337
+          const fromBlock = isLocalChain ? 0n : (currentBlock > 20000n ? currentBlock - 20000n : 0n)
+          console.log('[FundActivity] 查询区块范围:', { currentBlock: currentBlock.toString(), fromBlock: fromBlock.toString(), chainId })
+          return fetchActivities(fromBlock, 50)
+        })
         .then((list) => {
-          if (list.length > 0) {
+          if (list && list.length > 0) {
             setRows(list)
             setLoading(false)
             return
@@ -511,28 +542,22 @@ export function FundActivityCard() {
     }).catch(() => {
       setLoading(false)
     })
-  }, [address, stakingAddress, publicClient, fetchActivities, chainId, locale])
+  }, [address, stakingAddress, publicClient, chainId, locale])
 
   useEffect(() => {
-    if (!showModal || !address || !stakingAddress || !publicClient) return
+    if (!showModal || !address) return
     setModalLoading(true)
-    fetchActivities(0n, null)
-      .then((list) => {
-        if (list.length > 0) {
-          setModalRows(list)
-          setModalLoading(false)
-          return
-        }
-        return fetchStakesFromApi(address, locale, 200).then((apiRows) => {
-          setModalRows(apiRows)
-          setModalLoading(false)
-        })
+    
+    // 直接使用后端 API（无区块限制，查询所有历史）
+    fetchStakesFromApi(address, locale, 200)
+      .then((apiRows) => {
+        setModalRows(apiRows)
+        setModalLoading(false)
       })
       .catch(() => {
         setModalLoading(false)
-        fetchStakesFromApi(address, locale, 200).then((apiRows) => setModalRows(apiRows))
       })
-  }, [showModal, address, stakingAddress, publicClient, fetchActivities, locale])
+  }, [showModal, address, locale])
 
   const explorerUrl =
     chainId === 56
@@ -584,7 +609,7 @@ export function FundActivityCard() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, i) => (
+              {rows.slice(0, 5).map((row, i) => (
                 <tr
                   key={`${row.blockNumber}-${row.logIndex}-${i}`}
                   className="border-b border-[#ffffff0d] transition-colors hover:bg-[#13131e]"

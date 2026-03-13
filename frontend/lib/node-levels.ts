@@ -51,7 +51,7 @@ export const NODE_LEVELS: NodeLevelConfig[] = [
     teamRetainedUSDT: 2000,
     rewardPercentage: 5,
     projectDividendEligible: true,
-    dividendWeight: 1.0,
+    dividendWeight: 0.05, // 5% 分红比例
     hasAnimation: false,
   },
   {
@@ -67,7 +67,7 @@ export const NODE_LEVELS: NodeLevelConfig[] = [
     teamRetainedUSDT: 8000,
     rewardPercentage: 8,
     projectDividendEligible: true,
-    dividendWeight: 1.0,
+    dividendWeight: 0.08, // 8% 分红比例
     hasAnimation: false,
   },
   {
@@ -83,7 +83,7 @@ export const NODE_LEVELS: NodeLevelConfig[] = [
     teamRetainedUSDT: 20000,
     rewardPercentage: 12,
     projectDividendEligible: true,
-    dividendWeight: 1.0,
+    dividendWeight: 0.12, // 12% 分红比例
     hasAnimation: false,
   },
   {
@@ -99,7 +99,7 @@ export const NODE_LEVELS: NodeLevelConfig[] = [
     teamRetainedUSDT: 60000,
     rewardPercentage: 17,
     projectDividendEligible: true,
-    dividendWeight: 1.0,
+    dividendWeight: 0.17, // 17% 分红比例
     hasAnimation: false,
   },
   {
@@ -115,7 +115,7 @@ export const NODE_LEVELS: NodeLevelConfig[] = [
     teamRetainedUSDT: 160000,
     rewardPercentage: 23,
     projectDividendEligible: true,
-    dividendWeight: 1.5,
+    dividendWeight: 0.23, // 23% 分红比例
     hasAnimation: false,
   },
   {
@@ -131,7 +131,7 @@ export const NODE_LEVELS: NodeLevelConfig[] = [
     teamRetainedUSDT: 400000,
     rewardPercentage: 30,
     projectDividendEligible: true,
-    dividendWeight: 1.5,
+    dividendWeight: 0.30, // 30% 分红比例
     hasAnimation: false,
   },
   {
@@ -147,7 +147,7 @@ export const NODE_LEVELS: NodeLevelConfig[] = [
     teamRetainedUSDT: 1000000,
     rewardPercentage: 35,
     projectDividendEligible: true,
-    dividendWeight: 2.0,
+    dividendWeight: 0.40, // 40% 分红比例
     hasAnimation: true, // 有旋转动画
   },
   {
@@ -163,7 +163,7 @@ export const NODE_LEVELS: NodeLevelConfig[] = [
     teamRetainedUSDT: 2000000,
     rewardPercentage: 40,
     projectDividendEligible: true,
-    dividendWeight: 3.0,
+    dividendWeight: 0.50, // 50% 分红比例（最高）
     hasAnimation: true, // 有旋转动画
   },
 ]

@@ -4,9 +4,10 @@ import { useAccount, usePublicClient } from 'wagmi'
 import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
 import { useStakingContract } from '@/hooks/useStakingContract'
-import { useUserStakes } from '@/hooks/useUserStakes'
+import { useStakesContext } from '@/contexts/StakesContext'
 import { useDirectReferrals } from '@/hooks/useDirectReferrals'
 import { useLevelInfo } from '@/hooks/useLevelInfo'
+import { useReferralRewards } from '@/hooks/useReferralRewards'
 import { useState, useEffect, useRef } from 'react'
 import { formatUnits } from 'viem'
 import { X } from 'lucide-react'
@@ -50,12 +51,13 @@ export function StatCards() {
   const { isConnected, address } = useAccount()
   const publicClient = usePublicClient()
   const { userStakeInfo, userRewards, refetchRewards, rwaStakeInfo, rwaFlexiblePrincipal, usdtFlexiblePrincipal } = useStakingContract()
-  const { stakes, loading: stakesLoading } = useUserStakes()
+  const { stakes, loading: stakesLoading } = useStakesContext()
+  const { rewards: referralRewards } = useReferralRewards()
 
   const rwaFlexNum = parseFloat(rwaFlexiblePrincipal || '0')
   const usdtFlexNum = parseFloat(usdtFlexiblePrincipal || '0')
   const activeStakes = stakes.filter((s) => {
-    const isRWA = s.isRWAStake === true || s.stakeId.startsWith('rwa_')
+    const isRWA = s.isRWAStake === true || (s.stakeId && s.stakeId.startsWith('rwa_'))
     const isFlex = s.lockPeriod === 'flexible'
     if (isRWA && isFlex) return rwaFlexNum > 0
     if (!isRWA && isFlex) return usdtFlexNum > 0
@@ -204,8 +206,8 @@ export function StatCards() {
     }
   }, [isConnected, address, totalStakedNum, rwaPendingNum, refetchRewards, stakes, stakesLoading, rwaFlexNum, usdtFlexNum])
 
-  // 总收益 = 实时计算的 RWA 收益（USDT 等值）+ USDT 奖励
-  const usdtRewards = parseFloat(userStakeInfo?.usdtRewards || '0')
+  // 总收益 = 实时计算的 RWA 收益（USDT 等值）+ USDT 推荐奖励（从后端获取）
+  const usdtRewards = referralRewards.matured
   const totalEarned = isConnected ? (totalRwaEarning * 0.85 + usdtRewards).toFixed(2) : '0.00'
 
   const [showStakeDetail, setShowStakeDetail] = useState(false)

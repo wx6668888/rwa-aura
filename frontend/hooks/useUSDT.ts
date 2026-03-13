@@ -7,8 +7,11 @@ export function useUSDT() {
   const { address, chainId } = useAccount()
   const { writeContractAsync } = useWriteContract()
 
-  const usdtAddress = chainId ? CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]?.usdtToken : undefined
-  const stakingAddress = chainId ? CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]?.stakingContract : undefined
+  // 如果 chainId 是 undefined，使用 31337 作为默认值
+  const effectiveChainId = chainId || 31337
+
+  const usdtAddress = CONTRACT_ADDRESSES[effectiveChainId as keyof typeof CONTRACT_ADDRESSES]?.usdtToken
+  const stakingAddress = CONTRACT_ADDRESSES[effectiveChainId as keyof typeof CONTRACT_ADDRESSES]?.stakingContract
 
   // Debug logging for local development
   if (process.env.NODE_ENV === 'development' && chainId === 31337) {

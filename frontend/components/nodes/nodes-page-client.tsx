@@ -6,7 +6,6 @@ import { NodeStatusCard } from '@/components/nodes/node-status-card'
 import { RewardRatesTable } from '@/components/nodes/reward-rates-table'
 import { ReferralNetwork } from '@/components/nodes/referral-network'
 import { QualityAssessmentCard } from '@/components/nodes/quality-assessment-card'
-import { ProjectDividendCard } from '@/components/dividend/project-dividend-card'
 
 export function NodesPageClient() {
   const { locale } = useLocale()
@@ -31,16 +30,13 @@ export function NodesPageClient() {
         {/* Section 1: Node status */}
         <NodeStatusCard />
 
-        {/* Section 2: 项目分红（L2+ 参与） */}
-        <ProjectDividendCard />
-
-        {/* Section 3: Quality Assessment */}
+        {/* Section 2: Quality Assessment */}
         <QualityAssessmentCard />
 
-        {/* Section 4: Reward rates table */}
+        {/* Section 3: Reward rates table */}
         <RewardRatesTable />
 
-        {/* Section 5: Referral network */}
+        {/* Section 4: Referral network */}
         <ReferralNetwork />
       </div>
     </main>

@@ -1,49 +1,17 @@
-import { ethers } from "hardhat";
-import * as dotenv from "dotenv";
+import { ethers } from 'hardhat';
 
-dotenv.config();
-
-async function main() {
-  const signers = await ethers.getSigners();
+async function checkBalance() {
+  const user = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
   
-  if (signers.length === 0) {
-    console.log("=".repeat(60));
-    console.log("❌ No accounts found!");
-    console.log("=".repeat(60));
-    console.log("\nPlease configure PRIVATE_KEY in .env file");
-    console.log("Example:");
-    console.log("PRIVATE_KEY=your_private_key_here");
-    process.exit(1);
-  }
+  const usdt = await ethers.getContractAt('TestUSDT', '0x5FbDB2315678afecb367f032d93F642f64180aa3');
+  const rwa = await ethers.getContractAt('RWAToken', '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512');
   
-  const deployer = signers[0];
+  const usdtBal = await usdt.balanceOf(user);
+  const rwaBal = await rwa.balanceOf(user);
   
-  console.log("=".repeat(60));
-  console.log("💰 Checking Account Balance");
-  console.log("=".repeat(60));
-  console.log("\nAccount:", deployer.address);
-  
-  const balance = await ethers.provider.getBalance(deployer.address);
-  const balanceInBNB = ethers.formatEther(balance);
-  
-  console.log("Balance:", balanceInBNB, "BNB");
-  console.log("");
-  
-  if (parseFloat(balanceInBNB) < 0.1) {
-    console.log("⚠️  WARNING: Balance is less than 0.1 BNB");
-    console.log("   You may not have enough funds for deployment.");
-    console.log("   Get testnet BNB from: https://testnet.bnbchain.org/faucet-smart");
-  } else {
-    console.log("✅ Balance is sufficient for deployment");
-  }
-  
-  console.log("");
-  console.log("=".repeat(60));
+  console.log('地址:', user);
+  console.log('USDT:', ethers.formatUnits(usdtBal, 6));
+  console.log('RWA:', ethers.formatEther(rwaBal));
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+checkBalance().catch(console.error);
