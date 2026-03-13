@@ -57,7 +57,7 @@ export function StakesProvider({ children }: { children: ReactNode }) {
         stakeId: s.stakeId,
         amount: s.amount,
         timestamp: s.timestamp,
-        lockPeriod: mapLockPeriod(s.lockPeriod),
+        lockPeriod: s.lockPeriod,
         isRWAStake: s.assetType === 'RWA',
         tokenDecimals: 18,
       }))
