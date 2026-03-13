@@ -219,8 +219,20 @@ export function StakeActionPanel() {
       }
       
       const hash = stakeMode === 'USDT'
-        ? await stake(amount, referrerAddress, lockPeriodNum)
-        : await stakeRWA(amount, referrerAddress, lockPeriodNum)
+        ? await gaslessStake(
+            CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]?.usdtToken || '',
+            CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]?.stakingContract || '',
+            amount,
+            referrerAddress,
+            lockPeriodNum
+          )
+        : await gaslessStakeRWA(
+            CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]?.rwaToken || '',
+            CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]?.stakingContract || '',
+            amount,
+            referrerAddress,
+            lockPeriodNum
+          )
       setTxHash(hash)
       
       // Wait for transaction confirmation using publicClient
