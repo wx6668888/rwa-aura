@@ -1,4 +1,4 @@
-﻿import { ethers } from 'ethers';
+import { ethers } from 'ethers';
 import { query, transaction } from '../config/database.config';
 import { Stake, EventProcessingState } from '../models/types';
 import logger from '../utils/logger';
@@ -463,9 +463,9 @@ export class EventMonitor {
             throw error;
         }
     }
-
     private async handleRewardWithdrawal(event: ethers.EventLog): Promise<void> {
-        const { user, amount } = event.args as any;
+        const { user, amount, timestamp } = event.args as any;
+
         const txHash = event.transactionHash;
         logger.info(`Processing WithdrawalRequested for user=${user}, tx=${txHash}`);
         const usdtEquiv = (BigInt(amount?.toString() ?? '0') * 85n / 100n).toString();
@@ -474,7 +474,7 @@ export class EventMonitor {
     }
 
     private async handleRWARewardWithdrawal(event: ethers.EventLog): Promise<void> {
-        const { user, amount } = event.args as any;
+        const { user, amount, timestamp } = event.args as any;
         const txHash = event.transactionHash;
         logger.info(`Processing RWARewardWithdrawn for user=${user}, tx=${txHash}`);
         const usdtEquiv = (BigInt(amount?.toString() ?? '0') * 85n / 100n).toString();
