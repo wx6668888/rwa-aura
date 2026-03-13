@@ -13,6 +13,19 @@ export function useWithdrawData() {
   const { stakes, loading: stakesLoading } = useUserStakes()
   const { userRewards, rwaStakeInfo, rwaFlexiblePrincipal, usdtFlexiblePrincipal } = useStakingContract()
   
+  // Fetch remaining principals from API
+  const [apiData, setApiData] = useState<any>(null)
+  useEffect(() => {
+    if (!address) return
+    const API_BASE = process.env.NEXT_PUBLIC_RELAYER_URL || 'http://localhost:3001'
+    fetch(`${API_BASE}/api/data/${address}/stakes`)
+      .then(res => res.json())
+      .then(json => {
+        if (json.success) setApiData(json.data)
+      })
+      .catch(() => {})
+  }, [address])
+  
   const [data, setData] = useState({
     yieldAmount: '0',
     rwaPrincipal: '0',
@@ -34,8 +47,8 @@ export function useWithdrawData() {
   })
 
   const fetchData = useCallback(async () => {
-    if (!isConnected || !address || stakesLoading || !publicClient || !chainId) {
-      setData(prev => ({ ...prev, loading: stakesLoading }))
+    if (!isConnected || !address || stakesLoading || !publicClient || !chainId || !apiData) {
+      setData(prev => ({ ...prev, loading: stakesLoading || !apiData }))
       return
     }
 
@@ -46,8 +59,24 @@ export function useWithdrawData() {
       const rwaRwaPending = parseFloat(rwaStakeInfo?.rwaPending || '0')
       const yieldAmount = (usdtRwaPending + rwaRwaPending).toFixed(2)
       
-      const usdtPrincipal = parseFloat(usdtFlexiblePrincipal || '0')
-      const rwaPrincipal = parseFloat(rwaFlexiblePrincipal || '0')
+      // Calculate flexible remaining from API data
+      const apiTotalUSDT = parseFloat(apiData.usdtStaked) / 1e18
+      const apiTotalRWA = parseFloat(apiData.rwaStaked) / 1e18
+      
+      const totalLockedUSDT = stakes.filter(s => {
+        const isRWA = s.isRWAStake === true || (s.stakeId && s.stakeId.toUpperCase().startsWith('RWA_'))
+        const isFlex = s.lockPeriod === 'flexible'
+        return !isRWA && !isFlex
+      }).reduce((sum, s) => sum + parseFloat(s.amount) / 1e18, 0)
+      
+      const totalLockedRWA = stakes.filter(s => {
+        const isRWA = s.isRWAStake === true || (s.stakeId && s.stakeId.toUpperCase().startsWith('RWA_'))
+        const isFlex = s.lockPeriod === 'flexible'
+        return isRWA && !isFlex
+      }).reduce((sum, s) => sum + parseFloat(s.amount) / 1e18, 0)
+      
+      const usdtPrincipal = Math.max(0, apiTotalUSDT - totalLockedUSDT)
+      const rwaPrincipal = Math.max(0, apiTotalRWA - totalLockedRWA)
       
       const addresses = CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]
       let lockedStakes: any[] = []
@@ -142,7 +171,7 @@ export function useWithdrawData() {
       console.error('[useWithdrawData] Error:', error)
       setData(prev => ({ ...prev, loading: false }))
     }
-  }, [address, isConnected, chainId, stakesLoading, publicClient, userRewards, rwaStakeInfo, rwaFlexiblePrincipal, usdtFlexiblePrincipal])
+  }, [address, isConnected, chainId, stakesLoading, publicClient, userRewards, rwaStakeInfo, rwaFlexiblePrincipal, usdtFlexiblePrincipal, apiData, stakes])
 
   useEffect(() => {
     fetchData()
