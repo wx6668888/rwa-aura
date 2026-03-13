@@ -32,11 +32,32 @@ async function getUnifiedData(address: string, dataType: string) {
           [address]
         );
         const eventsArray = events as Array<{ event_type: string; total: string }>;
+        
+        // Get withdrawals by type
+        const [withdrawals] = await pool.query(
+          `SELECT event_type, SUM(CAST(amount AS DECIMAL(38,0))) as total FROM withdrawal_events WHERE LOWER(user_address) = LOWER(?) GROUP BY event_type`,
+          [address]
+        );
+        const withdrawalsArray = withdrawals as Array<{ event_type: string; total: string }>;
+        
+        const usdtStaked = BigInt(eventsArray.find(e => e.event_type.includes('USDT'))?.total || '0');
+        const rwaStaked = BigInt(eventsArray.find(e => e.event_type.includes('RWA'))?.total || '0');
+        
+        // USDT withdrawals (direct USDT amount)
+        const usdtWithdrawn = BigInt(withdrawalsArray.find(e => e.event_type.includes('USDT'))?.total || '0');
+        
+        // RWA withdrawals (stored as USDT equivalent, convert back to RWA)
+        const rwaWithdrawnUSDT = BigInt(withdrawalsArray.find(e => e.event_type.includes('RWA'))?.total || '0');
+        const rwaWithdrawn = (rwaWithdrawnUSDT * 100n) / 85n;
+        
+        const remainingUSDT = usdtStaked > usdtWithdrawn ? usdtStaked - usdtWithdrawn : 0n;
+        const remainingRWA = rwaStaked > rwaWithdrawn ? rwaStaked - rwaWithdrawn : 0n;
+        
         const result = {
           source: 'database',
           data: {
-            usdtStaked: (eventsArray.find(e => e.event_type.includes('USDT'))?.total || '0'),
-            rwaStaked: (eventsArray.find(e => e.event_type.includes('RWA'))?.total || '0'),
+            usdtStaked: remainingUSDT.toString(),
+            rwaStaked: remainingRWA.toString(),
             usdtRewards: '0',
             rwaRewards: '0',
             firstStakeTime: 0,
