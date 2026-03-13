@@ -47,13 +47,12 @@ export function PanelPrincipal({ onMobileBack, data }: Props) {
       } else {
         hash = await withdrawFlexibleUSDTPrincipal(amount)
       }
-
-      setTxHash(hash)
       
       // Wait for transaction confirmation
       const receipt = await publicClient?.waitForTransactionReceipt({ hash: hash as `0x${string}` })
       
       if (receipt?.status === 'success') {
+        setTxHash(hash)
         setOverlayStatus('success')
         setAmount('')
         if (data.refetch) data.refetch()
