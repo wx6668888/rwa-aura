@@ -71,7 +71,7 @@ export function PanelRwaYield({ onMobileBack, data }: Props) {
 
   const handleWithdraw = async () => {
     if (!amount || parseFloat(amount) <= 0) {
-      alert('璇疯緭鍏ユ湁鏁堥噾棰?)
+      alert('请输入有效金额')
       return
     }
     
