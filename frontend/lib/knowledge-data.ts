@@ -82,6 +82,7 @@ export const knowledgeCategories: KnowledgeCategory[] = [
       { id: 'usdt-vs-rwa-stake', categoryId: 'staking', titleKey: 'knowledge.article.usdt-vs-rwa-stake.title', contentKey: 'knowledge.article.usdt-vs-rwa-stake.content' },
       { id: 'lock-period-and-yield', categoryId: 'staking', titleKey: 'knowledge.article.lock-period-and-yield.title', contentKey: 'knowledge.article.lock-period-and-yield.content' },
       { id: 'daily-yield-calc', categoryId: 'staking', titleKey: 'knowledge.article.daily-yield-calc.title', contentKey: 'knowledge.article.daily-yield-calc.content' },
+      { id: 'yield-calculation', categoryId: 'staking', titleKey: 'knowledge.article.yield-calculation.title', contentKey: 'knowledge.article.yield-calculation.content' },
       { id: 'when-rewards-arrive', categoryId: 'staking', titleKey: 'knowledge.article.when-rewards-arrive.title', contentKey: 'knowledge.article.when-rewards-arrive.content' },
       { id: 'what-is-approve', categoryId: 'staking', titleKey: 'knowledge.article.what-is-approve.title', contentKey: 'knowledge.article.what-is-approve.content' },
       { id: 'balance-insufficient-why', categoryId: 'staking', titleKey: 'knowledge.article.balance-insufficient-why.title', contentKey: 'knowledge.article.balance-insufficient-why.content' },

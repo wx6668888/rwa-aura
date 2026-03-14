@@ -9,14 +9,14 @@ router.get('/referral-rewards/:address', async (req, res) => {
     const { address } = req.params;
     const pool = getPool();
     
-    // 查询已到期的奖励
-    const [rewards]: any = await pool.query(`
+    // 查询待发放的奖励
+    const [matured]: any = await pool.query(`
       SELECT 
         SUM(reward_amount) as total_matured,
         COUNT(*) as count
       FROM direct_referral_rewards
       WHERE LOWER(referrer_address) = LOWER(?)
-        AND status = 'MATURED'
+        AND status = 'SETTLED'
     `, [address]);
     
     // 查询待到期的奖励
@@ -32,9 +32,9 @@ router.get('/referral-rewards/:address', async (req, res) => {
     res.json({
       success: true,
       data: {
-        matured: parseFloat(rewards[0]?.total_matured || 0),
+        matured: parseFloat(matured[0]?.total_matured || 0),
         pending: parseFloat(pending[0]?.total_pending || 0),
-        maturedCount: rewards[0]?.count || 0,
+        maturedCount: matured[0]?.count || 0,
         pendingCount: pending[0]?.count || 0
       }
     });

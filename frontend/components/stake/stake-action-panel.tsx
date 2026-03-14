@@ -194,7 +194,6 @@ export function StakeActionPanel() {
   }
 
   async function handleStake() {
-    if (status !== 'approved') return
     if (!isConnected) {
       setErrorMessage(t('common.connectWalletFirst'))
       setStatus('error')
@@ -384,10 +383,11 @@ export function StakeActionPanel() {
     !isConnected ||
     (!hasReferrer && !isValidReferral)
   const isStakeDisabled =
-    status !== 'approved' ||
     !isConnected ||
+    (stakeMode === 'USDT' && numAmount < 100) ||
     (stakeMode === 'RWA' && numAmount < MIN_RWA_STAKE_ESTIMATE) ||
-    (!hasReferrer && !isValidReferral)
+    (!hasReferrer && !isValidReferral) ||
+    status === 'staking'
   
   // Check approval status based on mode
   const isApprovedForStake = stakeMode === 'USDT' 
@@ -841,32 +841,7 @@ export function StakeActionPanel() {
         </div>
       ) : (
         <div className="mt-3 flex flex-col gap-3">
-          {/* Approve button */}
-          <button
-            type="button"
-            onClick={handleApprove}
-            disabled={isApproveDisabled}
-            className={`flex h-14 w-full items-center justify-center gap-2 rounded-full border text-sm font-semibold transition-all
-              ${status === 'approved'
-                ? 'border-[#10b981] text-[#10b981]'
-                : isApproveDisabled && status !== 'approving'
-                  ? 'cursor-not-allowed border-[#ffffff0d] text-[#334155]'
-                  : 'border-[#ffffff1a] text-[#f1f5f9] hover:bg-[#13131e]'
-              }`}
-          >
-            {status === 'approving' && (
-              <Loader2 className="h-4 w-4 animate-spin text-[#00f5d4]" />
-            )}
-            {isApprovedForStake && (
-              <CheckCircle className="h-4 w-4" />
-            )}
-            {status === 'approving'
-              ? t('stake.approving')
-              : isApprovedForStake
-                ? t('stake.approved')
-                : t('stake.approve')}
-          </button>
-
+          {/* Gasless staking - no approve button needed */}
           {/* Stake button */}
           <button
             type="button"

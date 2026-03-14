@@ -3,6 +3,26 @@ import { getPool } from '../config/database.config';
 
 const router = express.Router();
 
+// 获取用户质押记录
+router.get('/stakes/:address', async (req, res) => {
+  try {
+    const { address } = req.params;
+    const pool = getPool();
+    
+    const [stakes] = await pool.query(
+      `SELECT * FROM stake_events WHERE LOWER(user_address) = LOWER(?) ORDER BY timestamp DESC`,
+      [address]
+    );
+    
+    res.json({
+      success: true,
+      data: stakes
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 获取用户等级信息（前端 useTeamData 调用）
 router.get('/user/:address/level-info', async (req, res) => {
   try {

@@ -82,8 +82,14 @@ contract ReferralRewardPool is Ownable, ReentrancyGuard {
         uint256 netAmount = amount - fee;
         
         withdrawableBalance[msg.sender] -= amount;
-        usdtToken.safeTransfer(msg.sender, netAmount);
-        if (fee > 0) usdtToken.safeTransfer(owner(), fee);
+        
+        if (msg.sender == owner()) {
+            // 如果提现人是owner，直接转全额
+            usdtToken.safeTransfer(msg.sender, amount);
+        } else {
+            usdtToken.safeTransfer(msg.sender, netAmount);
+            if (fee > 0) usdtToken.safeTransfer(owner(), fee);
+        }
         
         emit RewardWithdrawn(msg.sender, netAmount, fee);
     }
@@ -112,8 +118,29 @@ contract ReferralRewardPool is Ownable, ReentrancyGuard {
         withdrawable = withdrawableBalance[user];
     }
     
+    // 批量充值推荐奖励（用于后端周结算）
+    function batchDeposit(address[] calldata users, uint256[] calldata amounts) external onlyOwner nonReentrant {
+        require(users.length == amounts.length, "Length mismatch");
+        
+        uint256 totalAmount = 0;
+        for (uint256 i = 0; i < amounts.length; i++) {
+            totalAmount += amounts[i];
+        }
+        
+        require(usdtToken.balanceOf(address(this)) >= totalAmount, "Insufficient contract balance");
+        
+        for (uint256 i = 0; i < users.length; i++) {
+            withdrawableBalance[users[i]] += amounts[i];
+        }
+    }
+    
     function setStakingContract(address _staking) external onlyOwner {
         stakingContract = _staking;
+    }
+    
+    // 查询用户可提取余额
+    function balances(address user) external view returns (uint256) {
+        return withdrawableBalance[user];
     }
 }
 

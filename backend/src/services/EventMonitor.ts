@@ -2,6 +2,8 @@ import { ethers } from 'ethers';
 import { query, transaction } from '../config/database.config';
 import { Stake, EventProcessingState } from '../models/types';
 import logger from '../utils/logger';
+import { BalanceSnapshotService } from './BalanceSnapshotService';
+import { DirectReferralRewardService } from './DirectReferralRewardService';
 
 /**
  * Event Monitor Service
@@ -28,11 +30,13 @@ export class EventMonitor {
     private config: EventMonitorConfig;
     private isRunning: boolean = false;
     private lastProcessedBlock: number = 0;
+    private snapshotService: BalanceSnapshotService;
+    private referralRewardService: DirectReferralRewardService;
     
     // StakingContract ABI (only events we need)
     private readonly STAKING_ABI = [
-        'event StakeEvent(address indexed user, uint256 amount, address referrer, uint256 stakeId, uint256 timestamp, uint256 lockPeriod)',
-        'event RWAStakeEvent(address indexed user, uint256 amount, address referrer, uint256 stakeId, uint256 timestamp, uint256 lockPeriod)',
+        'event StakeEvent(address indexed user, uint256 amount, address indexed referrer, uint256 indexed stakeId, uint256 timestamp, uint256 lockPeriod)',
+        'event RWAStakeEvent(address indexed user, uint256 amount, address indexed referrer, uint256 indexed stakeId, uint256 timestamp, uint256 lockPeriod)',
         'event ReferralBound(address indexed user, address indexed referrer, uint256 timestamp)',
         'event RewardsUpdated(address indexed user, uint256 rwAmount, uint256 usdtAmount, uint256 indexed stakeId, uint256 timestamp)',
         'event NodeLevelUpdated(address indexed user, uint8 oldLevel, uint8 newLevel, uint256 timestamp)',
@@ -55,6 +59,8 @@ export class EventMonitor {
             this.STAKING_ABI,
             this.provider
         );
+        this.snapshotService = new BalanceSnapshotService();
+        this.referralRewardService = new DirectReferralRewardService();
     }
     
     async start(): Promise<void> {
@@ -137,23 +143,61 @@ export class EventMonitor {
     }
     
     private async processBlockRange(fromBlock: number, toBlock: number): Promise<void> {
-        const stakeFilter = this.stakingContract.filters.StakeEvent();
-        const rwaStakeFilter = this.stakingContract.filters.RWAStakeEvent();
+        // 获取区块范围内的所有交易
+        const logs = await this.provider.getLogs({
+            address: await this.stakingContract.getAddress(),
+            fromBlock,
+            toBlock
+        });
         
-        const [stakeEvents, rwaStakeEvents] = await Promise.all([
-            this.stakingContract.queryFilter(stakeFilter, fromBlock, toBlock),
-            this.stakingContract.queryFilter(rwaStakeFilter, fromBlock, toBlock)
-        ]);
+        logger.info(`Found ${logs.length} log(s) in blocks ${fromBlock}-${toBlock}`);
         
-        logger.info(`Found ${stakeEvents.length} StakeEvent(s) and ${rwaStakeEvents.length} RWAStakeEvent(s) in blocks ${fromBlock}-${toBlock}`);
+        // 手动解析每个日志
+        const stakeEventTopic = this.stakingContract.interface.getEvent('StakeEvent')!.topicHash;
+        const rwaStakeEventTopic = this.stakingContract.interface.getEvent('RWAStakeEvent')!.topicHash;
         
-        for (const event of stakeEvents) {
-            await this.handleStakeEvent(event as ethers.EventLog);
+        let stakeCount = 0;
+        let rwaStakeCount = 0;
+        
+        for (const log of logs) {
+            try {
+                if (log.topics[0] === stakeEventTopic) {
+                    const parsed = this.stakingContract.interface.parseLog({
+                        topics: log.topics,
+                        data: log.data
+                    });
+                    if (parsed) {
+                        await this.handleStakeEvent({
+                            ...log,
+                            args: parsed.args,
+                            eventName: 'StakeEvent'
+                        } as any);
+                        stakeCount++;
+                    }
+                } else if (log.topics[0] === rwaStakeEventTopic) {
+                    const parsed = this.stakingContract.interface.parseLog({
+                        topics: log.topics,
+                        data: log.data
+                    });
+                    if (parsed) {
+                        await this.handleRWAStakeEvent({
+                            ...log,
+                            args: parsed.args,
+                            eventName: 'RWAStakeEvent'
+                        } as any);
+                        rwaStakeCount++;
+                    }
+                }
+                // 忽略其他事件
+            } catch (error) {
+                // 只记录匹配topic但解析失败的日志
+                if (log.topics[0] === stakeEventTopic || log.topics[0] === rwaStakeEventTopic) {
+                    logger.error(`Failed to parse log: ${error}`);
+                }
+            }
         }
         
-        for (const event of rwaStakeEvents) {
-            await this.handleRWAStakeEvent(event as ethers.EventLog);
-        }
+        logger.info(`Processed ${stakeCount} StakeEvent(s) and ${rwaStakeCount} RWAStakeEvent(s)`);
 
         const withdrawalEvents = await this.stakingContract.queryFilter(
             this.stakingContract.filters.WithdrawalRequested(),
@@ -259,6 +303,44 @@ export class EventMonitor {
             
             logger.info(`✅ StakeEvent processed: stakeId=${stakeId}, lockPeriod=${lockPeriod}`);
             
+            // 记录余额快照
+            await this.snapshotService.recordStakeSnapshot(
+                user.toLowerCase(),
+                'USDT',
+                amount.toString(),
+                Number(lockPeriod?.toString() || '0'),
+                Number(timestamp.toString()),
+                txHash
+            );
+            
+            // 记录USDT推荐奖励
+            // 检查是否有RWA质押记录，如果有说明是RWA质押触发的StakeEvent，跳过
+            if (referrer !== ethers.ZeroAddress && Number(lockPeriod?.toString() || '0') >= 30) {
+                try {
+                    const [rwaRecord] = await query(
+                        'SELECT id FROM stake_events WHERE stake_id = ? AND event_type = ?',
+                        [stakeId.toString(), 'RWA']
+                    ) as any[];
+                    
+                    if (!rwaRecord) {
+                        // 没有RWA记录，说明是纯USDT质押
+                        await this.referralRewardService.recordReferralReward(
+                            referrer.toLowerCase(),
+                            user.toLowerCase(),
+                            Number(stakeId.toString()),
+                            amount.toString(),
+                            'USDT',
+                            new Date(Number(timestamp.toString()) * 1000),
+                            Number(lockPeriod?.toString() || '0')
+                        );
+                    }
+                } catch (error) {
+                    logger.error(`Failed to record USDT referral reward: ${error}`);
+                }
+            }
+            
+            await this.updateTeamDeposited(user.toLowerCase(), amount.toString());
+            
             await this.updateTeamDeposited(user.toLowerCase(), amount.toString());
             
             this.triggerRewardCalculation(user.toLowerCase(), amount.toString(), stakeId.toString(), 'USDT', Number(lockPeriod?.toString() ?? 0) > 0)
@@ -351,6 +433,33 @@ export class EventMonitor {
             
             logger.info(`✅ RWAStakeEvent processed: stakeId=${stakeId}, lockPeriod=${lockPeriod}`);
             
+            // 记录余额快照
+            await this.snapshotService.recordStakeSnapshot(
+                user.toLowerCase(),
+                'RWA',
+                amount.toString(),
+                Number(lockPeriod?.toString() || '0'),
+                Number(timestamp.toString()),
+                txHash
+            );
+            
+            // 记录推荐奖励（RWA质押使用原始RWA金额）
+            if (referrer !== ethers.ZeroAddress && Number(lockPeriod?.toString() || '0') >= 30) {
+                try {
+                    await this.referralRewardService.recordReferralReward(
+                        referrer.toLowerCase(),
+                        user.toLowerCase(),
+                        Number(stakeId.toString()),
+                        amount.toString(),
+                        'RWA',
+                        new Date(Number(timestamp.toString()) * 1000),
+                        Number(lockPeriod?.toString() || '0')
+                    );
+                } catch (error) {
+                    logger.error(`Failed to record referral reward: ${error}`);
+                }
+            }
+            
             const rwaToUsdtForRetained = (BigInt(amount.toString()) * 85n / 100n).toString();
             await this.updateTeamDeposited(user.toLowerCase(), rwaToUsdtForRetained);
             
@@ -390,6 +499,22 @@ export class EventMonitor {
         logger.info(`Processing ${eventName} for user=${user}, tx=${txHash}`);
         const amountUsdtEquiv = this.getWithdrawalAmountUsdtEquiv(eventName, args);
         await this.recordTeamWithdrawnAndSync(user, txHash, amountUsdtEquiv, 'USDT', eventName, Number(args.timestamp || 0), event.blockNumber);
+        
+        // 记录提现快照
+        const assetType = eventName.includes('RWA') ? 'RWA' : 'USDT';
+        const amount = eventName.includes('Flexible') 
+            ? (args.grossAmount?.toString() || args.amount?.toString() || '0')
+            : (args.grossAmount?.toString() || args.amount?.toString() || '0');
+        
+        await this.snapshotService.recordWithdrawSnapshot(
+            user,
+            assetType,
+            amount,
+            !eventName.includes('Flexible'),
+            Number(args.timestamp || 0),
+            txHash
+        );
+        
         await this.syncUserState(user);
         await this.syncRWAStakeState(user);
     }

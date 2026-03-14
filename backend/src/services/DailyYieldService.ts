@@ -508,23 +508,31 @@ export class DailyYieldService {
             return;
         }
         
+        logger.debug(`Contract object exists: ${!!this.stakingContract}`);
+        logger.debug(`Contract address: ${this.stakingContract.target}`);
+        
         try {
             // Generate unique stakeId (use timestamp + random)
             const stakeId = BigInt(Date.now()) * 10000n + BigInt(Math.floor(Math.random() * 10000));
             
-            // Convert to wei (18 decimals)
-            const rwaAmountWei = ethers.parseEther(rwaAmount);
+            // rwaAmount is already in wei (BigNumber.toString()), no need to parseEther again
+            const rwaAmountWei = BigInt(rwaAmount);
             
             // Call contract
             // For RWA staking, pass usdtAmount = 0 to indicate RWA staking reward
             // For USDT staking, pass usdtAmount = 0 (static rewards are RWA only)
             logger.info(`Updating contract rewards for ${userAddress} (${isRWAStaking ? 'RWA' : 'USDT'} staking): ${rwaAmount} RWA`);
-            const tx = await this.stakingContract.updateUserRewards(
-                userAddress,
-                rwaAmountWei,
-                0, // usdtAmount = 0 indicates RWA staking reward or static RWA reward
-                stakeId
-            );
+            logger.info(`Calling updateUserRewards with params: user=${userAddress}, rwaAmount=${rwaAmountWei.toString()}, usdtAmount=0, stakeId=${stakeId}`);
+            
+            const tx = await Promise.race([
+                this.stakingContract.updateUserRewards(
+                    userAddress,
+                    rwaAmountWei,
+                    0, // usdtAmount = 0 indicates RWA staking reward or static RWA reward
+                    stakeId
+                ),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Transaction timeout after 30s')), 30000))
+            ]);
             
             logger.info(`Transaction sent: ${tx.hash}`);
             
@@ -539,7 +547,15 @@ export class DailyYieldService {
             }
             
         } catch (error: any) {
-            logger.error(`Failed to update contract rewards for ${userAddress}:`, error.message);
+            logger.error(`Failed to update contract rewards for ${userAddress}:`);
+            logger.error('Error type:', error?.constructor?.name);
+            logger.error('Error message:', error?.message);
+            logger.error('Error code:', error?.code);
+            logger.error('Error reason:', error?.reason);
+            logger.error('Error data:', error?.data);
+            if (error?.transaction) {
+                logger.error('Transaction:', error.transaction);
+            }
             // Don't throw - database update already succeeded
         }
     }

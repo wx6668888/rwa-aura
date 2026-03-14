@@ -54,10 +54,77 @@ export function useWithdrawData() {
 
     try {
       const RWA_PRICE = 0.85
+      const addresses = CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]
       
       const usdtRwaPending = parseFloat(userRewards?.rwaPending || '0')
       const rwaRwaPending = parseFloat(rwaStakeInfo?.rwaPending || '0')
       const yieldAmount = (usdtRwaPending + rwaRwaPending).toFixed(2)
+      
+      // Read referral rewards from ReferralRewardPool
+      let referralAmount = '0'
+      if (addresses?.ReferralRewardPool) {
+        try {
+          const balance = await publicClient.readContract({
+            address: addresses.ReferralRewardPool as `0x${string}`,
+            abi: [{
+              name: 'withdrawableBalance',
+              type: 'function',
+              stateMutability: 'view',
+              inputs: [{ name: 'user', type: 'address' }],
+              outputs: [{ name: '', type: 'uint256' }]
+            }],
+            functionName: 'withdrawableBalance',
+            args: [address],
+          }) as bigint
+          referralAmount = (Number(balance) / 1e6).toFixed(2)
+        } catch (err) {
+          console.warn('[useWithdrawData] Failed to read referral balance:', err)
+        }
+      }
+      
+      // Read stRWA balance
+      let strwaAmount = '0'
+      if (addresses?.stRWA) {
+        try {
+          const balance = await publicClient.readContract({
+            address: addresses.stRWA as `0x${string}`,
+            abi: [{
+              name: 'balanceOf',
+              type: 'function',
+              stateMutability: 'view',
+              inputs: [{ name: 'account', type: 'address' }],
+              outputs: [{ name: '', type: 'uint256' }]
+            }],
+            functionName: 'balanceOf',
+            args: [address],
+          }) as bigint
+          strwaAmount = (Number(balance) / 1e18).toFixed(2)
+        } catch (err) {
+          console.warn('[useWithdrawData] Failed to read stRWA balance:', err)
+        }
+      }
+      
+      // Read dividend from StakingContract
+      let dividendAmount = '0'
+      if (addresses?.stakingContract) {
+        try {
+          const dividend = await publicClient.readContract({
+            address: addresses.stakingContract as `0x${string}`,
+            abi: [{
+              name: 'dividends',
+              type: 'function',
+              stateMutability: 'view',
+              inputs: [{ name: 'user', type: 'address' }],
+              outputs: [{ name: '', type: 'uint256' }]
+            }],
+            functionName: 'dividends',
+            args: [address],
+          }) as bigint
+          dividendAmount = (Number(dividend) / 1e6).toFixed(2)
+        } catch (err) {
+          console.warn('[useWithdrawData] Failed to read dividend:', err)
+        }
+      }
       
       // Calculate flexible remaining from API data
       const apiTotalUSDT = parseFloat(apiData.usdtStaked) / 1e18
@@ -78,7 +145,6 @@ export function useWithdrawData() {
       const usdtPrincipal = Math.max(0, apiTotalUSDT - totalLockedUSDT)
       const rwaPrincipal = Math.max(0, apiTotalRWA - totalLockedRWA)
       
-      const addresses = CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]
       let lockedStakes: any[] = []
       
       if (addresses?.stakingContract) {
@@ -127,7 +193,7 @@ export function useWithdrawData() {
             const lockPeriod = Math.floor((Number(rwaLockEndTimes[i]) - Number(rwaLockStartTimes[i])) / 86400)
             lockedStakes.push({
               stakeId: `rwa_${id}`,
-              amount: Number(rwaAmounts[i]) / 1e18,
+              amount: (Number(rwaAmounts[i]) / 1e18) * 2, // 合约存储的是50%，显示用户质押的100%
               lockPeriod: lockPeriod.toString(),
               lockEndTime: Number(rwaLockEndTimes[i]),
               isRWAStake: true,
@@ -139,7 +205,7 @@ export function useWithdrawData() {
             const lockPeriod = Math.floor((Number(usdtLockEndTimes[i]) - Number(usdtLockStartTimes[i])) / 86400)
             lockedStakes.push({
               stakeId: `usdt_${id}`,
-              amount: Number(usdtAmounts[i]) / 1e18,
+              amount: (Number(usdtAmounts[i]) / 1e18) * 2, // 合约存储的是50%，显示用户质押的100%
               lockPeriod: lockPeriod.toString(),
               lockEndTime: Number(usdtLockEndTimes[i]),
               isRWAStake: false,
@@ -153,16 +219,19 @@ export function useWithdrawData() {
       
       const yieldUSD = parseFloat(yieldAmount) * RWA_PRICE
       const rwaPrincipalUSD = rwaPrincipal * RWA_PRICE
-      const totalUSD = (yieldUSD + rwaPrincipalUSD + usdtPrincipal).toFixed(2)
+      const referralUSD = parseFloat(referralAmount)
+      const dividendUSD = parseFloat(dividendAmount)
+      const strwaUSD = parseFloat(strwaAmount) * RWA_PRICE
+      const totalUSD = (yieldUSD + rwaPrincipalUSD + usdtPrincipal + referralUSD + dividendUSD + strwaUSD).toFixed(2)
       
       setData({
         yieldAmount,
         rwaPrincipal: rwaPrincipal.toFixed(2),
         usdtPrincipal: usdtPrincipal.toFixed(2),
-        referralAmount: '0',
-        dividendAmount: '0',
+        referralAmount,
+        dividendAmount,
         dailyWithdrawCount: 0,
-        strwaAmount: '0',
+        strwaAmount,
         totalUSD,
         loading: false,
         lockedStakes

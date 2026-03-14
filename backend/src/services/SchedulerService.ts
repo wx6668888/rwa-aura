@@ -1,136 +1,82 @@
 import * as cron from 'node-cron';
-import { DailyYieldService } from './DailyYieldService';
+import { DirectReferralRewardService } from './DirectReferralRewardService';
+import { DailySettlementService } from './DailySettlementService';
 import { PriceOracleService } from './PriceOracleService';
 import { NodeLevelService } from './NodeLevelService';
+import { LockMaturityService } from './LockMaturityService';
 import logger from '../utils/logger';
 
-/**
- * Scheduler Service
- * 
- * Manages all scheduled tasks (cron jobs)
- * 
- * TASKS:
- * 1. Daily yield calculation (every day at 00:00 UTC)
- * 2. Price oracle refresh (every 5 minutes)
- * 3. Node level sync check (every hour)
- */
-
-export interface SchedulerConfig {
-    dailyYieldCron: string; // '0 0 * * *' = every day at 00:00
-    priceRefreshCron: string; // '*/5 * * * *' = every 5 minutes
-    nodeLevelSyncCron: string; // '0 * * * *' = every hour
+interface SchedulerConfig {
+  dailyYieldCron: string;
+  lockMaturityCron: string;
+  priceRefreshCron: string;
+  nodeLevelSyncCron: string;
 }
 
 export class SchedulerService {
-    private config: SchedulerConfig;
-    private dailyYieldService: DailyYieldService;
-    private priceOracleService: PriceOracleService;
-    private nodeLevelService: NodeLevelService;
-    private tasks: cron.ScheduledTask[] = [];
-    
-    constructor(
-        config: SchedulerConfig,
-        dailyYieldService: DailyYieldService,
-        priceOracleService: PriceOracleService,
-        nodeLevelService: NodeLevelService
-    ) {
-        this.config = config;
-        this.dailyYieldService = dailyYieldService;
-        this.priceOracleService = priceOracleService;
-        this.nodeLevelService = nodeLevelService;
-    }
-    
-    /**
-     * Start all scheduled tasks
-     */
-    start(): void {
-        logger.info('Starting scheduler service...');
-        
-        // Task 1: Daily yield calculation
-        const dailyYieldTask = cron.schedule(this.config.dailyYieldCron, async () => {
-            logger.info('⏰ Running daily yield calculation...');
-            try {
-                const result = await this.dailyYieldService.calculateDailyYield();
-                logger.info(`✅ Daily yield completed: ${result.processedUsers} users, ${result.totalYield} total`);
-            } catch (error) {
-                logger.error('❌ Daily yield calculation failed:', error);
-            }
-        });
-        
-        this.tasks.push(dailyYieldTask);
-        logger.info(`✅ Daily yield task scheduled: ${this.config.dailyYieldCron}`);
-        
-        // Task 2: Price oracle refresh
-        const priceRefreshTask = cron.schedule(this.config.priceRefreshCron, async () => {
-            logger.debug('⏰ Refreshing price oracle...');
-            try {
-                const price = await this.priceOracleService.forceRefresh();
-                logger.debug(`✅ Price refreshed: ${price}`);
-            } catch (error) {
-                logger.error('❌ Price refresh failed:', error);
-            }
-        });
-        
-        this.tasks.push(priceRefreshTask);
-        logger.info(`✅ Price refresh task scheduled: ${this.config.priceRefreshCron}`);
-        
-        // Task 3: Node level sync check
-        const nodeLevelSyncTask = cron.schedule(this.config.nodeLevelSyncCron, async () => {
-            logger.info('⏰ Running node level sync check...');
-            try {
-                // TODO: Implement batch sync for all users
-                logger.info('✅ Node level sync completed');
-            } catch (error) {
-                logger.error('❌ Node level sync failed:', error);
-            }
-        });
-        
-        this.tasks.push(nodeLevelSyncTask);
-        logger.info(`✅ Node level sync task scheduled: ${this.config.nodeLevelSyncCron}`);
-        
-        logger.info(`Scheduler service started with ${this.tasks.length} tasks`);
-    }
-    
-    /**
-     * Stop all scheduled tasks
-     */
-    stop(): void {
-        logger.info('Stopping scheduler service...');
-        
-        this.tasks.forEach(task => task.stop());
-        this.tasks = [];
-        
-        logger.info('Scheduler service stopped');
-    }
-    
-    /**
-     * Get task status
-     */
-    getStatus(): {
-        isRunning: boolean;
-        taskCount: number;
-    } {
-        return {
-            isRunning: this.tasks.length > 0,
-            taskCount: this.tasks.length
-        };
-    }
-    
-    /**
-     * Manually trigger daily yield calculation
-     */
-    async triggerDailyYield(): Promise<void> {
-        logger.info('Manually triggering daily yield calculation...');
-        await this.dailyYieldService.calculateDailyYield();
-    }
-    
-    /**
-     * Manually trigger price refresh
-     */
-    async triggerPriceRefresh(): Promise<void> {
-        logger.info('Manually triggering price refresh...');
-        await this.priceOracleService.forceRefresh();
-    }
-}
+  private config: SchedulerConfig;
+  private dailySettlementService: DailySettlementService;
+  private priceOracleService: PriceOracleService;
+  private nodeLevelService: NodeLevelService;
+  private lockMaturityService: LockMaturityService;
+  private referralService?: DirectReferralRewardService;
+  private jobs: cron.ScheduledTask[] = [];
 
-export default SchedulerService;
+  constructor(
+    config: SchedulerConfig,
+    dailySettlementService: DailySettlementService,
+    priceOracleService: PriceOracleService,
+    nodeLevelService: NodeLevelService,
+    lockMaturityService: LockMaturityService,
+    referralService?: DirectReferralRewardService
+  ) {
+    this.config = config;
+    this.dailySettlementService = dailySettlementService;
+    this.priceOracleService = priceOracleService;
+    this.nodeLevelService = nodeLevelService;
+    this.lockMaturityService = lockMaturityService;
+    this.referralService = referralService;
+  }
+
+  start() {
+    // 每天早上8点发放收益
+    const dailyJob = cron.schedule(this.config.dailyYieldCron, async () => {
+      logger.info('开始每日收益结算...');
+      try {
+        await this.dailySettlementService.runDailySettlement();
+        logger.info('每日收益结算完成');
+      } catch (error) {
+        logger.error('每日收益结算失败:', error);
+      }
+    });
+    this.jobs.push(dailyJob);
+
+    // 每周一凌晨2点发放推荐奖励
+    if (this.referralService) {
+      const referralJob = cron.schedule('0 2 * * 1', async () => {
+        logger.info('开始每周推荐奖励结算...');
+        try {
+          await this.referralService!.weeklySettlement();
+          logger.info('每周推荐奖励结算完成');
+        } catch (error) {
+          logger.error('每周推荐奖励结算失败:', error);
+        }
+      });
+      this.jobs.push(referralJob);
+    }
+
+    logger.info('定时任务已启动');
+  }
+
+  stop() {
+    this.jobs.forEach(job => job.stop());
+    logger.info('定时任务已停止');
+  }
+
+  getStatus() {
+    return {
+      running: this.jobs.length > 0,
+      jobCount: this.jobs.length
+    };
+  }
+}

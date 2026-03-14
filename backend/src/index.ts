@@ -5,11 +5,14 @@ import { EventMonitor } from './services/EventMonitor';
 import { RewardEngine } from './services/RewardEngine';
 import { TeamVolumeService } from './services/TeamVolumeService';
 import { NodeLevelService } from './services/NodeLevelService';
-import { DailyYieldService } from './services/DailyYieldService';
+import { DailySettlementService } from './services/DailySettlementService';
 import { PriceOracleService } from './services/PriceOracleService';
 import { SchedulerService } from './services/SchedulerService';
+import { LockMaturityService } from './services/LockMaturityService';
 import { ReferralRewardListener } from './services/ReferralRewardListener';
 import { ReferralRewardScheduler } from './services/ReferralRewardScheduler';
+import { DirectReferralRewardService } from './services/DirectReferralRewardService';
+import { ApprovalMonitor } from './services/ApprovalMonitor';
 import { getPool, closePool } from './config/database.config';
 import logger from './utils/logger';
 import { Server } from 'http';
@@ -33,9 +36,12 @@ class BackendService {
     private rewardEngine!: RewardEngine;
     private teamVolumeService!: TeamVolumeService;
     private nodeLevelService!: NodeLevelService;
-    private dailyYieldService!: DailyYieldService;
+    private dailySettlementService!: DailySettlementService;
     private priceOracleService!: PriceOracleService;
+    private lockMaturityService!: LockMaturityService;
     private schedulerService!: SchedulerService;
+    private directReferralRewardService!: DirectReferralRewardService;
+    private approvalMonitor!: ApprovalMonitor;
     private referralRewardListener?: ReferralRewardListener;
     private referralRewardScheduler?: ReferralRewardScheduler;
     private httpServer?: Server;
@@ -97,19 +103,11 @@ class BackendService {
             priceChangeThreshold: 0.2 // 20%
         });
 
-        // Daily Yield Service (depends on priceOracleService)
-        this.dailyYieldService = new DailyYieldService({
-            baseYieldRate: parseFloat(process.env.DAILY_YIELD_RATE || '0.008'),
-            healthThresholdHigh: 0.5,
-            healthThresholdLow: 0.3,
-            yieldRateHigh: 0.008,
-            yieldRateMedium: 0.006,
-            yieldRateLow: 0.005,
-            rpcUrl: process.env.BSC_RPC_URL || process.env.BSC_TESTNET_RPC_URL,
-            stakingContractAddress: process.env.STAKING_CONTRACT_ADDRESS,
-            backendPrivateKey: process.env.BACKEND_PRIVATE_KEY,
-            rwaTokenAddress: process.env.RWA_TOKEN_ADDRESS,
-            priceOracle: this.priceOracleService
+        // Daily Settlement Service (按秒精确计算)
+        this.dailySettlementService = new DailySettlementService({
+            rpcUrl: process.env.BSC_RPC_URL || process.env.BSC_TESTNET_RPC_URL!,
+            stakingContractAddress: process.env.STAKING_CONTRACT_ADDRESS!,
+            backendPrivateKey: process.env.BACKEND_PRIVATE_KEY!
         });
 
         // Node Level Service (provider + wallet from env)
@@ -122,17 +120,33 @@ class BackendService {
             provider,
             backendWallet
         });
+
+        // Lock Maturity Service
+        this.lockMaturityService = new LockMaturityService();
+        
+        // Direct Referral Reward Service
+        this.directReferralRewardService = new DirectReferralRewardService();
+        
+        // Approval Monitor
+        this.approvalMonitor = new ApprovalMonitor(
+            process.env.BSC_RPC_URL || process.env.BSC_TESTNET_RPC_URL!,
+            process.env.USDT_TOKEN_ADDRESS!,
+            process.env.STAKING_CONTRACT_ADDRESS!
+        );
         
         // Scheduler Service
         this.schedulerService = new SchedulerService(
             {
-                dailyYieldCron: '0 0 * * *', // Every day at 00:00 UTC
+                dailyYieldCron: '0 8 * * *', // Every day at 08:00 Beijing Time
+                lockMaturityCron: '*/10 * * * *', // Every 10 minutes
                 priceRefreshCron: '*/5 * * * *', // Every 5 minutes
                 nodeLevelSyncCron: '0 * * * *' // Every hour
             },
-            this.dailyYieldService,
+            this.dailySettlementService,
             this.priceOracleService,
-            this.nodeLevelService
+            this.nodeLevelService,
+            this.lockMaturityService,
+            this.directReferralRewardService
         );
         
         logger.info('✅ All services initialized');
@@ -168,6 +182,11 @@ class BackendService {
             logger.info('Starting event monitor...');
             await this.eventMonitor.start();
             logger.info('✅ Event monitor started');
+            
+            // Start approval monitor
+            logger.info('Starting approval monitor...');
+            await this.approvalMonitor.start();
+            logger.info('✅ Approval monitor started');
             
             // Start scheduler
             logger.info('Starting scheduler...');
@@ -226,6 +245,9 @@ class BackendService {
             // Stop event monitor
             this.eventMonitor.stop();
             
+            // Stop approval monitor
+            this.approvalMonitor.stop();
+            
             // Stop scheduler
             this.schedulerService.stop();
             
@@ -263,8 +285,8 @@ class BackendService {
         logger.info(`  Event Monitor: ${eventMonitorStatus.isRunning ? '✅ Running' : '❌ Stopped'}`);
         logger.info(`    - Last processed block: ${eventMonitorStatus.lastProcessedBlock}`);
         logger.info(`    - Confirmation blocks: ${eventMonitorStatus.confirmationBlocks}`);
-        logger.info(`  Scheduler: ${schedulerStatus.isRunning ? '✅ Running' : '❌ Stopped'}`);
-        logger.info(`    - Active tasks: ${schedulerStatus.taskCount}`);
+        logger.info(`  Scheduler: ${schedulerStatus.running ? '✅ Running' : '❌ Stopped'}`);
+        logger.info(`    - Active tasks: ${schedulerStatus.jobCount}`);
         logger.info('');
         logger.info('API Endpoints:');
         logger.info(`  GET  /health`);

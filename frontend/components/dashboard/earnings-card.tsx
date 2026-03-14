@@ -7,6 +7,7 @@ import { useTranslation } from '@/lib/i18n'
 import { useStakingContract } from '@/hooks/useStakingContract'
 import { useStakesContext } from '@/contexts/StakesContext'
 import { useReferralRewards } from '@/hooks/useReferralRewards'
+import { ReferralRewardDetails } from './referral-reward-details'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { formatUnits } from 'viem'
 
@@ -446,8 +447,8 @@ export function EarningsCard() {
   
   const rwaUsdtValue = (totalRwaEarning * 0.85).toFixed(2)
 
-  // USDT 推荐奖励（从后端获取）
-  const usdtRewardsNum = referralRewards.matured
+  // USDT 推荐奖励（显示总额：MATURED + PENDING）
+  const usdtRewardsNum = referralRewards.matured + referralRewards.pending
 
   return (
     <div
@@ -649,6 +650,9 @@ export function EarningsCard() {
           >
             {!isConnected ? t('common.connectWalletFirst') : t('earnings.claimUsdt')}
           </button>
+          
+          {/* 推荐奖励详细列表 */}
+          <ReferralRewardDetails />
         </div>
       </div>
     </div>

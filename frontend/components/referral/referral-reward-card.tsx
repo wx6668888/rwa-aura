@@ -6,6 +6,7 @@ import { useAccount } from 'wagmi'
 import { useReferralRewards } from '@/hooks/useReferralRewards'
 import { Gift, Users, TrendingUp } from 'lucide-react'
 import { useState } from 'react'
+import { ReferralRewardCountdown } from './referral-reward-countdown'
 
 export function ReferralRewardCard() {
   const { locale } = useLocale()
@@ -59,6 +60,9 @@ export function ReferralRewardCard() {
           </span>
         </div>
       </div>
+
+      {/* 推荐奖励倒计时 */}
+      <ReferralRewardCountdown />
 
       {/* 统计信息 */}
       <div className="grid grid-cols-2 gap-4 mb-6">

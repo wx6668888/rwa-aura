@@ -42,15 +42,24 @@ export class DirectReferralRewardService {
         lockPeriod: number
     ): Promise<void> {
         try {
-            // 检查锁仓期：只有≥30天的锁仓订单才触发推荐奖励
             if (lockPeriod < 30) {
-                logger.info(`Skip referral reward: lockPeriod=${lockPeriod} < 30 days`);
                 return;
             }
             
-            // 1. 获取推荐人等级
+            // 去重检查
+            const [existing] = await query(
+                'SELECT id FROM direct_referral_rewards WHERE stake_id = ?',
+                [stakeId]
+            ) as any[];
+            
+            if (existing) {
+                logger.warn(`Referral reward already exists: stakeId=${stakeId}`);
+                return;
+            }
+            
+            // 获取推荐人等级
             const [referrerInfo] = await query(
-                'SELECT node_level FROM users WHERE user_address = ?',
+                'SELECT node_level FROM users WHERE LOWER(address) = LOWER(?)',
                 [referrerAddress]
             ) as any[];
             
@@ -62,38 +71,42 @@ export class DirectReferralRewardService {
             const referrerLevel = referrerInfo.node_level || 1;
             const rewardRate = LEVEL_REWARD_RATES[referrerLevel];
             
-            // 2. 计算奖励金额
-            const stakeAmountBN = new BigNumber(stakeAmount);
-            const rewardAmount = stakeAmountBN
-                .multipliedBy(rewardRate)
-                .dividedBy(10000)
-                .integerValue(BigNumber.ROUND_DOWN);
+            // 计算奖励
+            let stakeAmountDecimal = new BigNumber(stakeAmount).dividedBy(1e18);
             
-            // 3. 插入记录（立即可发放，不需要等待30天）
+            // RWA质押：合约发出的amount是USDT等值，需要还原为原始RWA金额
+            if (stakeType === 'RWA') {
+                stakeAmountDecimal = stakeAmountDecimal.dividedBy(0.85);
+            }
+            
+            let rewardAmount = stakeAmountDecimal.multipliedBy(rewardRate).dividedBy(10000);
+            
+            // RWA奖励转USDT
+            if (stakeType === 'RWA') {
+                rewardAmount = rewardAmount.multipliedBy(0.85);
+            }
+            
+            // 插入记录
             await query(
                 `INSERT INTO direct_referral_rewards 
                 (referrer_address, referee_address, stake_id, stake_amount, stake_type, 
                  referrer_level, reward_rate, reward_amount, stake_time, maturity_time, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'MATURED')`,
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
                 [
-                    referrerAddress,
-                    refereeAddress,
+                    referrerAddress.toLowerCase(),
+                    refereeAddress.toLowerCase(),
                     stakeId,
-                    stakeAmount,
+                    stakeAmountDecimal.toString(),
                     stakeType,
                     referrerLevel,
                     rewardRate,
-                    rewardAmount.toString(),
+                    rewardAmount.decimalPlaces(18).toString(),
                     stakeTime,
-                    stakeTime  // maturity_time = stake_time（立即到期）
+                    stakeTime
                 ]
             );
             
-            logger.info(
-                `Recorded referral reward: referrer=${referrerAddress}, ` +
-                `referee=${refereeAddress}, stakeId=${stakeId}, ` +
-                `lockPeriod=${lockPeriod}days, amount=${rewardAmount.toString()}`
-            );
+            logger.info(`Recorded referral reward: stakeId=${stakeId}, type=${stakeType}, amount=${rewardAmount.toFixed(2)} USDT`);
             
         } catch (error) {
             logger.error('Failed to record referral reward:', error);
@@ -109,7 +122,7 @@ export class DirectReferralRewardService {
             const rewards = await query(
                 `SELECT referrer_address, SUM(reward_amount) as total_reward, COUNT(*) as count
                 FROM direct_referral_rewards
-                WHERE status = 'MATURED'
+                WHERE status = 'PENDING'
                 GROUP BY referrer_address`,
                 []
             ) as any[];
@@ -153,29 +166,18 @@ export class DirectReferralRewardService {
             
             logger.info(`Processing ${payouts.length} payouts in batch ${batchNumber}`);
             
-            // 4. 批量发放（这里需要调用合约或转账逻辑）
+            // 4. 批量发放到链上
+            const { ReferralRewardDistributor } = await import('./ReferralRewardDistributor');
+            const distributor = new ReferralRewardDistributor();
+            await distributor.distributeRewards();
+            
+            // 5. 计算总额并更新批次状态
             let totalRewards = new BigNumber(0);
             let totalRecords = 0;
-            
             for (const payout of payouts) {
-                // TODO: 调用合约发放USDT
-                // await this.transferUSDT(payout.referrer_address, payout.total_reward);
-                
                 totalRewards = totalRewards.plus(payout.total_reward);
                 totalRecords += payout.count;
-                
-                logger.info(
-                    `Payout: ${payout.referrer_address} = ${payout.total_reward} USDT (${payout.count} records)`
-                );
             }
-            
-            // 5. 更新奖励状态为已发放
-            await query(
-                `UPDATE direct_referral_rewards 
-                SET status = 'PAID', paid_time = NOW() 
-                WHERE status = 'MATURED'`,
-                []
-            );
             
             // 6. 更新批次状态
             await query(
