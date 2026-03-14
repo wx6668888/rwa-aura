@@ -186,10 +186,9 @@ export class NodeLevelService {
         
         // Count distinct direct referrals (each is a department)
         const result = await query<any[]>(
-            `SELECT COUNT(DISTINCT rr.user_address) as count
-             FROM referral_relations rr
-             WHERE rr.ancestor_address = ?
-               AND rr.depth = 1`,
+            `SELECT COUNT(DISTINCT user_address) as count
+             FROM referral_bindings
+             WHERE referrer = ?`,
             [userAddress.toLowerCase()]
         );
         
@@ -241,10 +240,9 @@ export class NodeLevelService {
                 
                 // Count departments (direct referrals)
                 const [departmentCount] = await connection.query(
-                    `SELECT COUNT(DISTINCT rr.user_address) as count
-                     FROM referral_relations rr
-                     WHERE rr.ancestor_address = ?
-                       AND rr.depth = 1`,
+                    `SELECT COUNT(DISTINCT user_address) as count
+                     FROM referral_bindings
+                     WHERE referrer = ?`,
                     [userAddress.toLowerCase()]
                 );
                 
