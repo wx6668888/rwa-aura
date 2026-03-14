@@ -32,7 +32,9 @@ export function PanelRwaYield({ onMobileBack, data }: Props) {
       const bjTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }))
       let next = new Date(bjTime)
       next.setHours(8, 0, 0, 0)
-      if (bjTime.getHours() >= 8) next.setDate(next.getDate() + 1)
+      if (bjTime.getHours() >= 8) {
+        next.setDate(next.getDate() + 1)
+      }
       const diff = next.getTime() - bjTime.getTime()
       if (diff > 0) {
         setCountdown({
@@ -61,12 +63,10 @@ export function PanelRwaYield({ onMobileBack, data }: Props) {
       alert('请输入有效金额')
       return
     }
-    
     setShowOverlay(true)
     setOverlayStatus('waiting')
     setError(null)
     setLoading(true)
-    
     try {
       const hash = await withdrawRWARewards(amount, false)
       setTxHash(hash)
@@ -74,7 +74,6 @@ export function PanelRwaYield({ onMobileBack, data }: Props) {
       setAmount('')
     } catch (err: any) {
       console.error('提取失败:', err)
-      
       let errorMessage = '提取失败，请重试'
       if (err.message?.includes('User rejected') || err.message?.includes('User denied')) {
         errorMessage = '您已取消交易'
@@ -83,7 +82,6 @@ export function PanelRwaYield({ onMobileBack, data }: Props) {
       } else if (err.message?.includes('execution reverted')) {
         errorMessage = '合约执行失败，请检查提取金额'
       }
-      
       setError(errorMessage)
       setOverlayStatus('error')
     } finally {
@@ -93,12 +91,8 @@ export function PanelRwaYield({ onMobileBack, data }: Props) {
 
   return (
     <div className="flex flex-col h-full bg-[#0a0a0f]/40">
-      {/* Enhanced Header */}
       <div className="flex items-center justify-between p-6 border-b border-green-500/10">
-        <button
-          onClick={onMobileBack}
-          className="lg:hidden flex items-center gap-2 text-white/50 hover:text-green-400 transition-colors"
-        >
+        <button onClick={onMobileBack} className="lg:hidden flex items-center gap-2 text-white/50 hover:text-green-400 transition-colors">
           <ArrowLeft className="w-4 h-4" />
           <span className="text-sm">返回</span>
         </button>
@@ -119,12 +113,9 @@ export function PanelRwaYield({ onMobileBack, data }: Props) {
           </span>
         </div>
       </div>
-
-      {/* Body */}
       <div className="flex-1 p-6 overflow-y-auto">
         {hasYield ? (
           <div className="max-w-2xl mx-auto space-y-6">
-            {/* 倒计时卡片 */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-500/10 via-emerald-500/5 to-transparent border border-green-500/20 p-6">
               <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-3xl" />
               <div className="relative z-10">
@@ -149,8 +140,6 @@ export function PanelRwaYield({ onMobileBack, data }: Props) {
                 <div className="mt-4 text-xs text-white/50">每日 08:00 (北京时间) 自动发放收益</div>
               </div>
             </div>
-
-            {/* 实时收益卡片 */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500/10 via-green-500/5 to-transparent border border-emerald-500/20 p-6">
               <div className="absolute top-0 left-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl" />
               <div className="relative z-10">
@@ -162,45 +151,21 @@ export function PanelRwaYield({ onMobileBack, data }: Props) {
                 <div className="text-xs text-white/50">收益每秒实时增长中...</div>
               </div>
             </div>
-
-            {/* Enhanced 提取金额输入 */}
             <div className="bg-white/[0.02] backdrop-blur-sm rounded-2xl p-6 border border-white/10">
               <div className="flex justify-between items-center mb-4">
                 <label className="text-sm font-semibold text-white/70">提取金额</label>
-                <button
-                  className="px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-xs font-semibold text-green-400 hover:bg-green-500/20 transition"
-                  onClick={() => setAmount(liveYield.toFixed(8))}
-                >
-                  MAX
-                </button>
+                <button className="px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-xs font-semibold text-green-400 hover:bg-green-500/20 transition" onClick={() => setAmount(liveYield.toFixed(8))}>MAX</button>
               </div>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-4 text-lg font-semibold text-white placeholder:text-white/20 focus:outline-none focus:border-green-500/30 transition"
-                style={{ fontFamily: 'var(--font-jetbrains-mono)' }}
-              />
+              <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-4 text-lg font-semibold text-white placeholder:text-white/20 focus:outline-none focus:border-green-500/30 transition" style={{ fontFamily: 'var(--font-jetbrains-mono)' }} />
               <div className="mt-4 flex items-start gap-2 text-xs text-white/50">
                 <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <div>
                   <div>扣除 8% 手续费</div>
-                  {amount && parseFloat(amount) > 0 && (
-                    <div className="mt-1 text-green-400 font-semibold">
-                      实际到账: {(parseFloat(amount) * 0.92).toFixed(2)} RWA
-                    </div>
-                  )}
+                  {amount && parseFloat(amount) > 0 && (<div className="mt-1 text-green-400 font-semibold">实际到账: {(parseFloat(amount) * 0.92).toFixed(6)} RWA</div>)}
                 </div>
               </div>
             </div>
-
-            {/* Enhanced 提取按钮 */}
-            <button
-              onClick={handleWithdraw}
-              disabled={!isConnected || !amount || parseFloat(amount) <= 0 || loading || !hasYield}
-              className="w-full h-14 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-500 text-black text-base font-bold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-green-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0"
-            >
+            <button onClick={handleWithdraw} disabled={!isConnected || !amount || parseFloat(amount) <= 0 || loading || !hasYield} className="w-full h-14 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-500 text-black text-base font-bold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-green-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0">
               <TrendingUp className="w-5 h-5" />
               {loading ? '处理中...' : '提取 RWA 收益'}
             </button>
@@ -214,16 +179,7 @@ export function PanelRwaYield({ onMobileBack, data }: Props) {
           </div>
         )}
       </div>
-
-      <TransactionOverlay
-        show={showOverlay}
-        status={overlayStatus}
-        txHash={txHash}
-        amount={amount}
-        withdrawType="rwa"
-        error={error}
-        onClose={() => setShowOverlay(false)}
-      />
+      <TransactionOverlay show={showOverlay} status={overlayStatus} txHash={txHash} amount={amount} withdrawType="rwa" error={error} onClose={() => setShowOverlay(false)} />
     </div>
   )
 }
