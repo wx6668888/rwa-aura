@@ -52,7 +52,7 @@ router.get('/:address', async (req, res) => {
                     amount: parseFloat(r.stake_amount).toFixed(2),
                     type: r.stake_type,
                     rewardRWA: parseFloat(r.reward_amount).toFixed(2),
-                    rewardUSDT: (parseFloat(r.reward_amount) * 0.85).toFixed(2),
+                    rewardUSDT: parseFloat(r.reward_amount).toFixed(2),
                     time: r.stake_time,
                     status: r.status,
                     blockNumber: r.block_number
