@@ -145,7 +145,7 @@ export class TeamVolumeService {
         const withdrawals = await query(
             `SELECT COALESCE(SUM(CAST(amount AS DECIMAL(65,0)) * 1000000000000), 0) AS total 
              FROM withdrawal_events 
-             WHERE user_address = ? AND asset_type = 'USDT'`,
+             WHERE user_address = ? AND event_type = 'USDT'`,
             [userAddress.toLowerCase()]
         );
         
@@ -153,7 +153,7 @@ export class TeamVolumeService {
         const rwaWithdrawals = await query(
             `SELECT COALESCE(SUM(CAST(amount AS DECIMAL(65,0)) * 85 / 100), 0) AS total 
              FROM withdrawal_events 
-             WHERE user_address = ? AND asset_type = 'RWA'`,
+             WHERE user_address = ? AND event_type = 'RWA'`,
             [userAddress.toLowerCase()]
         );
         
