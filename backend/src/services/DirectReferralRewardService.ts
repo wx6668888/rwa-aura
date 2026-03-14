@@ -74,17 +74,10 @@ export class DirectReferralRewardService {
             // 计算奖励
             let stakeAmountDecimal = new BigNumber(stakeAmount).dividedBy(1e18);
             
-            // RWA质押：合约发出的amount是USDT等值，需要还原为原始RWA金额
-            if (stakeType === 'RWA') {
-                stakeAmountDecimal = stakeAmountDecimal.dividedBy(0.85);
-            }
-            
+            // 直接按质押金额计算奖励，无需0.85转换
+            // USDT质押：100 USDT × 5% = 5 USDT
+            // RWA质押：1000 RWA × 5% = 50 RWA (以USDT形式发放)
             let rewardAmount = stakeAmountDecimal.multipliedBy(rewardRate).dividedBy(10000);
-            
-            // RWA奖励转USDT
-            if (stakeType === 'RWA') {
-                rewardAmount = rewardAmount.multipliedBy(0.85);
-            }
             
             // 插入记录
             await query(
