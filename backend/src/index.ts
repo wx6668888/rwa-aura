@@ -180,6 +180,7 @@ class BackendService {
             
             // Start event monitor
             logger.info('Starting event monitor...');
+            this.eventMonitor.setNodeLevelService(this.nodeLevelService);
             await this.eventMonitor.start();
             logger.info('✅ Event monitor started');
             

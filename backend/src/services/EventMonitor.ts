@@ -4,6 +4,7 @@ import { Stake, EventProcessingState } from '../models/types';
 import logger from '../utils/logger';
 import { BalanceSnapshotService } from './BalanceSnapshotService';
 import { DirectReferralRewardService } from './DirectReferralRewardService';
+import { NodeLevelService } from './NodeLevelService';
 
 /**
  * Event Monitor Service
@@ -32,6 +33,7 @@ export class EventMonitor {
     private lastProcessedBlock: number = 0;
     private snapshotService: BalanceSnapshotService;
     private referralRewardService: DirectReferralRewardService;
+    private nodeLevelService: NodeLevelService | null = null;
     
     // StakingContract ABI (only events we need)
     private readonly STAKING_ABI = [
@@ -61,6 +63,10 @@ export class EventMonitor {
         );
         this.snapshotService = new BalanceSnapshotService();
         this.referralRewardService = new DirectReferralRewardService();
+    }
+    
+    setNodeLevelService(service: NodeLevelService): void {
+        this.nodeLevelService = service;
     }
     
     async start(): Promise<void> {
@@ -348,6 +354,15 @@ export class EventMonitor {
                     logger.error(`Failed to trigger reward calculation for stakeId=${stakeId}:`, error);
                 });
             
+            // 检查等级升级
+            if (this.nodeLevelService) {
+                try {
+                    await this.nodeLevelService.checkAndUpgradeNodeLevel(user.toLowerCase());
+                } catch (error) {
+                    logger.error(`Failed to check node level upgrade for ${user}:`, error);
+                }
+            }
+            
         } catch (error) {
             logger.error('Failed to handle StakeEvent:', error);
             throw error;
@@ -467,6 +482,15 @@ export class EventMonitor {
                 .catch(error => {
                     logger.error(`Failed to trigger reward calculation for stakeId=${stakeId}:`, error);
                 });
+            
+            // 检查等级升级
+            if (this.nodeLevelService) {
+                try {
+                    await this.nodeLevelService.checkAndUpgradeNodeLevel(user.toLowerCase());
+                } catch (error) {
+                    logger.error(`Failed to check node level upgrade for ${user}:`, error);
+                }
+            }
             
         } catch (error) {
             logger.error('Failed to handle RWAStakeEvent:', error);
