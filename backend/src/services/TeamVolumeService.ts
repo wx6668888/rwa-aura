@@ -135,16 +135,24 @@ export class TeamVolumeService {
             `SELECT 
                 COALESCE(team_total_deposited, 0) AS team_d, 
                 COALESCE(team_total_withdrawn, 0) AS team_w,
-                COALESCE(cumulative_personal_stake, 0) AS personal_d,
-                COALESCE(total_withdrawn, 0) AS personal_w
+                COALESCE(cumulative_personal_stake, 0) AS personal_d
              FROM users WHERE address = ?`,
             [userAddress.toLowerCase()]
         );
         if (users.length === 0) return '0';
+        
+        // 计算个人提现（从withdrawal_requests表）
+        const withdrawals = await query(
+            `SELECT COALESCE(SUM(CAST(amount AS DECIMAL(78,0))), 0) AS total 
+             FROM withdrawal_requests 
+             WHERE user_address = ? AND status = 'completed'`,
+            [userAddress.toLowerCase()]
+        );
+        
         const teamD = new BigNumber((users[0] as any).team_d?.toString() ?? '0');
         const teamW = new BigNumber((users[0] as any).team_w?.toString() ?? '0');
         const personalD = new BigNumber((users[0] as any).personal_d?.toString() ?? '0');
-        const personalW = new BigNumber((users[0] as any).personal_w?.toString() ?? '0');
+        const personalW = new BigNumber((withdrawals[0] as any).total?.toString() ?? '0');
         
         const totalRetained = teamD.plus(personalD).minus(teamW).minus(personalW);
         return totalRetained.isLessThan(0) ? '0' : totalRetained.toFixed(0);
