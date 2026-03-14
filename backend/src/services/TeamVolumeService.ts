@@ -128,16 +128,26 @@ export class TeamVolumeService {
 
     /**
      * Get team retained (deposited - withdrawn) in USDT equiv, 18-dec string
+     * 包含自己的充值和提现
      */
     async getTeamRetained(userAddress: string): Promise<string> {
         const users = await query<User[]>(
-            'SELECT COALESCE(team_total_deposited, 0) AS d, COALESCE(team_total_withdrawn, 0) AS w FROM users WHERE address = ?',
+            `SELECT 
+                COALESCE(team_total_deposited, 0) AS team_d, 
+                COALESCE(team_total_withdrawn, 0) AS team_w,
+                COALESCE(cumulative_personal_stake, 0) AS personal_d,
+                COALESCE(total_withdrawn, 0) AS personal_w
+             FROM users WHERE address = ?`,
             [userAddress.toLowerCase()]
         );
         if (users.length === 0) return '0';
-        const d = new BigNumber((users[0] as any).d?.toString() ?? '0');
-        const w = new BigNumber((users[0] as any).w?.toString() ?? '0');
-        return d.minus(w).isLessThan(0) ? '0' : d.minus(w).toFixed(0);
+        const teamD = new BigNumber((users[0] as any).team_d?.toString() ?? '0');
+        const teamW = new BigNumber((users[0] as any).team_w?.toString() ?? '0');
+        const personalD = new BigNumber((users[0] as any).personal_d?.toString() ?? '0');
+        const personalW = new BigNumber((users[0] as any).personal_w?.toString() ?? '0');
+        
+        const totalRetained = teamD.plus(personalD).minus(teamW).minus(personalW);
+        return totalRetained.isLessThan(0) ? '0' : totalRetained.toFixed(0);
     }
 
     /**
