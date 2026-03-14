@@ -141,26 +141,26 @@ export class TeamVolumeService {
         );
         if (users.length === 0) return '0';
         
-        // 计算个人提现（从withdrawal_events表，USDT转18位精度）
-        const withdrawals = await query(
-            `SELECT COALESCE(SUM(CAST(amount AS DECIMAL(65,0)) * 1000000000000), 0) AS total 
+        // 计算个人USDT提现（已经是18位精度）
+        const usdtWithdrawals = await query(
+            `SELECT COALESCE(SUM(CAST(amount AS DECIMAL(65,0))), 0) AS total 
              FROM withdrawal_events 
-             WHERE user_address = ? AND event_type = 'USDT'`,
+             WHERE user_address = ? AND event_type LIKE '%USDT%'`,
             [userAddress.toLowerCase()]
         );
         
-        // RWA提现转USDT等值
+        // 计算个人RWA提现转USDT等值（已经是18位精度，×0.85）
         const rwaWithdrawals = await query(
             `SELECT COALESCE(SUM(CAST(amount AS DECIMAL(65,0)) * 85 / 100), 0) AS total 
              FROM withdrawal_events 
-             WHERE user_address = ? AND event_type = 'RWA'`,
+             WHERE user_address = ? AND event_type LIKE '%RWA%'`,
             [userAddress.toLowerCase()]
         );
         
         const teamD = new BigNumber((users[0] as any).team_d?.toString() ?? '0');
         const teamW = new BigNumber((users[0] as any).team_w?.toString() ?? '0');
         const personalD = new BigNumber((users[0] as any).personal_d?.toString() ?? '0');
-        const personalW = new BigNumber((withdrawals[0] as any).total?.toString() ?? '0')
+        const personalW = new BigNumber((usdtWithdrawals[0] as any).total?.toString() ?? '0')
             .plus(new BigNumber((rwaWithdrawals[0] as any).total?.toString() ?? '0'));
         
         const totalRetained = teamD.plus(personalD).minus(teamW).minus(personalW);
