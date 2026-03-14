@@ -188,7 +188,7 @@ export class NodeLevelService {
         const result = await query<any[]>(
             `SELECT COUNT(DISTINCT user_address) as count
              FROM referral_bindings
-             WHERE referrer = ?`,
+             WHERE referrer_address = ?`,
             [userAddress.toLowerCase()]
         );
         
@@ -242,7 +242,7 @@ export class NodeLevelService {
                 const [departmentCount] = await connection.query(
                     `SELECT COUNT(DISTINCT user_address) as count
                      FROM referral_bindings
-                     WHERE referrer = ?`,
+                     WHERE referrer_address = ?`,
                     [userAddress.toLowerCase()]
                 );
                 
