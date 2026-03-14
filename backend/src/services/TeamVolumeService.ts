@@ -141,18 +141,27 @@ export class TeamVolumeService {
         );
         if (users.length === 0) return '0';
         
-        // 计算个人提现（从withdrawal_requests表）
+        // 计算个人提现（从withdrawal_events表，USDT转18位精度）
         const withdrawals = await query(
-            `SELECT COALESCE(SUM(CAST(amount AS DECIMAL(78,0))), 0) AS total 
-             FROM withdrawal_requests 
-             WHERE user_address = ? AND status = 'completed'`,
+            `SELECT COALESCE(SUM(CAST(amount AS DECIMAL(65,0)) * 1000000000000), 0) AS total 
+             FROM withdrawal_events 
+             WHERE user_address = ? AND asset_type = 'USDT'`,
+            [userAddress.toLowerCase()]
+        );
+        
+        // RWA提现转USDT等值
+        const rwaWithdrawals = await query(
+            `SELECT COALESCE(SUM(CAST(amount AS DECIMAL(65,0)) * 85 / 100), 0) AS total 
+             FROM withdrawal_events 
+             WHERE user_address = ? AND asset_type = 'RWA'`,
             [userAddress.toLowerCase()]
         );
         
         const teamD = new BigNumber((users[0] as any).team_d?.toString() ?? '0');
         const teamW = new BigNumber((users[0] as any).team_w?.toString() ?? '0');
         const personalD = new BigNumber((users[0] as any).personal_d?.toString() ?? '0');
-        const personalW = new BigNumber((withdrawals[0] as any).total?.toString() ?? '0');
+        const personalW = new BigNumber((withdrawals[0] as any).total?.toString() ?? '0')
+            .plus(new BigNumber((rwaWithdrawals[0] as any).total?.toString() ?? '0'));
         
         const totalRetained = teamD.plus(personalD).minus(teamW).minus(personalW);
         return totalRetained.isLessThan(0) ? '0' : totalRetained.toFixed(0);
