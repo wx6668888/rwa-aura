@@ -58,9 +58,7 @@ export function useWithdrawData() {
       
       const usdtRwaPending = parseFloat(userRewards?.rwaPending || '0')
       const rwaRwaPending = parseFloat(rwaStakeInfo?.rwaPending || '0')
-      // 开发环境模拟数据
-      const mockYield = address?.toLowerCase() === '0xa941f4806e0e3ea7577aec6c015d6e9d91584638' ? 5 : 0
-      const yieldAmount = (usdtRwaPending + rwaRwaPending + mockYield).toFixed(2)
+      const yieldAmount = (usdtRwaPending + rwaRwaPending).toFixed(2)
       
       // Read referral rewards from ReferralRewardPool
       let referralAmount = '0'
