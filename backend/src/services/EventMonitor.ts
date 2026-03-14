@@ -302,6 +302,16 @@ export class EventMonitor {
                     ]
                 );
                 
+                // 更新cumulative_personal_stake（USDT转18位精度）
+                const usdtAmount18 = BigInt(amount.toString()) * BigInt(1e12);
+                await connection.query(
+                    `INSERT INTO users (address, cumulative_personal_stake, node_level) 
+                     VALUES (?, ?, 1)
+                     ON DUPLICATE KEY UPDATE 
+                     cumulative_personal_stake = cumulative_personal_stake + ?`,
+                    [user.toLowerCase(), usdtAmount18.toString(), usdtAmount18.toString()]
+                );
+                
                 if (referrer !== ethers.ZeroAddress) {
                     await this.bindReferralRelationship(connection, user.toLowerCase(), referrer.toLowerCase());
                 }
@@ -403,6 +413,17 @@ export class EventMonitor {
                 );
 
                 const contractAmount = BigInt(amount.toString()) / 2n;
+                
+                // 更新cumulative_personal_stake（RWA转USDT等值，18位精度）
+                const rwaToUsdt18 = (BigInt(amount.toString()) * 85n) / 100n;
+                await connection.query(
+                    `INSERT INTO users (address, cumulative_personal_stake, node_level) 
+                     VALUES (?, ?, 1)
+                     ON DUPLICATE KEY UPDATE 
+                     cumulative_personal_stake = cumulative_personal_stake + ?`,
+                    [user.toLowerCase(), rwaToUsdt18.toString(), rwaToUsdt18.toString()]
+                );
+                
                 await connection.query(
                     `INSERT INTO rwa_stakes (
                         user_address, total_staked_rwa, referrer, 
