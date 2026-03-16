@@ -175,18 +175,25 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
       const isUSDTRWASwap = (fromToken === 'USDT' && toToken === 'RWA') || (fromToken === 'RWA' && toToken === 'USDT');
       
       let hash;
-      if (isUSDTRWASwap) {
-        if (fromToken === 'USDT') {
-          hash = await swapUSDTToRWA(fromAmount);
+      try {
+        if (isUSDTRWASwap) {
+          console.log('Calling swap function...');
+          if (fromToken === 'USDT') {
+            hash = await swapUSDTToRWA(fromAmount);
+          } else {
+            hash = await swapRWAToUSDT(fromAmount);
+          }
+          console.log('Swap function returned:', hash);
         } else {
-          hash = await swapRWAToUSDT(fromAmount);
+          const slippage = 0.005;
+          const outputAmount = fromToken === 'USDT' 
+            ? (parseFloat(fromAmount) * 1.173 * (1 - slippage)).toFixed(4)
+            : (parseFloat(fromAmount) * 0.8524 * (1 - slippage)).toFixed(4);
+          hash = await executeSwap(fromAmount, outputAmount, 20);
         }
-      } else {
-        const slippage = 0.005;
-        const outputAmount = fromToken === 'USDT' 
-          ? (parseFloat(fromAmount) * 1.173 * (1 - slippage)).toFixed(4)
-          : (parseFloat(fromAmount) * 0.8524 * (1 - slippage)).toFixed(4);
-        hash = await executeSwap(fromAmount, outputAmount, 20);
+      } catch (swapError: any) {
+        console.error('Swap function error:', swapError);
+        throw swapError; // 重新抛出错误
       }
       
       console.log('Swap hash:', hash);
