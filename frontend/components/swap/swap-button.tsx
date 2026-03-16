@@ -194,6 +194,7 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
       // 确保 waiting 状态至少显示 1 秒
       await new Promise(resolve => setTimeout(resolve, 1000));
       
+      console.log('Setting pending status...');
       // 显示 pending 状态
       setTxHash(hash || null);
       setOverlayStatus('pending');
@@ -201,8 +202,10 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
       // 等待一小段时间
       await new Promise(resolve => setTimeout(resolve, 2000));
       
+      console.log('Setting success status...');
       // 显示成功状态
       setOverlayStatus('success');
+      console.log('Success status set!');
       
       // 后台刷新余额
       Promise.all([refetchUSDT(), refetchRWA()]).catch(err => {
