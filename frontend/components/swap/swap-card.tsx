@@ -35,33 +35,36 @@ export default function SwapCard() {
   const fromTokenAddress = fromToken === 'USDT' ? addresses.usdtToken : addresses.rwaToken;
   const toTokenAddress = toToken === 'USDT' ? addresses.usdtToken : addresses.rwaToken;
 
-  // 使用自动刷新的报价 Hook（失败时自动使用模拟数据）
+  // 检测是否是 USDT ↔ RWA 直接互换
+  const isUSDTRWASwap = (fromToken === 'USDT' && toToken === 'RWA') || (fromToken === 'RWA' && toToken === 'USDT');
+
+  // 使用自动刷新的报价 Hook（仅用于非 USDT ↔ RWA 交易）
   const { quote, isLoading, refresh } = useSwapQuote(
-    fromTokenAddress as Address,
-    toTokenAddress as Address,
-    fromAmount,
+    isUSDTRWASwap ? undefined : fromTokenAddress as Address,
+    isUSDTRWASwap ? undefined : toTokenAddress as Address,
+    isUSDTRWASwap ? '' : fromAmount,
     slippage,
     15000, // 15秒刷新
     fromToken === 'USDT' ? 6 : 18,  // USDT 6位，RWA 18位
     toToken === 'USDT' ? 6 : 18
   );
 
-  // 生成模拟报价数据（暂时使用；真实报价来自合约/路由，失败时由 useSwapQuote 内部自动回退）
+  // 生成报价数据
   const mockQuote = fromAmount && parseFloat(fromAmount) > 0 ? {
     outputAmount: fromToken === 'USDT' 
-      ? (parseFloat(fromAmount) / (rwaPrice || 0.85)).toFixed(4)  // USDT -> RWA
-      : (parseFloat(fromAmount) * (rwaPrice || 0.85)).toFixed(4), // RWA -> USDT
-    executionPrice: fromToken === 'USDT' ? (1 / (rwaPrice || 0.85)).toFixed(4) : (rwaPrice || 0.85).toFixed(4),
-    priceImpact: 0.08,
+      ? (parseFloat(fromAmount) / 0.85).toFixed(4)  // USDT -> RWA (固定价格 1 RWA = 0.85 USDT)
+      : (parseFloat(fromAmount) * 0.85).toFixed(4), // RWA -> USDT
+    executionPrice: fromToken === 'USDT' ? (1 / 0.85).toFixed(4) : '0.85',
+    priceImpact: 0,
     minOutputAmount: fromToken === 'USDT'
-      ? (parseFloat(fromAmount) / (rwaPrice || 0.85) * 0.995).toFixed(4)  // 减去 0.5% 滑点
-      : (parseFloat(fromAmount) * (rwaPrice || 0.85) * 0.995).toFixed(4),
+      ? (parseFloat(fromAmount) / 0.85).toFixed(4)
+      : (parseFloat(fromAmount) * 0.85).toFixed(4),
     gasEstimate: '0',
     route: [fromToken, toToken]
   } : null;
 
-  // 使用模拟报价
-  const displayQuote = quote || mockQuote;
+  // 使用报价：USDT ↔ RWA 使用固定价格，其他使用 PancakeSwap 报价
+  const displayQuote = isUSDTRWASwap ? mockQuote : (quote || mockQuote);
 
   // 自动更新输出金额
   const toAmount = displayQuote?.outputAmount || '';
