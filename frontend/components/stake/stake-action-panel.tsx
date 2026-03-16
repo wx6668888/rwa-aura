@@ -283,11 +283,6 @@ export function StakeActionPanel() {
             // 刷新质押记录列表
             await refetchStakes()
             setStatus('success')
-            
-            // Auto redirect to dashboard after 2 seconds
-            setTimeout(() => {
-              router.push('/dashboard')
-            }, 2000)
           } else {
             throw new Error('Transaction failed')
           }
@@ -304,9 +299,6 @@ export function StakeActionPanel() {
               await refetchStakeInfo()
               await refetchStakes()
               setStatus('success')
-              setTimeout(() => {
-                router.push('/dashboard')
-              }, 2000)
             } else {
               throw new Error('Transaction failed or not found')
             }
@@ -325,9 +317,6 @@ export function StakeActionPanel() {
         await refetchStakeInfo()
         await refetchStakes()
         setStatus('success')
-        setTimeout(() => {
-          router.push('/dashboard')
-        }, 2000)
       }
     } catch (error: any) {
       console.error('Stake error:', error)
