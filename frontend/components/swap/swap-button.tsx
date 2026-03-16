@@ -53,6 +53,11 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
   const [overlayStatus, setOverlayStatus] = useState<'waiting' | 'pending' | 'success' | 'error'>('waiting');
   const [txHash, setTxHash] = useState<string | null>(null);
 
+  // 监听状态变化
+  useEffect(() => {
+    console.log('Overlay state changed:', { showOverlay, overlayStatus, txHash });
+  }, [showOverlay, overlayStatus, txHash]);
+
   const amount = parseFloat(fromAmount || '0');
   const hasAmount = amount > 0;
   const priceImpact = 0.1;
