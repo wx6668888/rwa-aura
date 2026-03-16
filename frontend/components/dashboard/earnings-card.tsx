@@ -45,6 +45,29 @@ export function EarningsCard() {
       .catch(() => {})
   }, [address])
 
+  // Fetch rwaPending from v2 API (优化版本)
+  const [rwaPendingData, setRwaPendingData] = useState<any>(null)
+  useEffect(() => {
+    if (!address) return
+    const API_BASE = process.env.NEXT_PUBLIC_RELAYER_URL || 'http://localhost:3001'
+    fetch(`${API_BASE}/api/v2/earnings/${address}`)
+      .then(res => {
+        if (!res.ok) throw new Error('v2 API failed')
+        return res.json()
+      })
+      .then(json => {
+        if (json.success) {
+          console.log('[EarningsCard] 使用 v2 API 数据')
+          setRwaPendingData(json.data)
+        } else {
+          throw new Error('v2 API returned error')
+        }
+      })
+      .catch(() => {
+        console.log('[EarningsCard] v2 API 失败，使用链上数据')
+      })
+  }, [address])
+
   // 当用户质押数据变化时，自动刷新质押记录
   useEffect(() => {
     if (isConnected && address) {
@@ -71,9 +94,13 @@ export function EarningsCard() {
   // RWA 价格（用于转换）
   const rwaPrice = 0.85 // 1 RWA ≈ 0.85 USDT
 
-  // RWA 待领取（链上数据）：合并 USDT 和 RWA 质押的收益
-  const usdtRwaPending = parseFloat(userRewards?.rwaPending || '0')
-  const rwaRwaPending = parseFloat(rwaStakeInfo?.rwaPending || '0')
+  // RWA 待领取（优先使用 v2 API，fallback 到链上数据）
+  const usdtRwaPending = rwaPendingData 
+    ? parseFloat(rwaPendingData.usdtRwaPending) / 1e18
+    : parseFloat(userRewards?.rwaPending || '0')
+  const rwaRwaPending = rwaPendingData
+    ? parseFloat(rwaPendingData.rwaRwaPending) / 1e18
+    : parseFloat(rwaStakeInfo?.rwaPending || '0')
   const rwaPendingNum = usdtRwaPending + rwaRwaPending
   
   // 质押金额：合并 USDT 和 RWA 质押

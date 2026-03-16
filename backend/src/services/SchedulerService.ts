@@ -4,6 +4,7 @@ import { DailySettlementService } from './DailySettlementService';
 import { PriceOracleService } from './PriceOracleService';
 import { NodeLevelService } from './NodeLevelService';
 import { LockMaturityService } from './LockMaturityService';
+import { RwaPendingSyncService } from './RwaPendingSyncService';
 import logger from '../utils/logger';
 
 interface SchedulerConfig {
@@ -11,6 +12,7 @@ interface SchedulerConfig {
   lockMaturityCron: string;
   priceRefreshCron: string;
   nodeLevelSyncCron: string;
+  rwaPendingSyncCron?: string;
 }
 
 export class SchedulerService {
@@ -20,6 +22,7 @@ export class SchedulerService {
   private nodeLevelService: NodeLevelService;
   private lockMaturityService: LockMaturityService;
   private referralService?: DirectReferralRewardService;
+  private rwaPendingSyncService?: RwaPendingSyncService;
   private jobs: cron.ScheduledTask[] = [];
 
   constructor(
@@ -28,7 +31,8 @@ export class SchedulerService {
     priceOracleService: PriceOracleService,
     nodeLevelService: NodeLevelService,
     lockMaturityService: LockMaturityService,
-    referralService?: DirectReferralRewardService
+    referralService?: DirectReferralRewardService,
+    rwaPendingSyncService?: RwaPendingSyncService
   ) {
     this.config = config;
     this.dailySettlementService = dailySettlementService;
@@ -36,6 +40,7 @@ export class SchedulerService {
     this.nodeLevelService = nodeLevelService;
     this.lockMaturityService = lockMaturityService;
     this.referralService = referralService;
+    this.rwaPendingSyncService = rwaPendingSyncService;
   }
 
   start() {
@@ -63,6 +68,18 @@ export class SchedulerService {
         }
       });
       this.jobs.push(referralJob);
+    }
+
+    // 每分钟同步 rwaPending
+    if (this.rwaPendingSyncService && this.config.rwaPendingSyncCron) {
+      const rwaPendingJob = cron.schedule(this.config.rwaPendingSyncCron, async () => {
+        try {
+          await this.rwaPendingSyncService!.syncAllUsers();
+        } catch (error) {
+          logger.error('rwaPending 同步失败:', error);
+        }
+      });
+      this.jobs.push(rwaPendingJob);
     }
 
     logger.info('定时任务已启动');

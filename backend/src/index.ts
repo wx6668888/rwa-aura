@@ -13,6 +13,7 @@ import { ReferralRewardListener } from './services/ReferralRewardListener';
 import { ReferralRewardScheduler } from './services/ReferralRewardScheduler';
 import { DirectReferralRewardService } from './services/DirectReferralRewardService';
 import { ApprovalMonitor } from './services/ApprovalMonitor';
+import { RwaPendingSyncService } from './services/RwaPendingSyncService';
 import { getPool, closePool } from './config/database.config';
 import logger from './utils/logger';
 import { Server } from 'http';
@@ -42,6 +43,7 @@ class BackendService {
     private schedulerService!: SchedulerService;
     private directReferralRewardService!: DirectReferralRewardService;
     private approvalMonitor!: ApprovalMonitor;
+    private rwaPendingSyncService!: RwaPendingSyncService;
     private referralRewardListener?: ReferralRewardListener;
     private referralRewardScheduler?: ReferralRewardScheduler;
     private httpServer?: Server;
@@ -127,6 +129,9 @@ class BackendService {
         // Direct Referral Reward Service
         this.directReferralRewardService = new DirectReferralRewardService();
         
+        // RwaPending Sync Service
+        this.rwaPendingSyncService = new RwaPendingSyncService();
+        
         // Approval Monitor
         this.approvalMonitor = new ApprovalMonitor(
             process.env.BSC_RPC_URL || process.env.BSC_TESTNET_RPC_URL!,
@@ -140,13 +145,15 @@ class BackendService {
                 dailyYieldCron: '0 8 * * *', // Every day at 08:00 Beijing Time
                 lockMaturityCron: '*/10 * * * *', // Every 10 minutes
                 priceRefreshCron: '*/5 * * * *', // Every 5 minutes
-                nodeLevelSyncCron: '0 * * * *' // Every hour
+                nodeLevelSyncCron: '0 * * * *', // Every hour
+                rwaPendingSyncCron: '* * * * *' // Every minute
             },
             this.dailySettlementService,
             this.priceOracleService,
             this.nodeLevelService,
             this.lockMaturityService,
-            this.directReferralRewardService
+            this.directReferralRewardService,
+            this.rwaPendingSyncService
         );
         
         logger.info('✅ All services initialized');

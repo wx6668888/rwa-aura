@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import apiRoutes from './routes/api';
 import unifiedDataRoutes from './routes/unified-data';
 import portfolioV2Routes from './routes/portfolio-v2';
+import earningsV2Routes from './routes/earnings-v2';
 import homepageStatsRoutes from './routes/homepage-stats';
 import referralRewardsRoutes from './routes/referral-rewards';
 import referralRewardsDetailRoutes from './routes/referral-rewards-detail';
@@ -51,6 +52,7 @@ app.use('/api/admin', adminExtendedRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/referral-rewards-detail', referralRewardsDetailRoutes);
 app.use('/api', portfolioV2Routes); // 新增：优化版 Portfolio API
+app.use('/api', earningsV2Routes); // 新增：优化版 Earnings API
 app.use('/api', relayerRoutes);
 app.use('/api', homepageStatsRoutes);
 app.use('/api', referralRewardsRoutes);
