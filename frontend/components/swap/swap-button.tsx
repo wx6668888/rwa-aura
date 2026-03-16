@@ -9,9 +9,10 @@ import { useUSDT } from '@/hooks/useUSDT';
 import { useRWAToken } from '@/hooks/useRWAToken';
 import { useSwap } from '@/hooks/useSwap';
 import { useStRWA } from '@/hooks/useStRWA';
+import { useUSDTRWASwap } from '@/hooks/useUSDTRWASwap';
 import { CONTRACT_ADDRESSES } from '@/lib/contracts/addresses';
 import { type Address } from 'viem';
-import { parseUnits } from 'viem';
+import { parseUnits, formatUnits } from 'viem';
 
 interface SwapButtonProps {
   fromToken: string;
@@ -25,6 +26,9 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
   const { address, isConnected, chainId } = useAccount();
   const { approve: approveUSDT, isApproved: isUSDTApproved } = useUSDT();
   const { approve: approveRWA, isApproved: isRWAApproved } = useRWAToken();
+  
+  // 新增：USDT ↔ RWA 直接互换
+  const { swapUSDTToRWA, swapRWAToUSDT } = useUSDTRWASwap();
   
   const addresses = chainId ? CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES] : undefined;
   const fromTokenAddress = fromToken === 'USDT' ? addresses?.usdtToken : addresses?.rwaToken;
@@ -85,11 +89,14 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
       setIsApproving(true);
       setSwapError(null);
 
+      // 检测是否是 USDT ↔ RWA 直接互换
+      const isUSDTRWASwap = (fromToken === 'USDT' && toToken === 'RWA') || (fromToken === 'RWA' && toToken === 'USDT');
+      const spenderAddress = isUSDTRWASwap ? addresses?.usdtRwaSwap : swapContractAddress;
+
       if (fromToken === 'USDT') {
-        await approveUSDT(fromAmount);
+        await approveUSDT(fromAmount, spenderAddress);
       } else if (fromToken === 'RWA') {
-        // 对于 RWA，授权给 PancakeSwap Router
-        await approveToken();
+        await approveRWA(fromAmount, spenderAddress);
       }
       
       setNeedsApproval(false);
@@ -99,7 +106,7 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
     } finally {
       setIsApproving(false);
     }
-  }, [fromToken, fromAmount, fromTokenAddress, approveUSDT, approveToken]);
+  }, [fromToken, fromAmount, fromTokenAddress, toToken, addresses, swapContractAddress, approveUSDT, approveRWA]);
 
   const handleSwap = useCallback(async () => {
     if (!fromAmount || parseFloat(fromAmount) <= 0) {
@@ -111,18 +118,35 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
       setIsSwapping(true);
       setSwapError(null);
 
-      // 计算最小输出（应用滑点保护，例如 0.5%）
-      const slippage = 0.005; // 0.5%
-      const outputAmount = fromToken === 'USDT' 
-        ? (parseFloat(fromAmount) * 1.173 * (1 - slippage)).toFixed(4) // USDT -> RWA
-        : (parseFloat(fromAmount) * 0.8524 * (1 - slippage)).toFixed(4); // RWA -> USDT
-
-      const hash = await executeSwap(fromAmount, outputAmount, 20); // 20分钟截止时间
+      // 检测是否是 USDT ↔ RWA 直接互换
+      const isUSDTRWASwap = (fromToken === 'USDT' && toToken === 'RWA') || (fromToken === 'RWA' && toToken === 'USDT');
       
-      if (hash) {
-        // 成功，可以显示成功消息或刷新余额
-        console.log('Swap successful:', hash);
-        setSwapError(null);
+      if (isUSDTRWASwap) {
+        // 使用 USDTRWASwap 合约
+        let hash;
+        if (fromToken === 'USDT') {
+          hash = await swapUSDTToRWA(fromAmount);
+        } else {
+          hash = await swapRWAToUSDT(fromAmount);
+        }
+        
+        if (hash) {
+          console.log('Swap successful:', hash);
+          setSwapError(null);
+        }
+      } else {
+        // 原有逻辑：通过 PancakeSwap Router
+        const slippage = 0.005; // 0.5%
+        const outputAmount = fromToken === 'USDT' 
+          ? (parseFloat(fromAmount) * 1.173 * (1 - slippage)).toFixed(4)
+          : (parseFloat(fromAmount) * 0.8524 * (1 - slippage)).toFixed(4);
+
+        const hash = await executeSwap(fromAmount, outputAmount, 20);
+        
+        if (hash) {
+          console.log('Swap successful:', hash);
+          setSwapError(null);
+        }
       }
     } catch (error: any) {
       console.error('Swap error:', error);
