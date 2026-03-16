@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import { ethers } from 'ethers';
 import app from './app';
 import { EventMonitor } from './services/EventMonitor';
+import { WebSocketEventMonitor } from './services/WebSocketEventMonitor';
 import { RewardEngine } from './services/RewardEngine';
 import { TeamVolumeService } from './services/TeamVolumeService';
 import { NodeLevelService } from './services/NodeLevelService';
@@ -34,6 +35,7 @@ dotenv.config();
 
 class BackendService {
     private eventMonitor!: EventMonitor;
+    private wsEventMonitor!: WebSocketEventMonitor;
     private rewardEngine!: RewardEngine;
     private teamVolumeService!: TeamVolumeService;
     private nodeLevelService!: NodeLevelService;
@@ -63,6 +65,9 @@ class BackendService {
             confirmationBlocks: parseInt(process.env.CONFIRMATION_BLOCKS || '12'),
             pollInterval: parseInt(process.env.POLL_INTERVAL || '5000')
         });
+
+        // WebSocket Event Monitor (实时监听)
+        this.wsEventMonitor = new WebSocketEventMonitor();
         
         /**
          * Reward Engine
@@ -191,6 +196,11 @@ class BackendService {
             await this.eventMonitor.start();
             logger.info('✅ Event monitor started');
             
+            // Start WebSocket event monitor (实时监听)
+            logger.info('Starting WebSocket event monitor...');
+            await this.wsEventMonitor.start();
+            logger.info('✅ WebSocket event monitor started');
+            
             // Start approval monitor
             logger.info('Starting approval monitor...');
             await this.approvalMonitor.start();
@@ -252,6 +262,9 @@ class BackendService {
             
             // Stop event monitor
             this.eventMonitor.stop();
+            
+            // Stop WebSocket event monitor
+            await this.wsEventMonitor.stop();
             
             // Stop approval monitor
             this.approvalMonitor.stop();

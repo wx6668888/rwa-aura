@@ -11,6 +11,7 @@ import { PanelDividend } from './panels/panel-dividend'
 import { PanelStRWA } from './panels/panel-strwa'
 import { PanelQuickWithdraw } from './panels/panel-quick-withdraw'
 import { useWithdrawData } from '@/hooks/useWithdrawData'
+import { useCountUp } from '@/hooks/useCountUp'
 
 type PanelId = 'quick' | 'yield' | 'principal' | 'referral' | 'dividend' | 'strwa'
 
@@ -19,6 +20,13 @@ export function WithdrawPageV3() {
   const [activePanel, setActivePanel] = useState<PanelId>('quick')
   const [showMobilePanel, setShowMobilePanel] = useState(false)
   const data = useWithdrawData()
+  
+  // 数字滚动动画
+  const animatedTotal = useCountUp({ 
+    end: parseFloat(data.totalUSD) || 0, 
+    duration: 2000,
+    decimals: 2 
+  })
 
   console.log('=== WithdrawPageV3 Render ===')
   console.log('data:', data)
@@ -81,7 +89,7 @@ export function WithdrawPageV3() {
               filter: 'drop-shadow(0 0 30px rgba(0,255,200,0.35))'
             }}
           >
-            {data.loading ? '...' : isConnected ? `$${data.totalUSD}` : '--'}
+            {data.loading ? '...' : isConnected ? `$${animatedTotal}` : '--'}
           </div>
           <p className="text-sm text-white/40">Ready to withdraw anytime</p>
         </div>
