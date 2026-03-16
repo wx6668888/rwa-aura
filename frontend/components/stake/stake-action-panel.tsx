@@ -203,6 +203,9 @@ export function StakeActionPanel() {
     try {
       setStatus('staking')
       setErrorMessage('')
+      
+      // 确保状态更新被渲染（至少显示200ms）
+      await new Promise(resolve => setTimeout(resolve, 200))
 
       // 如果已有推荐人，使用空地址；否则使用输入的推荐人地址
       const referrerAddress = hasReferrer ? '0x0000000000000000000000000000000000000000' : referral.trim()
