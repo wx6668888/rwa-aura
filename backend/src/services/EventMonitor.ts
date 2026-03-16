@@ -5,6 +5,7 @@ import logger from '../utils/logger';
 import { BalanceSnapshotService } from './BalanceSnapshotService';
 import { DirectReferralRewardService } from './DirectReferralRewardService';
 import { NodeLevelService } from './NodeLevelService';
+import { UserStatsService } from './UserStatsService';
 
 /**
  * Event Monitor Service
@@ -34,6 +35,7 @@ export class EventMonitor {
     private snapshotService: BalanceSnapshotService;
     private referralRewardService: DirectReferralRewardService;
     private nodeLevelService: NodeLevelService | null = null;
+    private userStatsService: UserStatsService;
     
     // StakingContract ABI (only events we need)
     private readonly STAKING_ABI = [
@@ -63,6 +65,7 @@ export class EventMonitor {
         );
         this.snapshotService = new BalanceSnapshotService();
         this.referralRewardService = new DirectReferralRewardService();
+        this.userStatsService = new UserStatsService();
     }
     
     setNodeLevelService(service: NodeLevelService): void {
@@ -373,6 +376,19 @@ export class EventMonitor {
                 }
             }
             
+            // 更新 user_stats 表（实时同步）
+            try {
+                await this.userStatsService.onStakeEvent(
+                    user.toLowerCase(),
+                    BigInt(amount.toString()),
+                    'USDT',
+                    referrer !== ethers.ZeroAddress ? referrer.toLowerCase() : undefined
+                );
+                logger.info(`✅ user_stats updated for ${user}`);
+            } catch (error) {
+                logger.error(`Failed to update user_stats for ${user}:`, error);
+            }
+            
         } catch (error) {
             logger.error('Failed to handle StakeEvent:', error);
             throw error;
@@ -511,6 +527,19 @@ export class EventMonitor {
                 } catch (error) {
                     logger.error(`Failed to check node level upgrade for ${user}:`, error);
                 }
+            }
+            
+            // 更新 user_stats 表（实时同步）
+            try {
+                await this.userStatsService.onStakeEvent(
+                    user.toLowerCase(),
+                    BigInt(amount.toString()),
+                    'RWA',
+                    referrer !== ethers.ZeroAddress ? referrer.toLowerCase() : undefined
+                );
+                logger.info(`✅ user_stats updated for ${user} (RWA)`);
+            } catch (error) {
+                logger.error(`Failed to update user_stats for ${user}:`, error);
             }
             
         } catch (error) {

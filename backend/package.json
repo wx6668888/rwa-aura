@@ -5,7 +5,8 @@
     "start": "ts-node src/services/meta-relayer.ts",
     "server": "ts-node src/index.ts",
     "monitor": "ts-node src/services/event-monitor-full.ts",
-    "settlement": "ts-node src/services/daily-settlement.ts"
+    "settlement": "ts-node src/services/daily-settlement.ts",
+    "sync-stats": "ts-node src/scripts/sync-user-stats.ts"
   },
   "dependencies": {
     "@types/better-sqlite3": "^7.6.13",

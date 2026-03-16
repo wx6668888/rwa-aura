@@ -1,135 +1,223 @@
-import Database from 'better-sqlite3';
-import * as path from 'path';
+// backend/src/services/UserStatsService.ts
+// [Logic Memory] 用户统计数据实时更新服务
+// 负责在链上事件发生时同步更新 user_stats 表
 
-const RWA_PRICE = 0.85;
+import { query, transaction } from '../config/database.config';
+import logger from '../utils/logger';
 
 export class UserStatsService {
-  private db: Database.Database;
-
-  constructor(database: Database.Database) {
-    this.db = database;
+  /**
+   * 更新用户个人质押数据
+   * @param userAddress 用户地址
+   * @param amount 质押金额（wei）
+   * @param assetType 资产类型（USDT/RWA）
+   */
+  async updatePersonalStake(
+    userAddress: string,
+    amount: bigint,
+    assetType: 'USDT' | 'RWA'
+  ): Promise<void> {
+    try {
+      const amountStr = amount.toString();
+      const field = assetType === 'USDT' ? 'personal_usdt_staked' : 'personal_rwa_staked';
+      
+      // 1. 更新或插入个人质押数据
+      await query(
+        `INSERT INTO user_stats (user_address, ${field}, updated_at)
+         VALUES (?, ?, NOW())
+         ON DUPLICATE KEY UPDATE
+           ${field} = ${field} + ?,
+           updated_at = NOW()`,
+        [userAddress.toLowerCase(), amountStr, amountStr]
+      );
+      
+      // 2. 重新计算 personal_total_usdt（USDT等值）
+      const rwaPrice = 0.85; // 1 RWA = 0.85 USDT
+      await query(
+        `UPDATE user_stats 
+         SET personal_total_usdt = (
+           CAST(personal_usdt_staked AS DECIMAL(38,0)) + 
+           CAST(personal_rwa_staked AS DECIMAL(38,0)) * ${rwaPrice}
+         ) / 1e18
+         WHERE LOWER(user_address) = LOWER(?)`,
+        [userAddress]
+      );
+      
+      logger.info(`[UserStatsService] Updated personal stake: ${userAddress}, ${assetType}, ${amount}`);
+    } catch (error: any) {
+      logger.error(`[UserStatsService] Failed to update personal stake: ${error.message}`);
+      throw error;
+    }
   }
 
-  // 更新单个用户的统计数据
-  updateUserStats(userAddress: string) {
-    const address = userAddress.toLowerCase();
-    
-    // 1. 计算个人质押
-    const personalStakes = this.db.prepare(`
-      SELECT event_type, SUM(CAST(amount AS REAL)) as total
-      FROM stake_events
-      WHERE LOWER(user_address) = ?
-      GROUP BY event_type
-    `).all(address) as Array<{ event_type: string; total: number }>;
-    
-    let personalUsdtStaked = 0;
-    let personalRwaStaked = 0;
-    let personalTotalUsdt = 0;
-    
-    for (const s of personalStakes) {
-      if (s.event_type === 'USDT_STAKE') {
-        personalUsdtStaked = s.total;
-        personalTotalUsdt += s.total / 1e18;
-      } else {
-        personalRwaStaked = s.total;
-        personalTotalUsdt += (s.total / 1e18) * RWA_PRICE;
-      }
-    }
-    
-    // 减去个人提现
-    const personalWithdrawals = this.db.prepare(`
-      SELECT SUM(CAST(amount AS REAL)) as total
-      FROM withdrawal_events
-      WHERE LOWER(user_address) = ?
-    `).get(address) as { total: number | null };
-    
-    if (personalWithdrawals?.total) {
-      const withdrawnRwa = personalWithdrawals.total / 1e18;
-      personalTotalUsdt -= withdrawnRwa * RWA_PRICE;
-      personalTotalUsdt = Math.max(0, personalTotalUsdt);
-    }
-    
-    // 2. 获取直推人数
-    const referrals = this.db.prepare(`
-      SELECT user_address
-      FROM referral_bindings
-      WHERE LOWER(referrer_address) = ?
-    `).all(address) as Array<{ user_address: string }>;
-    
-    const directReferrals = referrals.length;
-    
-    // 3. 计算团队总质押（下级 + 自己）
-    let teamVolumeUsdt = personalTotalUsdt;
-    for (const ref of referrals) {
-      const refStakes = this.db.prepare(`
-        SELECT event_type, SUM(CAST(amount AS REAL)) as total
-        FROM stake_events
-        WHERE LOWER(user_address) = ?
-        GROUP BY event_type
-      `).all(ref.user_address) as Array<{ event_type: string; total: number }>;
+  /**
+   * 更新团队数据（递归更新所有上级）
+   * @param userAddress 用户地址
+   * @param amountUsdt 质押金额（USDT等值）
+   */
+  async updateTeamVolume(userAddress: string, amountUsdt: number): Promise<void> {
+    try {
+      // 1. 获取所有上级（使用 referral_relations 表）
+      const ancestors = await query<any[]>(
+        `SELECT DISTINCT ancestor_address 
+         FROM referral_relations 
+         WHERE LOWER(user_address) = LOWER(?)`,
+        [userAddress]
+      );
       
-      let refTotal = 0;
-      for (const s of refStakes) {
-        const amountUsdt = s.event_type === 'RWA_STAKE' 
-          ? (s.total / 1e18) * RWA_PRICE 
-          : s.total / 1e18;
-        refTotal += amountUsdt;
+      if (ancestors.length === 0) {
+        logger.info(`[UserStatsService] No ancestors for ${userAddress}`);
+        return;
       }
       
-      // 减去下级提现
-      const refWithdrawals = this.db.prepare(`
-        SELECT SUM(CAST(amount AS REAL)) as total
-        FROM withdrawal_events
-        WHERE LOWER(user_address) = ?
-      `).get(ref.user_address) as { total: number | null };
-      
-      if (refWithdrawals?.total) {
-        refTotal -= (refWithdrawals.total / 1e18) * RWA_PRICE;
+      // 2. 更新所有上级的团队业绩
+      for (const ancestor of ancestors) {
+        await query(
+          `INSERT INTO user_stats (user_address, team_volume_usdt, updated_at)
+           VALUES (?, ?, NOW())
+           ON DUPLICATE KEY UPDATE
+             team_volume_usdt = team_volume_usdt + ?,
+             updated_at = NOW()`,
+          [ancestor.ancestor_address.toLowerCase(), amountUsdt, amountUsdt]
+        );
       }
       
-      teamVolumeUsdt += Math.max(0, refTotal);
+      logger.info(`[UserStatsService] Updated team volume for ${ancestors.length} ancestors`);
+    } catch (error: any) {
+      logger.error(`[UserStatsService] Failed to update team volume: ${error.message}`);
+      throw error;
     }
-    
-    // 4. 总留存 = 团队总质押（已减去提现）
-    const teamRetainedUsdt = teamVolumeUsdt;
-    
-    // 5. 插入或更新
-    this.db.prepare(`
-      INSERT INTO user_stats (
-        user_address, personal_usdt_staked, personal_rwa_staked, personal_total_usdt,
-        direct_referrals, team_volume_usdt, team_retained_usdt, last_calculated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
-      ON CONFLICT(user_address) DO UPDATE SET
-        personal_usdt_staked = excluded.personal_usdt_staked,
-        personal_rwa_staked = excluded.personal_rwa_staked,
-        personal_total_usdt = excluded.personal_total_usdt,
-        direct_referrals = excluded.direct_referrals,
-        team_volume_usdt = excluded.team_volume_usdt,
-        team_retained_usdt = excluded.team_retained_usdt,
-        last_calculated_at = excluded.last_calculated_at,
-        updated_at = datetime('now')
-    `).run(
-      address,
-      personalUsdtStaked.toString(),
-      personalRwaStaked.toString(),
-      personalTotalUsdt.toString(),
-      directReferrals,
-      teamVolumeUsdt.toString(),
-      teamRetainedUsdt.toString()
-    );
   }
-  
-  // 更新所有用户
-  updateAllUsers() {
-    const users = this.db.prepare(`
-      SELECT DISTINCT user_address FROM stake_events
-    `).all() as Array<{ user_address: string }>;
-    
-    console.log(`[UserStats] 开始更新 ${users.length} 个用户...`);
-    for (const user of users) {
-      this.updateUserStats(user.user_address);
+
+  /**
+   * 更新直推人数
+   * @param referrerAddress 推荐人地址
+   */
+  async updateDirectReferrals(referrerAddress: string): Promise<void> {
+    try {
+      // 统计直推人数
+      const result = await query<any[]>(
+        `SELECT COUNT(DISTINCT user_address) as count
+         FROM referral_bindings
+         WHERE LOWER(referrer_address) = LOWER(?)`,
+        [referrerAddress]
+      );
+      
+      const count = result[0]?.count || 0;
+      
+      await query(
+        `INSERT INTO user_stats (user_address, direct_referrals, updated_at)
+         VALUES (?, ?, NOW())
+         ON DUPLICATE KEY UPDATE
+           direct_referrals = ?,
+           updated_at = NOW()`,
+        [referrerAddress.toLowerCase(), count, count]
+      );
+      
+      logger.info(`[UserStatsService] Updated direct referrals: ${referrerAddress}, count=${count}`);
+    } catch (error: any) {
+      logger.error(`[UserStatsService] Failed to update direct referrals: ${error.message}`);
+      throw error;
     }
-    console.log(`[UserStats] 更新完成！`);
+  }
+
+  /**
+   * 重新计算用户等级
+   * @param userAddress 用户地址
+   */
+  async recalculateLevel(userAddress: string): Promise<void> {
+    try {
+      // 获取用户数据
+      const result = await query<any[]>(
+        `SELECT personal_total_usdt, team_volume_usdt, team_retained_usdt
+         FROM user_stats
+         WHERE LOWER(user_address) = LOWER(?)`,
+        [userAddress]
+      );
+      
+      if (result.length === 0) return;
+      
+      const data = result[0];
+      const personalUsdt = parseFloat(data.personal_total_usdt || '0');
+      const teamVolumeUsdt = parseFloat(data.team_volume_usdt || '0');
+      const teamRetainedUsdt = parseFloat(data.team_retained_usdt || '0');
+      
+      // 计算等级（简化版，实际逻辑可能更复杂）
+      let level = 1;
+      const levels = [
+        { level: 2, personal: 1000, team: 5000, retained: 0 },
+        { level: 3, personal: 3000, team: 20000, retained: 0 },
+        { level: 4, personal: 5000, team: 50000, retained: 0 },
+        { level: 5, personal: 10000, team: 100000, retained: 0 },
+        { level: 6, personal: 20000, team: 300000, retained: 0 },
+        { level: 7, personal: 50000, team: 1000000, retained: 0 },
+        { level: 8, personal: 100000, team: 3000000, retained: 0 },
+        { level: 9, personal: 200000, team: 10000000, retained: 0 },
+      ];
+      
+      for (const config of levels) {
+        if (
+          personalUsdt >= config.personal &&
+          teamVolumeUsdt >= config.team &&
+          teamRetainedUsdt >= config.retained
+        ) {
+          level = config.level;
+        } else {
+          break;
+        }
+      }
+      
+      await query(
+        `UPDATE user_stats 
+         SET current_level = ?, effective_level = ?, updated_at = NOW()
+         WHERE LOWER(user_address) = LOWER(?)`,
+        [level, level, userAddress]
+      );
+      
+      logger.info(`[UserStatsService] Updated level: ${userAddress}, level=${level}`);
+    } catch (error: any) {
+      logger.error(`[UserStatsService] Failed to recalculate level: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * 完整更新用户统计数据（质押事件触发）
+   * @param userAddress 用户地址
+   * @param amount 质押金额（wei）
+   * @param assetType 资产类型
+   * @param referrerAddress 推荐人地址（可选）
+   */
+  async onStakeEvent(
+    userAddress: string,
+    amount: bigint,
+    assetType: 'USDT' | 'RWA',
+    referrerAddress?: string
+  ): Promise<void> {
+    try {
+      // 1. 更新个人质押
+      await this.updatePersonalStake(userAddress, amount, assetType);
+      
+      // 2. 计算 USDT 等值
+      const rwaPrice = 0.85;
+      const amountNum = Number(amount) / 1e18;
+      const amountUsdt = assetType === 'USDT' ? amountNum : amountNum * rwaPrice;
+      
+      // 3. 更新团队业绩（递归更新所有上级）
+      await this.updateTeamVolume(userAddress, amountUsdt);
+      
+      // 4. 如果有推荐人，更新推荐人的直推人数
+      if (referrerAddress && referrerAddress !== '0x0000000000000000000000000000000000000000') {
+        await this.updateDirectReferrals(referrerAddress);
+      }
+      
+      // 5. 重新计算等级
+      await this.recalculateLevel(userAddress);
+      
+      logger.info(`[UserStatsService] Completed onStakeEvent for ${userAddress}`);
+    } catch (error: any) {
+      logger.error(`[UserStatsService] Failed onStakeEvent: ${error.message}`);
+      throw error;
+    }
   }
 }
-
