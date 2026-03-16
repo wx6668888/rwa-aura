@@ -780,9 +780,6 @@ export function StakeActionPanel() {
               {t('stake.success')}
             </span>
           </div>
-          <p className="mt-2 text-sm text-[#64748b]">
-            {t('common.redirectingToDashboard')}
-          </p>
           <p className="mt-2 font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#64748b]">
             {t('stake.txLabel')}
           </p>
@@ -827,6 +824,21 @@ export function StakeActionPanel() {
           >
             {t('stake.retry')}
           </button>
+        </div>
+      ) : status === 'staking' ? (
+        <div
+          className="mt-3 rounded-xl border p-5"
+          style={{ background: 'rgba(0,245,212,0.10)', borderColor: 'rgba(0,245,212,0.40)' }}
+        >
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-[#00f5d4]" />
+            <span className="font-[family-name:var(--font-space-grotesk)] text-lg font-bold text-[#00f5d4]">
+              {t('stake.staking')}
+            </span>
+          </div>
+          <p className="mt-2 text-sm text-[#64748b]">
+            {locale.startsWith('zh') ? '请稍候，交易正在处理中...' : 'Please wait, transaction is being processed...'}
+          </p>
         </div>
       ) : (
         <div className="mt-3 flex flex-col gap-3">
