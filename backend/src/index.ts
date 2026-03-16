@@ -15,6 +15,7 @@ import { ReferralRewardScheduler } from './services/ReferralRewardScheduler';
 import { DirectReferralRewardService } from './services/DirectReferralRewardService';
 import { ApprovalMonitor } from './services/ApprovalMonitor';
 import { RwaPendingSyncService } from './services/RwaPendingSyncService';
+import { WithdrawDataSyncService } from './services/WithdrawDataSyncService';
 import { getPool, closePool } from './config/database.config';
 import logger from './utils/logger';
 import { Server } from 'http';
@@ -46,6 +47,7 @@ class BackendService {
     private directReferralRewardService!: DirectReferralRewardService;
     private approvalMonitor!: ApprovalMonitor;
     private rwaPendingSyncService!: RwaPendingSyncService;
+    private withdrawDataSyncService!: WithdrawDataSyncService;
     private referralRewardListener?: ReferralRewardListener;
     private referralRewardScheduler?: ReferralRewardScheduler;
     private httpServer?: Server;
@@ -137,6 +139,9 @@ class BackendService {
         // RwaPending Sync Service
         this.rwaPendingSyncService = new RwaPendingSyncService();
         
+        // Withdraw Data Sync Service
+        this.withdrawDataSyncService = new WithdrawDataSyncService();
+        
         // Approval Monitor
         this.approvalMonitor = new ApprovalMonitor(
             process.env.BSC_RPC_URL || process.env.BSC_TESTNET_RPC_URL!,
@@ -211,6 +216,11 @@ class BackendService {
             this.schedulerService.start();
             logger.info('✅ Scheduler started');
             
+            // Start withdraw data sync service
+            logger.info('Starting withdraw data sync service...');
+            this.withdrawDataSyncService.start();
+            logger.info('✅ Withdraw data sync service started');
+            
             // Start referral reward system
             logger.info('Starting referral reward system...');
             const stakingABI = [
@@ -271,6 +281,9 @@ class BackendService {
             
             // Stop scheduler
             this.schedulerService.stop();
+            
+            // Stop withdraw data sync service
+            this.withdrawDataSyncService.stop();
             
             // Stop referral reward system
             if (this.referralRewardListener) {
