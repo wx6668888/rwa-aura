@@ -25,6 +25,8 @@ export function SwapTransactionOverlay({
   error, 
   onClose 
 }: Props) {
+  console.log('SwapTransactionOverlay render:', { show, status, txHash });
+  
   if (!show) return null
 
   return (
