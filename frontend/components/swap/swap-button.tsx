@@ -24,8 +24,8 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
   const { locale } = useLocale();
   const { t } = useTranslation(locale);
   const { address, isConnected, chainId } = useAccount();
-  const { approve: approveUSDT, isApproved: isUSDTApproved } = useUSDT();
-  const { approve: approveRWA, isApproved: isRWAApproved } = useRWAToken();
+  const { approve: approveUSDT, isApproved: isUSDTApproved, refetchBalance: refetchUSDT } = useUSDT();
+  const { approve: approveRWA, isApproved: isRWAApproved, refetchBalance: refetchRWA } = useRWAToken();
   
   // 新增：USDT ↔ RWA 直接互换
   const { swapUSDTToRWA, swapRWAToUSDT } = useUSDTRWASwap();
@@ -174,6 +174,10 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
           console.log('Swap successful:', hash);
           setSwapSuccess(true);
           setSwapError(null);
+          
+          // 刷新余额
+          await refetchUSDT();
+          await refetchRWA();
           
           // 3秒后重置成功状态
           setTimeout(() => {
