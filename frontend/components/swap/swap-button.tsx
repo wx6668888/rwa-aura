@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useLocale } from '@/components/locale-provider';
 import { useTranslation } from '@/lib/i18n';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useUSDT } from '@/hooks/useUSDT';
 import { useRWAToken } from '@/hooks/useRWAToken';
 import { useSwap } from '@/hooks/useSwap';
@@ -46,6 +46,7 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
   const [isApproving, setIsApproving] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
   const [swapError, setSwapError] = useState<string | null>(null);
+  const [swapSuccess, setSwapSuccess] = useState(false); // 新增：成功状态
   const [needsApproval, setNeedsApproval] = useState(false);
   const [justApproved, setJustApproved] = useState(false); // 新增：跟踪刚完成授权
 
@@ -128,7 +129,19 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
       }, 5000);
     } catch (error: any) {
       console.error('Approve error:', error);
-      setSwapError(error?.message || '授权失败');
+      
+      // 识别用户取消操作
+      const isCancelled = error?.code === 4001 || 
+                         error?.code === 'ACTION_REJECTED' ||
+                         error?.message?.toLowerCase().includes('user rejected') ||
+                         error?.message?.toLowerCase().includes('user denied') ||
+                         error?.message?.toLowerCase().includes('user cancelled');
+      
+      if (isCancelled) {
+        setSwapError('您已取消授权');
+      } else {
+        setSwapError(error?.message || '授权失败');
+      }
     } finally {
       setIsApproving(false);
     }
@@ -143,6 +156,7 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
     try {
       setIsSwapping(true);
       setSwapError(null);
+      setSwapSuccess(false);
 
       // 检测是否是 USDT ↔ RWA 直接互换
       const isUSDTRWASwap = (fromToken === 'USDT' && toToken === 'RWA') || (fromToken === 'RWA' && toToken === 'USDT');
@@ -158,7 +172,13 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
         
         if (hash) {
           console.log('Swap successful:', hash);
+          setSwapSuccess(true);
           setSwapError(null);
+          
+          // 3秒后重置成功状态
+          setTimeout(() => {
+            setSwapSuccess(false);
+          }, 3000);
         }
       } else {
         // 原有逻辑：通过 PancakeSwap Router
@@ -176,7 +196,19 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
       }
     } catch (error: any) {
       console.error('Swap error:', error);
-      setSwapError(error?.message || '兑换失败');
+      
+      // 识别用户取消操作
+      const isCancelled = error?.code === 4001 || 
+                         error?.code === 'ACTION_REJECTED' ||
+                         error?.message?.toLowerCase().includes('user rejected') ||
+                         error?.message?.toLowerCase().includes('user denied') ||
+                         error?.message?.toLowerCase().includes('user cancelled');
+      
+      if (isCancelled) {
+        setSwapError('您已取消交易');
+      } else {
+        setSwapError(error?.message || '兑换失败');
+      }
     } finally {
       setIsSwapping(false);
     }
@@ -234,6 +266,12 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
   // State 4/5: Ready to swap
   return (
     <div className="mt-4 space-y-2">
+      {swapSuccess && (
+        <div className="flex items-center gap-2 rounded-lg border border-[#10b98140] bg-[#10b98110] p-2">
+          <CheckCircle className="h-4 w-4 text-[#10b981]" />
+          <p className="text-xs text-[#10b981]">兑换成功！</p>
+        </div>
+      )}
       {swapError && (
         <div className="flex items-center gap-2 rounded-lg border border-[#f43f5e40] bg-[#f43f5e10] p-2">
           <AlertTriangle className="h-4 w-4 text-[#f43f5e]" />
