@@ -5,6 +5,7 @@ import { useAccount } from 'wagmi';
 import { useLocale } from '@/components/locale-provider';
 import { useTranslation } from '@/lib/i18n';
 import { Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
+import SwapSuccessModal from './swap-success-modal';
 import { useUSDT } from '@/hooks/useUSDT';
 import { useRWAToken } from '@/hooks/useRWAToken';
 import { useSwap } from '@/hooks/useSwap';
@@ -57,7 +58,7 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
 
   // 检查是否需要授权
   useEffect(() => {
-    // 如果刚完成授权，跳过检查
+    // 如果刚完成授权，跳过检查，设置为不需要授权
     if (justApproved) {
       setNeedsApproval(false);
       return;
@@ -75,7 +76,7 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
         
         if (fromToken === 'USDT') {
           if (isUSDTRWASwap) {
-            // USDT ↔ RWA：暂时默认需要授权
+            // USDT ↔ RWA：默认需要授权（用户授权后 justApproved 会跳过检查）
             setNeedsApproval(true);
           } else {
             const approved = isUSDTApproved(fromAmount);
@@ -87,6 +88,7 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
         }
       } catch (error) {
         console.error('Check approval error:', error);
+        // 如果检查失败，默认需要授权
         setNeedsApproval(true);
       }
     };
@@ -178,11 +180,6 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
           // 刷新余额
           await refetchUSDT();
           await refetchRWA();
-          
-          // 3秒后重置成功状态
-          setTimeout(() => {
-            setSwapSuccess(false);
-          }, 3000);
         }
       } else {
         // 原有逻辑：通过 PancakeSwap Router
@@ -217,6 +214,12 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
       setIsSwapping(false);
     }
   }, [fromToken, fromAmount, executeSwap]);
+
+  const handleModalClose = () => {
+    setSwapSuccess(false);
+    // 刷新页面
+    window.location.reload();
+  };
 
   // State 1: No wallet
   if (!isConnected) {
@@ -269,20 +272,16 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
 
   // State 4/5: Ready to swap
   return (
-    <div className="mt-4 space-y-2">
-      {swapSuccess && (
-        <div className="flex items-center gap-2 rounded-lg border border-[#10b98140] bg-[#10b98110] p-2">
-          <CheckCircle className="h-4 w-4 text-[#10b981]" />
-          <p className="text-xs text-[#10b981]">兑换成功！</p>
-        </div>
-      )}
-      {swapError && (
-        <div className="flex items-center gap-2 rounded-lg border border-[#f43f5e40] bg-[#f43f5e10] p-2">
-          <AlertTriangle className="h-4 w-4 text-[#f43f5e]" />
-          <p className="text-xs text-[#f43f5e]">{swapError}</p>
-        </div>
-      )}
-      <button
+    <>
+      <SwapSuccessModal isOpen={swapSuccess} onClose={handleModalClose} />
+      <div className="mt-4 space-y-2">
+        {swapError && (
+          <div className="flex items-center gap-2 rounded-lg border border-[#f43f5e40] bg-[#f43f5e10] p-2">
+            <AlertTriangle className="h-4 w-4 text-[#f43f5e]" />
+            <p className="text-xs text-[#f43f5e]">{swapError}</p>
+          </div>
+        )}
+        <button
         onClick={handleSwap}
         disabled={isSwapping || isLoading}
         className={`w-full h-[60px] rounded-full font-bold transition-all disabled:opacity-50 ${
@@ -303,5 +302,6 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
         )}
       </button>
     </div>
+    </>
   );
 }
