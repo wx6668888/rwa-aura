@@ -58,6 +58,13 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
   const priceImpact = 0.1;
   const isHighImpact = priceImpact > 3;
 
+  // 计算预期获得的代币数量
+  const toAmount = hasAmount 
+    ? (fromToken === 'USDT' 
+        ? (amount / 0.85).toFixed(4)  // USDT → RWA
+        : (amount * 0.85).toFixed(4)) // RWA → USDT
+    : '0';
+
   // 检查是否需要授权
   useEffect(() => {
     // 如果刚完成授权，跳过检查，设置为不需要授权
@@ -273,7 +280,7 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
         status={overlayStatus}
         txHash={txHash}
         fromAmount={fromAmount}
-        toAmount={displayQuote?.outputAmount}
+        toAmount={toAmount}
         fromToken={fromToken}
         toToken={toToken}
         error={swapError}
