@@ -191,6 +191,9 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
       
       console.log('Swap hash:', hash);
       
+      // 确保 waiting 状态至少显示 1 秒
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       // 显示 pending 状态
       setTxHash(hash || null);
       setOverlayStatus('pending');
