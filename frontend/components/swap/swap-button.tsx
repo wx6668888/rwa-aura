@@ -93,10 +93,16 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
       const isUSDTRWASwap = (fromToken === 'USDT' && toToken === 'RWA') || (fromToken === 'RWA' && toToken === 'USDT');
       const spenderAddress = isUSDTRWASwap ? addresses?.usdtRwaSwap : swapContractAddress;
 
+      if (!spenderAddress) {
+        setSwapError('Swap合约地址未配置');
+        return;
+      }
+
       if (fromToken === 'USDT') {
         await approveUSDT(fromAmount, spenderAddress);
       } else if (fromToken === 'RWA') {
-        await approveRWA(fromAmount, spenderAddress);
+        const amount = parseUnits(fromAmount, 18);
+        await approveRWA(spenderAddress, amount);
       }
       
       setNeedsApproval(false);

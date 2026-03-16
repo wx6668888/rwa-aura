@@ -50,9 +50,11 @@ export function useUSDT() {
     },
   })
 
-  // Approve USDT for staking contract
-  async function approve(amount: string) {
-    if (!usdtAddress || !stakingAddress) throw new Error('Contract addresses not found')
+  // Approve USDT for staking contract (or custom spender)
+  async function approve(amount: string, spender?: string) {
+    if (!usdtAddress) throw new Error('USDT address not found')
+    const targetSpender = spender || stakingAddress;
+    if (!targetSpender) throw new Error('Spender address not found')
     
     // Convert amount to 6 decimals (USDT precision)
     const amountInWei = parseUnits(amount, 6)
@@ -61,7 +63,7 @@ export function useUSDT() {
       address: usdtAddress as `0x${string}`,
       abi: erc20ABI,
       functionName: 'approve',
-      args: [stakingAddress as `0x${string}`, amountInWei],
+      args: [targetSpender as `0x${string}`, amountInWei],
     })
 
     return hash
