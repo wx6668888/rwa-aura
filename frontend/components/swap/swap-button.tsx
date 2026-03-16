@@ -4,8 +4,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useLocale } from '@/components/locale-provider';
 import { useTranslation } from '@/lib/i18n';
-import { Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
-import SwapSuccessModal from './swap-success-modal';
+import { Loader2, AlertTriangle } from 'lucide-react';
+import { SwapTransactionOverlay } from './swap-transaction-overlay';
 import { useUSDT } from '@/hooks/useUSDT';
 import { useRWAToken } from '@/hooks/useRWAToken';
 import { useSwap } from '@/hooks/useSwap';
@@ -47,9 +47,11 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
   const [isApproving, setIsApproving] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
   const [swapError, setSwapError] = useState<string | null>(null);
-  const [swapSuccess, setSwapSuccess] = useState(false); // 新增：成功状态
   const [needsApproval, setNeedsApproval] = useState(false);
-  const [justApproved, setJustApproved] = useState(false); // 新增：跟踪刚完成授权
+  const [justApproved, setJustApproved] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(false);
+  const [overlayStatus, setOverlayStatus] = useState<'waiting' | 'pending' | 'success' | 'error'>('waiting');
+  const [txHash, setTxHash] = useState<string | null>(null);
 
   const amount = parseFloat(fromAmount || '0');
   const hasAmount = amount > 0;
@@ -155,50 +157,42 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
       return;
     }
 
+    setShowOverlay(true);
+    setOverlayStatus('waiting');
+    setSwapError(null);
+    setTxHash(null);
+
     try {
       setIsSwapping(true);
-      setSwapError(null);
-      setSwapSuccess(false);
 
-      // 检测是否是 USDT ↔ RWA 直接互换
       const isUSDTRWASwap = (fromToken === 'USDT' && toToken === 'RWA') || (fromToken === 'RWA' && toToken === 'USDT');
       
+      let hash;
       if (isUSDTRWASwap) {
-        // 使用 USDTRWASwap 合约
-        let hash;
         if (fromToken === 'USDT') {
           hash = await swapUSDTToRWA(fromAmount);
         } else {
           hash = await swapRWAToUSDT(fromAmount);
         }
-        
-        if (hash) {
-          console.log('Swap successful:', hash);
-          setSwapSuccess(true);
-          setSwapError(null);
-          
-          // 刷新余额
-          await refetchUSDT();
-          await refetchRWA();
-        }
       } else {
-        // 原有逻辑：通过 PancakeSwap Router
-        const slippage = 0.005; // 0.5%
+        const slippage = 0.005;
         const outputAmount = fromToken === 'USDT' 
           ? (parseFloat(fromAmount) * 1.173 * (1 - slippage)).toFixed(4)
           : (parseFloat(fromAmount) * 0.8524 * (1 - slippage)).toFixed(4);
-
-        const hash = await executeSwap(fromAmount, outputAmount, 20);
+        hash = await executeSwap(fromAmount, outputAmount, 20);
+      }
         
-        if (hash) {
-          console.log('Swap successful:', hash);
-          setSwapError(null);
-        }
+      if (hash) {
+        setTxHash(hash);
+        setOverlayStatus('pending');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        await refetchUSDT();
+        await refetchRWA();
+        setOverlayStatus('success');
       }
     } catch (error: any) {
       console.error('Swap error:', error);
       
-      // 识别用户取消操作
       const isCancelled = error?.code === 4001 || 
                          error?.code === 'ACTION_REJECTED' ||
                          error?.message?.toLowerCase().includes('user rejected') ||
@@ -207,17 +201,18 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
       
       if (isCancelled) {
         setSwapError('您已取消交易');
+        setShowOverlay(false);
       } else {
         setSwapError(error?.message || '兑换失败');
+        setOverlayStatus('error');
       }
     } finally {
       setIsSwapping(false);
     }
-  }, [fromToken, fromAmount, executeSwap]);
+  }, [fromToken, fromAmount, toToken, executeSwap, swapUSDTToRWA, swapRWAToUSDT, refetchUSDT, refetchRWA]);
 
-  const handleModalClose = () => {
-    setSwapSuccess(false);
-    // 刷新页面
+  const handleOverlayClose = () => {
+    setShowOverlay(false);
     window.location.reload();
   };
 
@@ -273,9 +268,19 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
   // State 4/5: Ready to swap
   return (
     <>
-      <SwapSuccessModal isOpen={swapSuccess} onClose={handleModalClose} />
+      <SwapTransactionOverlay 
+        show={showOverlay}
+        status={overlayStatus}
+        txHash={txHash}
+        fromAmount={fromAmount}
+        toAmount={displayQuote?.outputAmount}
+        fromToken={fromToken}
+        toToken={toToken}
+        error={swapError}
+        onClose={handleOverlayClose}
+      />
       <div className="mt-4 space-y-2">
-        {swapError && (
+        {swapError && !showOverlay && (
           <div className="flex items-center gap-2 rounded-lg border border-[#f43f5e40] bg-[#f43f5e10] p-2">
             <AlertTriangle className="h-4 w-4 text-[#f43f5e]" />
             <p className="text-xs text-[#f43f5e]">{swapError}</p>
