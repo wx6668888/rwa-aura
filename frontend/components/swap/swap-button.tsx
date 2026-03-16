@@ -295,10 +295,10 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
           {isApproving || isLoading ? (
             <span className="flex items-center justify-center gap-2">
               <Loader2 className="w-5 h-5 animate-spin" />
-              {t('swap.approving')}
+              授权中
             </span>
           ) : (
-            t('swap.approveToken')
+            `授权${fromToken}`
           )}
         </button>
       </div>
