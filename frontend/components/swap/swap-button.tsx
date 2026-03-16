@@ -192,10 +192,17 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
       if (hash) {
         setTxHash(hash);
         setOverlayStatus('pending');
+        
+        // 等待一小段时间
         await new Promise(resolve => setTimeout(resolve, 2000));
-        await refetchUSDT();
-        await refetchRWA();
+        
+        // 先显示成功状态
         setOverlayStatus('success');
+        
+        // 后台刷新余额（不阻塞成功显示）
+        Promise.all([refetchUSDT(), refetchRWA()]).catch(err => {
+          console.error('Failed to refresh balance:', err);
+        });
       }
     } catch (error: any) {
       console.error('Swap error:', error);
