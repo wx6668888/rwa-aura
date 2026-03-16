@@ -47,14 +47,21 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
   const [isSwapping, setIsSwapping] = useState(false);
   const [swapError, setSwapError] = useState<string | null>(null);
   const [needsApproval, setNeedsApproval] = useState(false);
+  const [justApproved, setJustApproved] = useState(false); // 新增：跟踪刚完成授权
 
   const amount = parseFloat(fromAmount || '0');
   const hasAmount = amount > 0;
   const priceImpact = 0.1;
   const isHighImpact = priceImpact > 3;
 
-  // 检查是否需要授权（USDT ↔ RWA 通过 PancakeSwap）
+  // 检查是否需要授权
   useEffect(() => {
+    // 如果刚完成授权，跳过检查
+    if (justApproved) {
+      setNeedsApproval(false);
+      return;
+    }
+
     if (!isConnected || !hasAmount || !fromTokenAddress) {
       setNeedsApproval(false);
       return;
@@ -62,22 +69,29 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
 
     const checkApproval = async () => {
       try {
+        // 检测是否是 USDT ↔ RWA 直接互换
+        const isUSDTRWASwap = (fromToken === 'USDT' && toToken === 'RWA') || (fromToken === 'RWA' && toToken === 'USDT');
+        
         if (fromToken === 'USDT') {
-          const approved = isUSDTApproved(fromAmount);
-          setNeedsApproval(!approved);
+          if (isUSDTRWASwap) {
+            // USDT ↔ RWA：暂时默认需要授权
+            setNeedsApproval(true);
+          } else {
+            const approved = isUSDTApproved(fromAmount);
+            setNeedsApproval(!approved);
+          }
         } else if (fromToken === 'RWA') {
-          // 对于 RWA，需要检查授权给 PancakeSwap Router
           const approved = await checkAllowance(fromAmount);
           setNeedsApproval(!approved);
         }
       } catch (error) {
         console.error('Check approval error:', error);
-        setNeedsApproval(true); // 默认需要授权
+        setNeedsApproval(true);
       }
     };
 
     checkApproval();
-  }, [isConnected, hasAmount, fromToken, fromAmount, fromTokenAddress, isUSDTApproved, checkAllowance]);
+  }, [justApproved, isConnected, hasAmount, fromToken, toToken, fromAmount, fromTokenAddress, isUSDTApproved, checkAllowance]);
 
   const handleApprove = useCallback(async () => {
     if (!fromTokenAddress) {
@@ -106,6 +120,12 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
       }
       
       setNeedsApproval(false);
+      setJustApproved(true);
+      
+      // 5秒后重置 justApproved 状态
+      setTimeout(() => {
+        setJustApproved(false);
+      }, 5000);
     } catch (error: any) {
       console.error('Approve error:', error);
       setSwapError(error?.message || '授权失败');
