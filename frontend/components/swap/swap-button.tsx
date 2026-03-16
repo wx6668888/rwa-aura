@@ -224,8 +224,10 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
         setSwapError('您已取消交易');
         setShowOverlay(false);
       } else {
+        // 显示错误状态，不关闭 overlay
         setSwapError(error?.message || '兑换失败');
         setOverlayStatus('error');
+        console.error('Error details:', error);
       }
     } finally {
       setIsSwapping(false);
