@@ -116,12 +116,33 @@ export function PortfolioCard() {
   useEffect(() => {
     if (!address) return
     const API_BASE = process.env.NEXT_PUBLIC_RELAYER_URL || 'http://localhost:3001'
-    fetch(`${API_BASE}/api/portfolio/${address}`)
-      .then(res => res.json())
-      .then(json => {
-        if (json.success) setApiData(json.data)
+    
+    // 优先尝试 v2 API（使用 user_stats 表，性能更好）
+    fetch(`${API_BASE}/api/v2/portfolio/${address}`)
+      .then(res => {
+        if (!res.ok) throw new Error('v2 API failed')
+        return res.json()
       })
-      .catch(() => {}) // 失败时使用合约数据
+      .then(json => {
+        if (json.success) {
+          console.log('[PortfolioCard] 使用 v2 API 数据（user_stats）')
+          setApiData(json.data)
+        } else {
+          throw new Error('v2 API returned error')
+        }
+      })
+      .catch(() => {
+        // Fallback: 使用旧 API
+        console.log('[PortfolioCard] v2 API 失败，fallback 到旧 API')
+        fetch(`${API_BASE}/api/portfolio/${address}`)
+          .then(res => res.json())
+          .then(json => {
+            if (json.success) setApiData(json.data)
+          })
+          .catch(() => {
+            console.log('[PortfolioCard] 旧 API 也失败，使用链上数据')
+          })
+      })
   }, [address])
 
   // RWA 价格（用于转换）
