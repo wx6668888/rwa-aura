@@ -72,6 +72,11 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
 
   // 检查是否需要授权
   useEffect(() => {
+    // 如果 overlay 正在显示，跳过授权检查
+    if (showOverlay) {
+      return;
+    }
+    
     // 如果刚完成授权，跳过检查，设置为不需要授权
     if (justApproved) {
       setNeedsApproval(false);
@@ -108,7 +113,7 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
     };
 
     checkApproval();
-  }, [justApproved, isConnected, hasAmount, fromToken, toToken, fromAmount, fromTokenAddress, isUSDTApproved, checkAllowance]);
+  }, [showOverlay, justApproved, isConnected, hasAmount, fromToken, toToken, fromAmount, fromTokenAddress, isUSDTApproved, checkAllowance]);
 
   const handleApprove = useCallback(async () => {
     if (!fromTokenAddress) {
