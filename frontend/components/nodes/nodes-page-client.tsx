@@ -15,12 +15,6 @@ export function NodesPageClient() {
     <main className="relative mx-auto max-w-4xl px-4 pb-[100px] pt-24 lg:px-8">
       {/* Page Header */}
       <div className="pb-6">
-        <p
-          className="text-[11px] uppercase tracking-widest text-[#00f5d4]"
-          style={{ fontVariant: 'small-caps' }}
-        >
-          {t('nodes.overline')}
-        </p>
         <h1 className="mt-1 font-[family-name:var(--font-space-grotesk)] text-3xl font-bold text-[#f1f5f9]">
           {t('nodes.title')}
         </h1>

@@ -17,11 +17,14 @@ export function useGaslessStake() {
     lockPeriod: number
   ) => {
     if (!address || !chainId) throw new Error('Not connected');
+    const amt = amount != null ? String(amount).trim() : '';
+    if (!amt || isNaN(parseFloat(amt))) throw new Error('请输入有效的质押金额');
+    const lockSafe = Number.isFinite(Number(lockPeriod)) ? Number(lockPeriod) : 0;
     
     setIsLoading(true);
     try {
       console.log('Starting gasless stake...');
-      const amountWei = parseUnits(amount, 6);
+      const amountWei = parseUnits(amt, 6);
       const deadline = Math.floor(Date.now() / 1000) + 3600;
       
       // 获取 nonces
@@ -30,18 +33,26 @@ export function useGaslessStake() {
       if (!nonceRes.ok) {
         throw new Error(`Failed to fetch nonce: ${nonceRes.status}`);
       }
-      const { nonce } = await nonceRes.json();
+      const noncePayload = await nonceRes.json();
+      const nonce = noncePayload?.nonce;
+      if (nonce == null) {
+        throw new Error('后端未返回 nonce，请确认后端已启动且 /api/nonce 可用');
+      }
       console.log('Staking nonce:', nonce);
-      
+
       // 获取 USDT permit nonce
       console.log('Fetching USDT permit nonce...');
       const usdtNonceRes = await fetch(`${RELAYER_URL}/api/usdt-nonce/${address}`);
       if (!usdtNonceRes.ok) {
         throw new Error(`Failed to fetch USDT nonce: ${usdtNonceRes.status}`);
       }
-      const { nonce: usdtNonce } = await usdtNonceRes.json();
+      const usdtNoncePayload = await usdtNonceRes.json();
+      const usdtNonce = usdtNoncePayload?.nonce;
+      if (usdtNonce == null) {
+        throw new Error('后端未返回 USDT permit nonce，请确认 /api/usdt-nonce 可用');
+      }
       console.log('USDT permit nonce:', usdtNonce);
-      
+
       // 1. Permit 签名
       console.log('Requesting Permit signature...');
       const permitSig = await signTypedDataAsync({
@@ -97,7 +108,7 @@ export function useGaslessStake() {
           user: address,
           amount: amountWei,
           referrer: referrer as `0x${string}`,
-          lockPeriod: BigInt(lockPeriod),
+          lockPeriod: BigInt(lockSafe),
           nonce: BigInt(nonce),
           deadline: BigInt(deadline),
         },
@@ -112,7 +123,7 @@ export function useGaslessStake() {
           user: address,
           amount: amountWei.toString(),
           referrer,
-          lockPeriod: lockPeriod.toString(),
+          lockPeriod: String(lockSafe),
           deadline: deadline.toString(),
           v: Number(v),
           r: r,
@@ -143,25 +154,42 @@ export function useGaslessStake() {
     lockPeriod: number
   ) => {
     if (!address || !chainId) throw new Error('Not connected');
+    const amt = amount != null ? String(amount).trim() : '';
+    if (!amt || isNaN(parseFloat(amt))) throw new Error('请输入有效的质押金额');
+    const lockSafe = Number.isFinite(Number(lockPeriod)) ? Number(lockPeriod) : 0;
     
     setIsLoading(true);
     try {
       console.log('Starting RWA gasless stake...');
-      const amountWei = parseUnits(amount, 18);
+      const amountWei = parseUnits(amt, 18);
       const deadline = Math.floor(Date.now() / 1000) + 3600;
       
       // 获取 nonces
       console.log('Fetching nonce...');
       const nonceRes = await fetch(`${RELAYER_URL}/api/nonce/${address}`);
-      const { nonce } = await nonceRes.json();
+      if (!nonceRes.ok) {
+        throw new Error(`获取 nonce 失败: ${nonceRes.status}`);
+      }
+      const noncePayload = await nonceRes.json();
+      const nonce = noncePayload?.nonce;
+      if (nonce == null) {
+        throw new Error('后端未返回 nonce，请确认后端已启动且 /api/nonce 可用');
+      }
       console.log('Stake nonce:', nonce);
-      
+
       // 获取 RWA Permit nonce
       console.log('Fetching RWA permit nonce...');
       const rwaPermitNonceRes = await fetch(`${RELAYER_URL}/api/rwa-nonce/${address}`);
-      const { nonce: rwaPermitNonce } = await rwaPermitNonceRes.json();
+      if (!rwaPermitNonceRes.ok) {
+        throw new Error(`获取 RWA permit nonce 失败: ${rwaPermitNonceRes.status}`);
+      }
+      const rwaPermitPayload = await rwaPermitNonceRes.json();
+      const rwaPermitNonce = rwaPermitPayload?.nonce;
+      if (rwaPermitNonce == null) {
+        throw new Error('后端未返回 RWA permit nonce，请确认 /api/rwa-nonce 可用');
+      }
       console.log('RWA Permit nonce:', rwaPermitNonce);
-      
+
       // 1. Permit 签名
       console.log('Requesting RWA Permit signature...');
       const permitSig = await signTypedDataAsync({
@@ -217,7 +245,7 @@ export function useGaslessStake() {
           user: address,
           amount: amountWei,
           referrer: referrer as `0x${string}`,
-          lockPeriod: BigInt(lockPeriod),
+          lockPeriod: BigInt(lockSafe),
           nonce: BigInt(nonce),
           deadline: BigInt(deadline),
         },
@@ -232,7 +260,7 @@ export function useGaslessStake() {
           user: address,
           amount: amountWei.toString(),
           referrer,
-          lockPeriod: lockPeriod.toString(),
+          lockPeriod: String(lockSafe),
           deadline: deadline.toString(),
           v: Number(v),
           r: r,

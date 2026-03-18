@@ -69,14 +69,35 @@ export default function CalculatorResultsPanel() {
         </div>
 
         {/* Referral Income */}
-        {state.referralEnabled && results.referralIncome > 0 && (
+        {state.referralEnabled && (
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-void-purple"></div>
               <span className="text-[13px] text-text-secondary">{t('calc.referralIncome')}</span>
+              {!results.referralEligible && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full border border-white/10 bg-white/[0.03] text-white/60">
+                  {t('calc.referralNeedLock30')}
+                </span>
+              )}
             </div>
             <span className="font-jetbrains text-void-purple text-[14px] font-bold">
               +${results.referralIncome.toFixed(2)}
+            </span>
+          </div>
+        )}
+
+        {/* Team Retained */}
+        {state.referralEnabled && (
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-400"></div>
+              <span className="text-[13px] text-text-secondary">{t('calc.teamRetained')}</span>
+            </div>
+            <span className="font-jetbrains text-green-400 text-[14px] font-bold">
+              ${results.teamRetained.toFixed(2)}
+              <span className="text-[11px] text-green-400/70 ml-2">
+                ({results.teamRetainedRate.toFixed(1)}%)
+              </span>
             </span>
           </div>
         )}
@@ -93,28 +114,6 @@ export default function CalculatorResultsPanel() {
             </span>
           </div>
         )}
-
-        {/* stRWA Asset Certificate */}
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-400"></div>
-            <span className="text-[13px] text-text-secondary">{t('calc.stRWAValue')}</span>
-          </div>
-          <span className="font-jetbrains text-green-400 text-[14px] font-bold">
-            ${results.stRWAValue.toFixed(2)}
-          </span>
-        </div>
-
-        {/* Investment Shares */}
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-blue-400"></div>
-            <span className="text-[13px] text-text-secondary">{t('calc.investmentShares')}</span>
-          </div>
-          <span className="font-jetbrains text-blue-400 text-[14px] font-bold">
-            ${results.investmentShares.toFixed(2)}
-          </span>
-        </div>
 
         {/* Estimated Dividend */}
         {results.estimatedDividend > 0 && (
@@ -150,6 +149,41 @@ export default function CalculatorResultsPanel() {
             ${results.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </div>
+      </div>
+
+      {/* Asset Structure (not included in total) */}
+      <div className="mt-5 bg-surface-2 rounded-xl p-4">
+        <div className="flex items-center justify-between">
+          <div className="text-[11px] uppercase tracking-widest text-text-secondary">
+            {t('calc.assetStructure')}
+          </div>
+          <span className="text-[10px] px-2 py-0.5 rounded-full border border-white/10 bg-white/[0.03] text-white/60">
+            {t('calc.notIncludedInTotal')}
+          </span>
+        </div>
+        <div className="mt-3 space-y-2">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-400"></div>
+              <span className="text-[13px] text-text-secondary">{t('calc.stRWAValue')}</span>
+            </div>
+            <span className="font-jetbrains text-green-400 text-[14px] font-bold">
+              ${results.stRWAValue.toFixed(2)}
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+              <span className="text-[13px] text-text-secondary">{t('calc.investmentShares')}</span>
+            </div>
+            <span className="font-jetbrains text-blue-400 text-[14px] font-bold">
+              ${results.investmentShares.toFixed(2)}
+            </span>
+          </div>
+        </div>
+        <p className="mt-3 text-[11px] text-text-disabled leading-relaxed">
+          {t('calc.assetStructureNote')}
+        </p>
       </div>
 
       {/* Break-Even Time */}

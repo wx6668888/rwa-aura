@@ -149,11 +149,7 @@ function LevelStepper({ currentLevel, onLevelClick }: { currentLevel: number; on
                       <span className="text-[#10b981] font-semibold">{selectedConfig.dividendWeight}x</span>
                     </div>
                   )}
-                  {!isUnlocked && (
-                    <div className="mt-3 pt-3 border-t border-[#00f5d420] text-center">
-                      <span className="text-[#f43f5e]">🔒 {t('nodes.locked')}</span>
-                    </div>
-                  )}
+                  {/* Locked badge removed (per product decision) */}
                 </div>
               </div>
             )

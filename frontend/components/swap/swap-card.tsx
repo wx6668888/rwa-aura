@@ -25,8 +25,9 @@ export default function SwapCard() {
   const { balance: usdtBalance } = useUSDT();
   const { balanceFormatted: rwaBalance } = useRWAToken();
   
-  const [fromToken, setFromToken] = useState('USDT');
-  const [toToken, setToToken] = useState('RWA');
+  // 仅支持：USDT → RWA
+  const fromToken = 'USDT'
+  const toToken = 'RWA'
   const [fromAmount, setFromAmount] = useState('');
   const [slippage, setSlippage] = useState(0.5);
 
@@ -78,12 +79,6 @@ export default function SwapCard() {
     ? parseFloat(usdtBalance || '0').toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : parseFloat(rwaBalance || '0').toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const handleSwapDirection = () => {
-    setFromToken(toToken);
-    setToToken(fromToken);
-    setFromAmount(toAmount);
-  };
-
   const handleRefresh = () => {
     refresh();
   };
@@ -127,19 +122,16 @@ export default function SwapCard() {
         token={fromToken}
         amount={fromAmount}
         onAmountChange={setFromAmount}
-        onTokenChange={setFromToken}
+        onTokenChange={() => {}}
         balance={isConnected ? fromBalance : '0.00'}
         showMax
       />
 
       {/* Swap Direction Button */}
       <div className="my-2 flex justify-center">
-        <button
-          onClick={handleSwapDirection}
-          className="w-9 h-9 flex items-center justify-center rounded-full bg-surface-2 border border-border-active text-text-secondary hover:bg-surface-3 hover:text-plasma-cyan transition-all duration-300 hover:rotate-180"
-        >
-          <ArrowUpDown className="w-4 h-4" />
-        </button>
+        <div className="text-[11px] text-text-secondary">
+          当前仅支持 <span className="text-text-primary font-semibold">USDT</span> 购买 <span className="text-text-primary font-semibold">RWA</span>
+        </div>
       </div>
 
       {/* To Token Input - 显示自动计算的金额 */}
@@ -148,7 +140,7 @@ export default function SwapCard() {
         token={toToken}
         amount={toAmount}
         onAmountChange={() => {}} // 输出金额不可编辑
-        onTokenChange={setToToken}
+        onTokenChange={() => {}}
         balance={isConnected ? toBalance : '0.00'}
         isOutput
       />

@@ -2,9 +2,10 @@
 
 import { Users, ArrowLeft, Info } from 'lucide-react'
 import { useAccount } from 'wagmi'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useReferralWithdraw } from '@/hooks/useReferralWithdraw'
 import { TransactionOverlay } from '../transaction-overlay'
+import { useReferralRewards } from '@/hooks/useReferralRewards'
 
 interface Props {
   onMobileBack: () => void
@@ -15,14 +16,38 @@ export function PanelReferral({ onMobileBack, data }: Props) {
   const { isConnected } = useAccount()
   const [amount, setAmount] = useState('')
   const { withdraw } = useReferralWithdraw()
+  const { nextSettlement, totalPending } = useReferralRewards()
   const [showOverlay, setShowOverlay] = useState(false)
   const [overlayStatus, setOverlayStatus] = useState<'waiting' | 'pending' | 'success' | 'error'>('waiting')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [txHash, setTxHash] = useState<string | null>(null)
+  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
 
   const referralAmount = parseFloat(data.referralAmount || '0')
   const hasReferral = referralAmount > 0
+
+  const nextSettlementMs = useMemo(() => {
+    if (!nextSettlement) return null
+    const t = Date.parse(nextSettlement)
+    return Number.isFinite(t) ? t : null
+  }, [nextSettlement])
+
+  useEffect(() => {
+    if (!nextSettlementMs) return
+    const tick = () => {
+      const now = Date.now()
+      const diff = Math.max(0, nextSettlementMs - now)
+      const days = Math.floor(diff / 86400000)
+      const hours = Math.floor((diff % 86400000) / 3600000)
+      const minutes = Math.floor((diff % 3600000) / 60000)
+      const seconds = Math.floor((diff % 60000) / 1000)
+      setCountdown({ days, hours, minutes, seconds })
+    }
+    tick()
+    const timer = setInterval(tick, 1000)
+    return () => clearInterval(timer)
+  }, [nextSettlementMs])
 
   const handleWithdraw = async () => {
     if (!amount || parseFloat(amount) < 100) {
@@ -84,6 +109,59 @@ export function PanelReferral({ onMobileBack, data }: Props) {
       <div className="flex-1 overflow-y-auto">
         {hasReferral ? (
           <div className="max-w-[640px] mx-auto px-4 py-6 space-y-6">
+            {/* 下次发放倒计时 + 待发放金额（与其他卡片风格一致） */}
+            <div className="group relative overflow-hidden rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] hover:border-[#00f5d440] transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#fbbf24]/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#fbbf24]/20 rounded-full blur-3xl opacity-40" />
+              <div className="relative z-10 p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-[#fbbf24]/10 flex items-center justify-center">
+                      <Users className="w-4 h-4 text-[#fbbf24]" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-[#fbbf24]">下次发放</div>
+                      <div className="text-[10px] text-white/40">每周一 02:00 结算</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] text-white/40">待发放金额</div>
+                    <div className="text-base font-bold text-[#00f5d4]" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
+                      {Number.isFinite(totalPending) ? totalPending.toFixed(2) : '0.00'} USDT
+                    </div>
+                  </div>
+                </div>
+
+                {/* 倒计时 */}
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="rounded-xl bg-black/30 border border-white/10 px-3 py-2 text-center">
+                    <div className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
+                      {String(countdown.days).padStart(2, '0')}
+                    </div>
+                    <div className="text-[10px] text-white/40">天</div>
+                  </div>
+                  <div className="rounded-xl bg-black/30 border border-white/10 px-3 py-2 text-center">
+                    <div className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
+                      {String(countdown.hours).padStart(2, '0')}
+                    </div>
+                    <div className="text-[10px] text-white/40">小时</div>
+                  </div>
+                  <div className="rounded-xl bg-black/30 border border-white/10 px-3 py-2 text-center">
+                    <div className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
+                      {String(countdown.minutes).padStart(2, '0')}
+                    </div>
+                    <div className="text-[10px] text-white/40">分钟</div>
+                  </div>
+                  <div className="rounded-xl bg-black/30 border border-white/10 px-3 py-2 text-center">
+                    <div className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
+                      {String(countdown.seconds).padStart(2, '0')}
+                    </div>
+                    <div className="text-[10px] text-white/40">秒</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* 金额卡片：玻璃风格 */}
             <div className="bg-white/[0.03] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.06]">
               <div className="flex justify-between items-center mb-3">

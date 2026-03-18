@@ -10,7 +10,7 @@ import { NODE_LEVELS } from '@/lib/node-levels';
 export default function CalculatorInputPanel() {
   const { locale } = useLocale();
   const { t } = useTranslation(locale);
-  const { state, updateAmount, updateDays, updateLockPeriod, updateNodeLevel, toggleReferral, updateDirectRefs, updateAvgStake, toggleReinvest, updateReinvestCount, toggleComparison } = useCalculator();
+  const { state, updateAmount, updateDays, updateLockPeriod, updateNodeLevel, toggleReferral, updateDirectRefs, updateAvgStake, updateTeamRetentionRate, toggleReinvest, updateReinvestCount, toggleComparison } = useCalculator();
   
   const [amountInput, setAmountInput] = useState(state.amount.toLocaleString());
 
@@ -67,7 +67,11 @@ export default function CalculatorInputPanel() {
             <button
               key={amount}
               onClick={() => handleAmountChange(amount.toString())}
-              className="bg-surface-2 border border-border-subtle text-text-secondary text-[13px] px-4 py-2 rounded-full hover:border-plasma-cyan hover:text-plasma-cyan transition-all"
+              className={`bg-surface-2 border text-[13px] px-4 py-2 rounded-full transition-all ${
+                state.amount === amount
+                  ? 'border-plasma-cyan text-plasma-cyan bg-surface-3'
+                  : 'border-border-subtle text-text-secondary hover:border-plasma-cyan hover:text-plasma-cyan'
+              }`}
             >
               ${amount.toLocaleString()}
             </button>
@@ -231,6 +235,39 @@ export default function CalculatorInputPanel() {
                 className="w-full bg-surface-1 border border-border-subtle rounded-xl px-4 h-11 font-jetbrains text-text-primary outline-none focus:border-plasma-cyan"
               />
             </div>
+          </div>
+        )}
+
+        {state.referralEnabled && (
+          <div className="mt-3 animate-in slide-in-from-top">
+            <label className="block text-[11px] text-text-secondary mb-1">
+              {t('calc.teamRetentionRate')}
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={state.teamRetentionRate}
+                onChange={(e) => updateTeamRetentionRate(Number(e.target.value))}
+                className="flex-1 h-1.5 bg-surface-3 rounded-full appearance-none cursor-pointer slider"
+                style={{
+                  background: `linear-gradient(to right, #00f5d4 0%, #00f5d4 ${state.teamRetentionRate}%, #1a1a2e ${state.teamRetentionRate}%, #1a1a2e 100%)`
+                }}
+              />
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={state.teamRetentionRate}
+                onChange={(e) => updateTeamRetentionRate(Number(e.target.value))}
+                className="w-[88px] bg-surface-1 border border-border-subtle rounded-xl px-3 h-11 font-jetbrains text-text-primary outline-none focus:border-plasma-cyan text-right"
+              />
+              <span className="text-[12px] text-text-secondary">%</span>
+            </div>
+            <p className="text-[11px] text-text-disabled mt-2">
+              {t('calc.teamRetentionNote')}
+            </p>
           </div>
         )}
 

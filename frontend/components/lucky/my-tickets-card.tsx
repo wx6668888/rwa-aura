@@ -24,82 +24,20 @@ export default function MyTicketsCard({ poolType }: MyTicketsCardProps) {
   
   const { getUserTicketsDetails, claimPrize, isClaiming } = useLottery();
   
-  // 使用模拟数据（合约未部署时）
   useEffect(() => {
     if (isConnected && address) {
       loadTickets();
     } else if (!isConnected) {
-      // 未连接时显示模拟数据
-      const mockTickets: Ticket[] = [
-        { 
-          id: '1', 
-          owner: '', 
-          number: '123456', 
-          poolType: 'weekly', 
-          round: '1',
-          purchaseTime: Math.floor(Date.now() / 1000) - 3600, 
-          isWinner: false,
-          prizeLevel: 0,
-          prizeAmount: '0',
-          claimed: false
-        },
-        { 
-          id: '2', 
-          owner: '', 
-          number: '789012', 
-          poolType: 'weekly', 
-          round: '1',
-          purchaseTime: Math.floor(Date.now() / 1000) - 7200, 
-          isWinner: false,
-          prizeLevel: 0,
-          prizeAmount: '0',
-          claimed: false
-        },
-        { 
-          id: '3', 
-          owner: '', 
-          number: '345678', 
-          poolType: 'weekly', 
-          round: '1',
-          purchaseTime: Math.floor(Date.now() / 1000) - 86400, 
-          isWinner: false,
-          prizeLevel: 0,
-          prizeAmount: '0',
-          claimed: false
-        },
-        { 
-          id: '4', 
-          owner: '', 
-          number: '901234', 
-          poolType: 'weekly', 
-          round: '1',
-          purchaseTime: Math.floor(Date.now() / 1000) - 86400, 
-          isWinner: false,
-          prizeLevel: 0,
-          prizeAmount: '0',
-          claimed: false
-        },
-        { 
-          id: '5', 
-          owner: '', 
-          number: '567890', 
-          poolType: 'weekly', 
-          round: '1',
-          purchaseTime: Math.floor(Date.now() / 1000) - 172800, 
-          isWinner: false,
-          prizeLevel: 0,
-          prizeAmount: '0',
-          claimed: false
-        },
-      ];
-      setTickets(mockTickets);
+      setTickets([]);
     }
   }, [isConnected, address]);
   
   const loadTickets = async () => {
     setIsLoading(true);
     try {
+      console.log('Loading tickets...');
       const userTickets = await getUserTicketsDetails();
+      console.log('Loaded tickets:', userTickets);
       setTickets(userTickets);
     } catch (error) {
       console.error(t('lucky.loadTicketsFailed'), error);
@@ -110,8 +48,14 @@ export default function MyTicketsCard({ poolType }: MyTicketsCardProps) {
   
   const weeklyTickets = tickets.filter(t => t.poolType === 'weekly');
   const monthlyTickets = tickets.filter(t => t.poolType === 'monthly');
+  const realtimeTickets = tickets.filter(t => t.poolType === 'realtime');
+  const annualTickets = tickets.filter(t => t.poolType === 'annual');
   
-  const displayTickets = activeTab === 'weekly' ? weeklyTickets : monthlyTickets;
+  const displayTickets = 
+    activeTab === 'weekly' ? weeklyTickets :
+    activeTab === 'monthly' ? monthlyTickets :
+    activeTab === 'realtime' ? realtimeTickets :
+    annualTickets;
   
   // 格式化时间
   const formatTime = (timestamp: number) => {
@@ -138,11 +82,19 @@ export default function MyTicketsCard({ poolType }: MyTicketsCardProps) {
         </h3>
       </div>
 
+      {/* 调试：显示彩票数量和状态 */}
+      <div className="mt-2 text-[11px] text-text-secondary bg-surface-2 rounded p-2 space-y-1">
+        <div>总计: {tickets.length}张 | 周: {weeklyTickets.length} | 月: {monthlyTickets.length} | 实时: {realtimeTickets.length} | 年度: {annualTickets.length}</div>
+        <div>连接状态: {isConnected ? '✅ 已连接' : '❌ 未连接'}</div>
+        <div>地址: {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '无'}</div>
+        <div>加载中: {isLoading ? '是' : '否'}</div>
+      </div>
+
       {/* Pool Tabs */}
-      <div className="mt-3 flex gap-2">
+      <div className="mt-3 grid grid-cols-2 gap-2">
         <button
           onClick={() => setActiveTab('weekly')}
-          className={`flex-1 px-3 py-1.5 rounded-full text-[12px] transition-colors ${
+          className={`px-3 py-1.5 rounded-full text-[12px] transition-colors ${
             activeTab === 'weekly'
               ? 'bg-plasma-cyan text-void-black font-700'
               : 'border border-border-subtle text-text-secondary hover:border-border-active'
@@ -152,13 +104,33 @@ export default function MyTicketsCard({ poolType }: MyTicketsCardProps) {
         </button>
         <button
           onClick={() => setActiveTab('monthly')}
-          className={`flex-1 px-3 py-1.5 rounded-full text-[12px] transition-colors ${
+          className={`px-3 py-1.5 rounded-full text-[12px] transition-colors ${
             activeTab === 'monthly'
               ? 'bg-plasma-cyan text-void-black font-700'
               : 'border border-border-subtle text-text-secondary hover:border-border-active'
           }`}
         >
           {t('lucky.monthly')} {monthlyTickets.length}{t('lucky.tickets')}
+        </button>
+        <button
+          onClick={() => setActiveTab('realtime')}
+          className={`px-3 py-1.5 rounded-full text-[12px] transition-colors ${
+            activeTab === 'realtime'
+              ? 'bg-plasma-cyan text-void-black font-700'
+              : 'border border-border-subtle text-text-secondary hover:border-border-active'
+          }`}
+        >
+          {t('lucky.realtime')} {realtimeTickets.length}{t('lucky.tickets')}
+        </button>
+        <button
+          onClick={() => setActiveTab('annual')}
+          className={`px-3 py-1.5 rounded-full text-[12px] transition-colors ${
+            activeTab === 'annual'
+              ? 'bg-plasma-cyan text-void-black font-700'
+              : 'border border-border-subtle text-text-secondary hover:border-border-active'
+          }`}
+        >
+          {t('lucky.annual')} {annualTickets.length}{t('lucky.tickets')}
         </button>
       </div>
 

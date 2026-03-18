@@ -151,6 +151,12 @@ export function StakeActionPanel() {
     : `0 ${stakeMode === 'USDT' ? 'USDT' : 'RWA'}`
 
   async function handleApprove() {
+    const amountStr = amount != null ? String(amount).trim() : ''
+    if (!amountStr || isNaN(parseFloat(amountStr))) {
+      setErrorMessage(locale.startsWith('zh') ? '请输入有效的质押金额' : 'Please enter a valid amount')
+      setStatus('error')
+      return
+    }
     // USDT staking: minimum 100 USDT
     if (stakeMode === 'USDT' && numAmount < 100) return
     if (stakeMode === 'RWA' && numAmount < MIN_RWA_STAKE_ESTIMATE) {
@@ -213,14 +219,35 @@ export function StakeActionPanel() {
     try {
       setStatus('staking')
       setErrorMessage('')
+
+      const addrs = chainId ? CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES] : undefined
+      const zero = '0x0000000000000000000000000000000000000000'
+      const stakingAddr = addrs?.stakingContract
+      const rwaAddr = addrs?.rwaToken
+      const usdtAddr = addrs?.usdtToken
+      if (!stakingAddr || stakingAddr === zero) {
+        setStatus('error')
+        setErrorMessage(locale.startsWith('zh') ? '未配置 Staking 合约地址，请确认已连接 BSC 主网' : 'Staking contract not configured. Please connect to BSC mainnet.')
+        return
+      }
+      if (stakeMode === 'RWA' && (!rwaAddr || rwaAddr === zero)) {
+        setStatus('error')
+        setErrorMessage(locale.startsWith('zh') ? '未配置 RWA 合约地址' : 'RWA token contract not configured.')
+        return
+      }
+      if (stakeMode === 'USDT' && (!usdtAddr || usdtAddr === zero)) {
+        setStatus('error')
+        setErrorMessage(locale.startsWith('zh') ? '未配置 USDT 合约地址' : 'USDT token contract not configured.')
+        return
+      }
       
       // 确保状态更新被渲染（至少显示200ms）
       await new Promise(resolve => setTimeout(resolve, 200))
 
       // 如果已有推荐人，使用空地址；否则使用输入的推荐人地址
       const referrerAddress = hasReferrer ? '0x0000000000000000000000000000000000000000' : referral.trim()
-      // Convert lockPeriod to number (flexible=0, 30, 90, 180, 365)
-      const lockPeriodNum = lockPeriod === 'flexible' ? 0 : parseInt(lockPeriod)
+      // Convert lockPeriod to number (flexible=0, 30, 90, 180, 365)，避免 NaN/undefined 导致 BigInt 报错
+      const lockPeriodNum = lockPeriod === 'flexible' ? 0 : (parseInt(String(lockPeriod), 10) || 0)
 
       if (stakeMode === 'RWA' && numAmount < MIN_RWA_STAKE_ESTIMATE) {
         throw new Error(
@@ -232,15 +259,15 @@ export function StakeActionPanel() {
       
       const hash = stakeMode === 'USDT'
         ? await gaslessStake(
-            CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]?.usdtToken || '',
-            CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]?.stakingContract || '',
+            usdtAddr!,
+            stakingAddr,
             amount,
             referrerAddress,
             lockPeriodNum
           )
         : await gaslessStakeRWA(
-            CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]?.rwaToken || '',
-            CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]?.stakingContract || '',
+            rwaAddr!,
+            stakingAddr,
             amount,
             referrerAddress,
             lockPeriodNum

@@ -70,8 +70,8 @@ export default function PrizeBreakdownTable() {
   const { realtimePool, weeklyPool, monthlyPool, annualPool } = useLottery();
   
   const realtimeAmt = parseFloat(realtimePool?.prizePool || '0');
-  const weeklyAmt = parseFloat(weeklyPool?.prizePool || '12450');
-  const monthlyAmt = parseFloat(monthlyPool?.prizePool || '48200');
+  const weeklyAmt = parseFloat(weeklyPool?.prizePool || '0');
+  const monthlyAmt = parseFloat(monthlyPool?.prizePool || '0');
   const annualAmt = parseFloat(annualPool?.prizePool || '0');
 
   return (
@@ -83,10 +83,10 @@ export default function PrizeBreakdownTable() {
         {t('lucky.projectShareDesc')}
       </p>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <PoolBreakdownBlock title={t('lucky.realtimePool')} titleIcon="⚡" poolAmount={realtimeAmt || 1000} colorClass="text-plasma-cyan" t={t} />
+        <PoolBreakdownBlock title={t('lucky.realtimePool')} titleIcon="⚡" poolAmount={realtimeAmt} colorClass="text-plasma-cyan" t={t} />
         <PoolBreakdownBlock title={t('lucky.weeklyPool')} titleIcon="🎯" poolAmount={weeklyAmt} colorClass="text-plasma-cyan" t={t} />
         <PoolBreakdownBlock title={t('lucky.monthlyPool')} titleIcon="🏆" poolAmount={monthlyAmt} colorClass="text-void-purple" t={t} />
-        <PoolBreakdownBlock title={t('lucky.annualPool')} titleIcon="🌟" poolAmount={annualAmt || 50000} colorClass="text-gold-node" t={t} />
+        <PoolBreakdownBlock title={t('lucky.annualPool')} titleIcon="🌟" poolAmount={annualAmt} colorClass="text-gold-node" t={t} />
       </div>
     </div>
   );

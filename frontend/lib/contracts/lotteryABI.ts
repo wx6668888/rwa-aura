@@ -1,20 +1,122 @@
 // Lottery Contract ABI (Weekly=0, Monthly=1, RealTime=2, Annual=3)
+// 标准JSON ABI格式
 export const LOTTERY_ABI = [
-  "function buyTickets(uint256 count, uint8 poolType) external",
-  "function claimPrize(uint256 ticketId) external",
-  "function getUserTickets(address user) external view returns (uint256[])",
-  "function getCurrentPoolInfo(uint8 poolType) external view returns (uint256 currentRound, uint256 prizePool, uint256 nextDrawTime, uint256 ticketsSold, uint256 ticketPrice)",
-  "function getTicket(uint256 ticketId) external view returns (tuple(address owner, uint256 number, uint8 poolType, uint256 round, uint256 purchaseTime, bool isWinner, uint8 prizeLevel, uint256 prizeAmount, bool claimed))",
-  "function getDraw(uint8 poolType, uint256 round) external view returns (tuple(uint256 winningNumber, uint256 drawTime, uint256 totalPrize, uint256[4] winnersCount, uint256[4] prizePerWinner, bool completed))",
-  "function getPrizePool(uint8 poolType) external view returns (uint256)",
-  "function WEEKLY_TICKET_PRICE() external view returns (uint256)",
-  "function MONTHLY_TICKET_PRICE() external view returns (uint256)",
-  "function REALTIME_TICKET_PRICE() external view returns (uint256)",
-  "function ANNUAL_TICKET_PRICE() external view returns (uint256)",
-  "function draw(uint8 poolType) external",
-  "event TicketsPurchased(address indexed buyer, uint256[] ticketIds, uint256[] ticketNumbers, uint8 poolType, uint256 round, uint256 totalCost)",
-  "event DrawCompleted(uint8 poolType, uint256 round, uint256 winningNumber, uint256 totalPrize, uint256 timestamp)",
-  "event PrizeClaimed(address indexed winner, uint256 ticketId, uint8 prizeLevel, uint256 prizeAmount)"
+  {
+    "type": "function",
+    "name": "buyTickets",
+    "inputs": [
+      {"name": "count", "type": "uint256"},
+      {"name": "poolType", "type": "uint8"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "claimPrize",
+    "inputs": [{"name": "ticketId", "type": "uint256"}],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getUserTickets",
+    "inputs": [{"name": "user", "type": "address"}],
+    "outputs": [{"name": "", "type": "uint256[]"}],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getCurrentPoolInfo",
+    "inputs": [{"name": "poolType", "type": "uint8"}],
+    "outputs": [
+      {"name": "currentRound", "type": "uint256"},
+      {"name": "prizePool", "type": "uint256"},
+      {"name": "nextDrawTime", "type": "uint256"},
+      {"name": "ticketsSold", "type": "uint256"},
+      {"name": "ticketPrice", "type": "uint256"}
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getTicket",
+    "inputs": [{"name": "ticketId", "type": "uint256"}],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "components": [
+          {"name": "owner", "type": "address"},
+          {"name": "number", "type": "uint256"},
+          {"name": "poolType", "type": "uint8"},
+          {"name": "round", "type": "uint256"},
+          {"name": "purchaseTime", "type": "uint256"},
+          {"name": "isWinner", "type": "bool"},
+          {"name": "prizeLevel", "type": "uint8"},
+          {"name": "prizeAmount", "type": "uint256"},
+          {"name": "claimed", "type": "bool"}
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getDraw",
+    "inputs": [
+      {"name": "poolType", "type": "uint8"},
+      {"name": "round", "type": "uint256"}
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "components": [
+          {"name": "winningNumber", "type": "uint256"},
+          {"name": "drawTime", "type": "uint256"},
+          {"name": "totalPrize", "type": "uint256"},
+          {"name": "winnersCount", "type": "uint256[4]"},
+          {"name": "prizePerWinner", "type": "uint256[4]"},
+          {"name": "completed", "type": "bool"}
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "TicketsPurchased",
+    "inputs": [
+      {"name": "buyer", "type": "address", "indexed": true},
+      {"name": "ticketIds", "type": "uint256[]", "indexed": false},
+      {"name": "ticketNumbers", "type": "uint256[]", "indexed": false},
+      {"name": "poolType", "type": "uint8", "indexed": false},
+      {"name": "round", "type": "uint256", "indexed": false},
+      {"name": "totalCost", "type": "uint256", "indexed": false}
+    ]
+  },
+  {
+    "type": "event",
+    "name": "DrawCompleted",
+    "inputs": [
+      {"name": "poolType", "type": "uint8", "indexed": false},
+      {"name": "round", "type": "uint256", "indexed": false},
+      {"name": "winningNumber", "type": "uint256", "indexed": false},
+      {"name": "totalPrize", "type": "uint256", "indexed": false},
+      {"name": "timestamp", "type": "uint256", "indexed": false}
+    ]
+  },
+  {
+    "type": "event",
+    "name": "PrizeClaimed",
+    "inputs": [
+      {"name": "winner", "type": "address", "indexed": true},
+      {"name": "ticketId", "type": "uint256", "indexed": false},
+      {"name": "prizeLevel", "type": "uint8", "indexed": false},
+      {"name": "prizeAmount", "type": "uint256", "indexed": false}
+    ]
+  }
 ] as const;
 
 export type PoolType = 0 | 1 | 2 | 3; // 0=Weekly, 1=Monthly, 2=RealTime, 3=Annual

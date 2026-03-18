@@ -44,9 +44,13 @@ export function useStakingContract() {
   // Stake function (USDT staking)
   async function stake(amount: string, referrer?: string, lockPeriod: number = 0) {
     if (!stakingAddress) throw new Error('Staking contract not found')
+    const amt = amount != null ? String(amount).trim() : ''
+    if (!amt || isNaN(parseFloat(amt))) throw new Error('请输入有效的质押金额')
+    const lock = Number(lockPeriod)
+    const lockSafe = Number.isFinite(lock) ? lock : 0
     
     // Convert amount to 6 decimals (USDT precision)
-    const amountInWei = parseUnits(amount, 6)
+    const amountInWei = parseUnits(amt, 6)
     
     const hash = await writeContractAsync({
       address: stakingAddress as `0x${string}`,
@@ -55,7 +59,7 @@ export function useStakingContract() {
       args: [
         amountInWei, 
         (referrer || '0x0000000000000000000000000000000000000000') as `0x${string}`,
-        BigInt(lockPeriod)
+        BigInt(lockSafe)
       ],
       gas: 5000000n, // Set gas limit to 5M (within Hardhat's 16M cap)
     })
@@ -66,9 +70,13 @@ export function useStakingContract() {
   // Stake RWA function
   async function stakeRWA(amount: string, referrer?: string, lockPeriod: number = 0) {
     if (!stakingAddress) throw new Error('Staking contract not found')
+    const amt = amount != null ? String(amount).trim() : ''
+    if (!amt || isNaN(parseFloat(amt))) throw new Error('请输入有效的质押金额')
+    const lock = Number(lockPeriod)
+    const lockSafe = Number.isFinite(lock) ? lock : 0
     
     // Convert amount to 18 decimals (RWA precision)
-    const amountInWei = parseUnits(amount, 18)
+    const amountInWei = parseUnits(amt, 18)
     
     const hash = await writeContractAsync({
       address: stakingAddress as `0x${string}`,
@@ -77,7 +85,7 @@ export function useStakingContract() {
       args: [
         amountInWei, 
         (referrer || '0x0000000000000000000000000000000000000000') as `0x${string}`,
-        BigInt(lockPeriod)
+        BigInt(lockSafe)
       ],
       gas: 5000000n,
     })

@@ -1,7 +1,9 @@
 import { useAccount, useReadContract, useWriteContract } from 'wagmi'
+import { readContract } from 'wagmi/actions'
 import { parseUnits, formatUnits } from 'viem'
 import { erc20ABI } from '@/lib/contracts/erc20ABI'
 import { CONTRACT_ADDRESSES } from '@/lib/contracts/addresses'
+import { config } from '@/lib/wagmi'
 
 export function useRWAToken() {
   const { address, chainId } = useAccount()
@@ -20,18 +22,23 @@ export function useRWAToken() {
     },
   })
 
-  // Read RWA allowance for a specific spender
+  // Read RWA allowance for a specific spender (使用readContract而不是hook)
   const getAllowance = async (spender: string) => {
     if (!address || !rwaAddress) return BigInt(0)
     
-    const { data } = await useReadContract({
-      address: rwaAddress as `0x${string}`,
-      abi: erc20ABI,
-      functionName: 'allowance',
-      args: [address, spender as `0x${string}`],
-    })
-    
-    return data || BigInt(0)
+    try {
+      const result = await readContract(config, {
+        address: rwaAddress as `0x${string}`,
+        abi: erc20ABI,
+        functionName: 'allowance',
+        args: [address, spender as `0x${string}`],
+      })
+      
+      return result || BigInt(0)
+    } catch (error) {
+      console.error('Failed to get allowance:', error)
+      return BigInt(0)
+    }
   }
 
   // Approve RWA for a specific spender

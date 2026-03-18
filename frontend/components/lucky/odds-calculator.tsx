@@ -3,21 +3,62 @@
 import { useLocale } from '@/components/locale-provider';
 import { useTranslation } from '@/lib/i18n';
 import type { LuckyPoolType } from './pool-switcher';
+import { useEffect, useMemo, useState } from 'react'
+import { useAccount } from 'wagmi'
+import { useLottery } from '@/hooks/useLottery'
 
 interface OddsCalculatorProps {
   poolType: LuckyPoolType;
 }
 
+const POOL_TO_NUM: Record<LuckyPoolType, 0 | 1 | 2 | 3> = { weekly: 0, monthly: 1, realtime: 2, annual: 3 };
+
 export default function OddsCalculator({ poolType }: OddsCalculatorProps) {
   const { locale } = useLocale();
   const { t } = useTranslation(locale);
+  const { isConnected } = useAccount()
+  const { weeklyPool, monthlyPool, realtimePool, annualPool, getUserTicketsDetails } = useLottery()
   
-  // Mock data - TODO: 从合约获取
-  const myTickets = 5;
-  const totalTickets = 2450;
-  const firstPrizeOdds = (myTickets / totalTickets * 100).toFixed(2);
-  const anyPrizeOdds = (myTickets / totalTickets * 100 * 5).toFixed(2); // 假设5倍机会中任意奖
-  const visualPercentage = (myTickets / totalTickets * 100);
+  const currentPool = poolType === 'weekly' ? weeklyPool : poolType === 'monthly' ? monthlyPool : poolType === 'realtime' ? realtimePool : annualPool;
+  const totalTickets = Math.max(0, Number(currentPool?.ticketsSold ?? 0))
+
+  const [myTickets, setMyTickets] = useState(0)
+
+  useEffect(() => {
+    let cancelled = false
+    async function run() {
+      if (!isConnected) {
+        setMyTickets(0)
+        return
+      }
+      try {
+        const details = await getUserTicketsDetails()
+        if (cancelled) return
+        const poolStr = poolType
+        setMyTickets(details.filter((t) => t.poolType === poolStr).length)
+      } catch {
+        if (!cancelled) setMyTickets(0)
+      }
+    }
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [isConnected, getUserTicketsDetails, poolType])
+
+  const { firstPrizeOdds, anyPrizeOdds, visualPercentage } = useMemo(() => {
+    if (!totalTickets || totalTickets <= 0 || myTickets <= 0) {
+      return { firstPrizeOdds: '0.00', anyPrizeOdds: '0.00', visualPercentage: 0 }
+    }
+    const fp = (myTickets / totalTickets) * 100
+    // 近似：任意奖 = 4 个奖档的概率上限（不承诺精确概率）
+    const ap = Math.min(100, fp * 4)
+    return {
+      firstPrizeOdds: fp.toFixed(2),
+      anyPrizeOdds: ap.toFixed(2),
+      visualPercentage: fp,
+    }
+  }, [myTickets, totalTickets])
 
   return (
     <div className="border border-border-subtle rounded-2xl p-5 backdrop-blur-xl bg-surface-1">

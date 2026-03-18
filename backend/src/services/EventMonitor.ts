@@ -27,6 +27,11 @@ export interface EventMonitorConfig {
 }
 
 export class EventMonitor {
+    private rpcUrls: string[] = [];
+    private providerIndex: number = 0;
+    private rpcMaxAttempts: number = 4;
+    private rpcRetryDelayMs: number = 400;
+    private batchSize: number = 100;
     private provider: ethers.JsonRpcProvider;
     private stakingContract: ethers.Contract;
     private config: EventMonitorConfig;
@@ -57,7 +62,20 @@ export class EventMonitor {
     
     constructor(config: EventMonitorConfig) {
         this.config = config;
-        this.provider = new ethers.JsonRpcProvider(config.rpcUrl);
+        // RPC failover: BSC_RPC_URL (primary) + BSC_RPC_URLS (comma-separated backups)
+        const fromEnv = (process.env.BSC_RPC_URLS || '')
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+        const primary = (process.env.BSC_RPC_URL || config.rpcUrl || '').trim();
+        const merged = [primary, ...fromEnv].filter(Boolean);
+        this.rpcUrls = Array.from(new Set(merged.length ? merged : [config.rpcUrl]));
+        this.providerIndex = 0;
+        this.rpcMaxAttempts = parseInt(process.env.EVENT_MONITOR_RPC_MAX_ATTEMPTS || '4', 10);
+        this.rpcRetryDelayMs = parseInt(process.env.EVENT_MONITOR_RPC_RETRY_DELAY_MS || '400', 10);
+        this.batchSize = parseInt(process.env.EVENT_MONITOR_BATCH_SIZE || '100', 10);
+
+        this.provider = new ethers.JsonRpcProvider(this.rpcUrls[this.providerIndex]);
         this.stakingContract = new ethers.Contract(
             config.stakingContractAddress,
             this.STAKING_ABI,
@@ -66,6 +84,62 @@ export class EventMonitor {
         this.snapshotService = new BalanceSnapshotService();
         this.referralRewardService = new DirectReferralRewardService();
         this.userStatsService = new UserStatsService();
+
+        logger.info(
+            `[EventMonitor] RPC candidates=${this.rpcUrls.length}, primary=${this.rpcUrls[0]}` +
+            (this.rpcUrls.length > 1 ? `, backups=${this.rpcUrls.slice(1).join(',')}` : '')
+        );
+    }
+
+    private rotateProvider(reason?: string): void {
+        if (this.rpcUrls.length <= 1) return;
+        this.providerIndex = (this.providerIndex + 1) % this.rpcUrls.length;
+        const nextUrl = this.rpcUrls[this.providerIndex];
+        this.provider = new ethers.JsonRpcProvider(nextUrl);
+        this.stakingContract = new ethers.Contract(
+            this.config.stakingContractAddress,
+            this.STAKING_ABI,
+            this.provider
+        );
+        logger.warn(
+            `[EventMonitor] Switched RPC to #${this.providerIndex + 1}/${this.rpcUrls.length}: ${nextUrl}` +
+            (reason ? ` (${reason})` : '')
+        );
+    }
+
+    private async withRpcFailover<T>(opName: string, fn: () => Promise<T>): Promise<T> {
+        const attempts = Math.max(1, Number.isFinite(this.rpcMaxAttempts) ? this.rpcMaxAttempts : 4);
+        let lastErr: any;
+        for (let i = 0; i < attempts; i++) {
+            try {
+                return await fn();
+            } catch (err: any) {
+                lastErr = err;
+                const msg = err?.message || String(err || '');
+                const isRateLimit =
+                    msg.includes('limit exceeded') ||
+                    msg.includes('LimitExceeded') ||
+                    msg.includes('429') ||
+                    msg.includes('rate limit') ||
+                    msg.includes('Too Many Requests');
+                const isTimeout =
+                    msg.includes('timeout') ||
+                    msg.includes('ETIMEDOUT') ||
+                    msg.includes('ECONNRESET') ||
+                    msg.includes('ENOTFOUND') ||
+                    msg.includes('502') ||
+                    msg.includes('503') ||
+                    msg.includes('504');
+
+                if (this.rpcUrls.length > 1 && (isRateLimit || isTimeout)) {
+                    this.rotateProvider(`${opName}: ${msg.slice(0, 120)}`);
+                }
+                const delay = Math.min(5000, this.rpcRetryDelayMs * Math.pow(2, i));
+                logger.warn(`[EventMonitor] ${opName} failed (attempt ${i + 1}/${attempts}): ${msg}. Retrying in ${delay}ms`);
+                await this.sleep(delay);
+            }
+        }
+        throw lastErr;
     }
     
     setNodeLevelService(service: NodeLevelService): void {
@@ -97,11 +171,73 @@ export class EventMonitor {
             );
             
             if (result.length > 0) {
-                this.lastProcessedBlock = result[0].last_processed_block;
-                logger.info(`Resuming from block ${this.lastProcessedBlock}`);
+                const stored = result[0].last_processed_block;
+                const envStart =
+                  process.env.EVENT_MONITOR_START_BLOCK != null
+                    ? parseInt(process.env.EVENT_MONITOR_START_BLOCK, 10)
+                    : NaN;
+                const forceRewind =
+                  String(process.env.EVENT_MONITOR_FORCE_REWIND || '').toLowerCase() === 'true';
+                const forceSeek =
+                  String(process.env.EVENT_MONITOR_FORCE_SEEK || '').toLowerCase() === 'true';
+
+                // 默认行为：继续从 DB 断点续传
+                // 若配置了 EVENT_MONITOR_START_BLOCK 且更早：
+                // - forceRewind=true 时允许回退并重扫（主网首次部署/错过事件时使用）
+                // - 否则仅打印提示，不自动回退，避免重复写库
+                if (Number.isFinite(envStart) && envStart < stored) {
+                  if (forceRewind) {
+                    this.lastProcessedBlock = Math.max(0, envStart);
+                    await query(
+                      'INSERT INTO event_processing_state (id, last_processed_block) VALUES (1, ?) ON DUPLICATE KEY UPDATE last_processed_block = VALUES(last_processed_block)',
+                      [this.lastProcessedBlock]
+                    );
+                    logger.warn(
+                      `EventMonitor rewind enabled. Rewinding from stored=${stored} to envStart=${this.lastProcessedBlock}`
+                    );
+                  } else {
+                    this.lastProcessedBlock = stored;
+                    logger.info(
+                      `Resuming from block ${this.lastProcessedBlock} (envStart=${envStart} ignored; set EVENT_MONITOR_FORCE_REWIND=true to rewind)`
+                    );
+                  }
+                } else if (Number.isFinite(envStart) && envStart > stored && forceSeek) {
+                  // 快速“跳到”更靠后的起始块（用于立刻让最近交易显示；不会补旧历史）
+                  this.lastProcessedBlock = Math.max(0, envStart);
+                  await query(
+                    'INSERT INTO event_processing_state (id, last_processed_block) VALUES (1, ?) ON DUPLICATE KEY UPDATE last_processed_block = VALUES(last_processed_block)',
+                    [this.lastProcessedBlock]
+                  );
+                  logger.warn(
+                    `EventMonitor force seek enabled. Seeking from stored=${stored} to envStart=${this.lastProcessedBlock}`
+                  );
+                } else {
+                  this.lastProcessedBlock = stored;
+                  logger.info(`Resuming from block ${this.lastProcessedBlock}`);
+                }
             } else {
-                this.lastProcessedBlock = await this.provider.getBlockNumber();
-                logger.info(`Starting from current block ${this.lastProcessedBlock}`);
+                const current = await this.withRpcFailover('getBlockNumber', () => this.provider.getBlockNumber());
+                const envStart =
+                  process.env.EVENT_MONITOR_START_BLOCK != null
+                    ? parseInt(process.env.EVENT_MONITOR_START_BLOCK, 10)
+                    : NaN;
+                const lookback =
+                  process.env.EVENT_MONITOR_LOOKBACK_BLOCKS != null
+                    ? parseInt(process.env.EVENT_MONITOR_LOOKBACK_BLOCKS, 10)
+                    : 20000; // ~ 16-20 hours on BSC, enough to cover recent deploy/test
+
+                const startBlock = Number.isFinite(envStart)
+                  ? Math.max(0, envStart)
+                  : Math.max(0, current - (Number.isFinite(lookback) ? lookback : 20000));
+
+                // Ensure state row exists so UPDATE works later
+                await query(
+                  'INSERT INTO event_processing_state (id, last_processed_block) VALUES (1, ?) ON DUPLICATE KEY UPDATE last_processed_block = last_processed_block',
+                  [startBlock]
+                );
+
+                this.lastProcessedBlock = startBlock;
+                logger.info(`Starting from block ${this.lastProcessedBlock} (current=${current}, lookback=${lookback}, envStart=${process.env.EVENT_MONITOR_START_BLOCK || 'n/a'})`);
             }
         } catch (error) {
             logger.error('Failed to load last processed block:', error);
@@ -112,7 +248,7 @@ export class EventMonitor {
     private async saveLastProcessedBlock(blockNumber: number): Promise<void> {
         try {
             await query(
-                'UPDATE event_processing_state SET last_processed_block = ? WHERE id = 1',
+                'INSERT INTO event_processing_state (id, last_processed_block) VALUES (1, ?) ON DUPLICATE KEY UPDATE last_processed_block = VALUES(last_processed_block)',
                 [blockNumber]
             );
             this.lastProcessedBlock = blockNumber;
@@ -134,7 +270,7 @@ export class EventMonitor {
     }
     
     private async processNewBlocks(): Promise<void> {
-        const currentBlock = await this.provider.getBlockNumber();
+        const currentBlock = await this.withRpcFailover('getBlockNumber', () => this.provider.getBlockNumber());
         const confirmedBlock = currentBlock - this.config.confirmationBlocks;
         
         if (confirmedBlock <= this.lastProcessedBlock) {
@@ -143,7 +279,7 @@ export class EventMonitor {
         
         logger.info(`Processing blocks ${this.lastProcessedBlock + 1} to ${confirmedBlock}`);
         
-        const batchSize = 100;
+        const batchSize = Math.max(10, Number.isFinite(this.batchSize) ? this.batchSize : 100);
         for (let fromBlock = this.lastProcessedBlock + 1; fromBlock <= confirmedBlock; fromBlock += batchSize) {
             const toBlock = Math.min(fromBlock + batchSize - 1, confirmedBlock);
             await this.processBlockRange(fromBlock, toBlock);
@@ -153,11 +289,14 @@ export class EventMonitor {
     
     private async processBlockRange(fromBlock: number, toBlock: number): Promise<void> {
         // 获取区块范围内的所有交易
-        const logs = await this.provider.getLogs({
-            address: await this.stakingContract.getAddress(),
-            fromBlock,
-            toBlock
-        });
+        const contractAddress = await this.stakingContract.getAddress();
+        const logs = await this.withRpcFailover('getLogs', () =>
+            this.provider.getLogs({
+                address: contractAddress,
+                fromBlock,
+                toBlock
+            })
+        );
         
         logger.info(`Found ${logs.length} log(s) in blocks ${fromBlock}-${toBlock}`);
         
@@ -208,64 +347,78 @@ export class EventMonitor {
         
         logger.info(`Processed ${stakeCount} StakeEvent(s) and ${rwaStakeCount} RWAStakeEvent(s)`);
 
-        const withdrawalEvents = await this.stakingContract.queryFilter(
-            this.stakingContract.filters.WithdrawalRequested(),
-            fromBlock,
-            toBlock
+        const withdrawalEvents = await this.withRpcFailover('queryFilter WithdrawalRequested', () =>
+            this.stakingContract.queryFilter(
+                this.stakingContract.filters.WithdrawalRequested(),
+                fromBlock,
+                toBlock
+            )
         );
         for (const event of withdrawalEvents) {
             await this.handleRewardWithdrawal(event as ethers.EventLog);
         }
 
-        const rwaRewardWithdrawnEvents = await this.stakingContract.queryFilter(
-            this.stakingContract.filters.RWARewardWithdrawn(),
-            fromBlock,
-            toBlock
+        const rwaRewardWithdrawnEvents = await this.withRpcFailover('queryFilter RWARewardWithdrawn', () =>
+            this.stakingContract.queryFilter(
+                this.stakingContract.filters.RWARewardWithdrawn(),
+                fromBlock,
+                toBlock
+            )
         );
         for (const event of rwaRewardWithdrawnEvents) {
             await this.handleRWARewardWithdrawal(event as ethers.EventLog);
         }
 
-        const flexibleUsdtWithdrawEvents = await this.stakingContract.queryFilter(
-            this.stakingContract.filters.FlexibleUSDTPrincipalWithdrawn(),
-            fromBlock,
-            toBlock
+        const flexibleUsdtWithdrawEvents = await this.withRpcFailover('queryFilter FlexibleUSDTPrincipalWithdrawn', () =>
+            this.stakingContract.queryFilter(
+                this.stakingContract.filters.FlexibleUSDTPrincipalWithdrawn(),
+                fromBlock,
+                toBlock
+            )
         );
         for (const event of flexibleUsdtWithdrawEvents) {
             await this.handlePrincipalStateSync(event as ethers.EventLog, 'FlexibleUSDTPrincipalWithdrawn');
         }
 
-        const usdtPrincipalWithdrawEvents = await this.stakingContract.queryFilter(
-            this.stakingContract.filters.USDTPrincipalWithdrawn(),
-            fromBlock,
-            toBlock
+        const usdtPrincipalWithdrawEvents = await this.withRpcFailover('queryFilter USDTPrincipalWithdrawn', () =>
+            this.stakingContract.queryFilter(
+                this.stakingContract.filters.USDTPrincipalWithdrawn(),
+                fromBlock,
+                toBlock
+            )
         );
         for (const event of usdtPrincipalWithdrawEvents) {
             await this.handlePrincipalStateSync(event as ethers.EventLog, 'USDTPrincipalWithdrawn');
         }
 
-        const flexibleRwaWithdrawEvents = await this.stakingContract.queryFilter(
-            this.stakingContract.filters.FlexibleRWAPrincipalWithdrawn(),
-            fromBlock,
-            toBlock
+        const flexibleRwaWithdrawEvents = await this.withRpcFailover('queryFilter FlexibleRWAPrincipalWithdrawn', () =>
+            this.stakingContract.queryFilter(
+                this.stakingContract.filters.FlexibleRWAPrincipalWithdrawn(),
+                fromBlock,
+                toBlock
+            )
         );
         for (const event of flexibleRwaWithdrawEvents) {
             await this.handlePrincipalStateSync(event as ethers.EventLog, 'FlexibleRWAPrincipalWithdrawn');
         }
 
-        const rwaPrincipalWithdrawEvents = await this.stakingContract.queryFilter(
-            this.stakingContract.filters.RWAPrincipalWithdrawn(),
-            fromBlock,
-            toBlock
+        const rwaPrincipalWithdrawEvents = await this.withRpcFailover('queryFilter RWAPrincipalWithdrawn', () =>
+            this.stakingContract.queryFilter(
+                this.stakingContract.filters.RWAPrincipalWithdrawn(),
+                fromBlock,
+                toBlock
+            )
         );
         for (const event of rwaPrincipalWithdrawEvents) {
             await this.handlePrincipalStateSync(event as ethers.EventLog, 'RWAPrincipalWithdrawn');
         }
 
-        const emergencyWithdrawEvents = await this.stakingContract.queryFilter(
-            this.stakingContract.filters.EmergencyWithdrawal(),
-            fromBlock,
-            toBlock
+        const emergencyWithdrawEvents = await this.withRpcFailover('queryFilter EmergencyWithdrawal', () =>
+            this.stakingContract.queryFilter(
+                this.stakingContract.filters.EmergencyWithdrawal(),
+                fromBlock,
+                toBlock
+            )
         );
         for (const event of emergencyWithdrawEvents) {
             await this.handlePrincipalStateSync(event as ethers.EventLog, 'EmergencyWithdrawal');

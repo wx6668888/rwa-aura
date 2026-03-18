@@ -17,6 +17,8 @@ interface CalculatorState {
   referralEnabled: boolean;
   directRefs: number;
   avgStake: number;
+  /** 团队留存率（0-100），用于模拟“团队总留存” */
+  teamRetentionRate: number;
   chartMode: ChartMode;
   reinvestEnabled: boolean;
   reinvestCount: number;
@@ -39,12 +41,16 @@ interface DifferentialExampleRow {
 interface CalculatorResults {
   staticYield: number;
   referralIncome: number;
+  referralEligible: boolean;
   reinvestBonus: number;
   totalReturn: number;
   totalValue: number;
   stRWAValue: number;
   investmentShares: number;
   estimatedDividend: number;
+  teamTotalStake: number;
+  teamRetained: number;
+  teamRetainedRate: number;
   roi: number;
   dailyYield: number;
   weeklyYield: number;
@@ -65,6 +71,7 @@ interface CalculatorContextType {
   toggleReferral: () => void;
   updateDirectRefs: (refs: number) => void;
   updateAvgStake: (stake: number) => void;
+  updateTeamRetentionRate: (rate: number) => void;
   updateChartMode: (mode: ChartMode) => void;
   updateLockPeriod: (period: LockPeriod) => void;
   toggleReinvest: () => void;
@@ -117,6 +124,7 @@ function CalculatorProviderInner({ children }: { children: React.ReactNode }) {
     referralEnabled: false,
     directRefs: 0,
     avgStake: 1000,
+    teamRetentionRate: 70,
     chartMode: 'linear',
     reinvestEnabled: false,
     reinvestCount: 0,
@@ -166,7 +174,7 @@ function CalculatorProviderInner({ children }: { children: React.ReactNode }) {
 
   // Calculate results
   const results = useMemo<CalculatorResults>(() => {
-    const { amount, days, lockPeriod, nodeLevel, referralEnabled, directRefs, avgStake, chartMode, reinvestEnabled, reinvestCount } = state;
+    const { amount, days, lockPeriod, nodeLevel, referralEnabled, directRefs, avgStake, teamRetentionRate, chartMode, reinvestEnabled, reinvestCount } = state;
     
     // 锁仓期限倍数（作为最终收益的加成，而不是日收益率的倍数）
     const lockMultiplier = getLockPeriodMultiplier(lockPeriod);
@@ -190,14 +198,23 @@ function CalculatorProviderInner({ children }: { children: React.ReactNode }) {
       totalValue = amount + staticYield;
     }
     
-    // 推荐收益（基于节点等级的级差奖励百分比，简单模型）
+    // 推荐收益（基于节点等级的级差奖励百分比）
+    // 规则（与你之前口径一致的最小版）：
+    // - 仅当“下级锁仓≥30天”才会产生推荐奖励
+    // - 这里用当前选择的 lockPeriod 近似模拟“下级锁仓期”（用户更直观）
+    const referralEligible = lockPeriod !== 'flexible' && Number(lockPeriod) >= 30;
     let referralIncome = 0;
-    if (referralEnabled && directRefs > 0) {
+    if (referralEnabled && directRefs > 0 && referralEligible) {
       const referralRate = NODE_RATES[nodeLevel];
       // 这里采用简化模型：假设所有直推用户都低于当前等级，
       // 每个直推按其平均质押金额 * 本等级最大奖励比例 计算一次性推荐奖励
       referralIncome = directRefs * avgStake * referralRate;
     }
+
+    // 团队留存（依据“团队总质押 - 团队总提现”的定义做模拟）
+    const teamTotalStake = referralEnabled ? Math.max(0, directRefs) * Math.max(0, avgStake) : 0
+    const rr = Math.min(100, Math.max(0, Number(teamRetentionRate) || 0))
+    const teamRetained = teamTotalStake * (rr / 100)
     
     // 复投奖励
     let reinvestBonus = 0;
@@ -319,12 +336,16 @@ function CalculatorProviderInner({ children }: { children: React.ReactNode }) {
     return {
       staticYield,
       referralIncome,
+      referralEligible,
       reinvestBonus,
       totalReturn,
       totalValue: totalValue + referralIncome + reinvestBonus,
       stRWAValue,
       investmentShares,
       estimatedDividend,
+      teamTotalStake,
+      teamRetained,
+      teamRetainedRate: teamTotalStake > 0 ? (teamRetained / teamTotalStake) * 100 : 0,
       roi,
       dailyYield,
       weeklyYield,
@@ -358,6 +379,11 @@ function CalculatorProviderInner({ children }: { children: React.ReactNode }) {
 
   const updateAvgStake = (avgStake: number) => {
     setState(prev => ({ ...prev, avgStake }));
+  };
+
+  const updateTeamRetentionRate = (rate: number) => {
+    const v = Number.isFinite(rate) ? rate : 0
+    setState(prev => ({ ...prev, teamRetentionRate: Math.min(100, Math.max(0, v)) }));
   };
 
   const updateChartMode = (chartMode: ChartMode) => {
@@ -397,6 +423,7 @@ function CalculatorProviderInner({ children }: { children: React.ReactNode }) {
         toggleReferral,
         updateDirectRefs,
         updateAvgStake,
+        updateTeamRetentionRate,
         updateChartMode,
         updateLockPeriod,
         toggleReinvest,

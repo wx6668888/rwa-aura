@@ -55,9 +55,12 @@ export function useUSDT() {
     if (!usdtAddress) throw new Error('USDT address not found')
     const targetSpender = spender || stakingAddress;
     if (!targetSpender) throw new Error('Spender address not found')
-    
+    const amt = amount != null ? String(amount).trim() : ''
+    if (!amt || isNaN(parseFloat(amt))) {
+      throw new Error('请输入有效的质押金额')
+    }
     // Convert amount to 6 decimals (USDT precision)
-    const amountInWei = parseUnits(amount, 6)
+    const amountInWei = parseUnits(amt, 6)
     
     const hash = await writeContractAsync({
       address: usdtAddress as `0x${string}`,

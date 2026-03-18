@@ -121,6 +121,7 @@ export const knowledgeCategories: KnowledgeCategory[] = [
       { id: 'what-is-referrer', categoryId: 'nodes', titleKey: 'knowledge.article.what-is-referrer.title', contentKey: 'knowledge.article.what-is-referrer.content' },
       { id: 'wrong-referrer-address', categoryId: 'nodes', titleKey: 'knowledge.article.wrong-referrer-address.title', contentKey: 'knowledge.article.wrong-referrer-address.content' },
       { id: 'referral-reward-calc', categoryId: 'nodes', titleKey: 'knowledge.article.referral-reward-calc.title', contentKey: 'knowledge.article.referral-reward-calc.content' },
+      { id: 'referral-quality-score', categoryId: 'nodes', titleKey: 'knowledge.article.referral-quality-score.title', contentKey: 'knowledge.article.referral-quality-score.content' },
       { id: 'project-dividend-mechanism', categoryId: 'nodes', titleKey: 'knowledge.article.project-dividend-mechanism.title', contentKey: 'knowledge.article.project-dividend-mechanism.content' },
       { id: 'node-level-downgrade', categoryId: 'nodes', titleKey: 'knowledge.article.node-level-downgrade.title', contentKey: 'knowledge.article.node-level-downgrade.content' },
       { id: 'direct-vs-indirect-referral', categoryId: 'nodes', titleKey: 'knowledge.article.direct-vs-indirect-referral.title', contentKey: 'knowledge.article.direct-vs-indirect-referral.content' },

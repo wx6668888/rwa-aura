@@ -1,19 +1,16 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, usePublicClient } from 'wagmi';
 import { useLocale } from '@/components/locale-provider';
 import { useTranslation } from '@/lib/i18n';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { SwapTransactionOverlay } from './swap-transaction-overlay';
 import { useUSDT } from '@/hooks/useUSDT';
-import { useRWAToken } from '@/hooks/useRWAToken';
-import { useSwap } from '@/hooks/useSwap';
-import { useStRWA } from '@/hooks/useStRWA';
 import { useUSDTRWASwap } from '@/hooks/useUSDTRWASwap';
 import { CONTRACT_ADDRESSES } from '@/lib/contracts/addresses';
-import { type Address } from 'viem';
-import { parseUnits, formatUnits } from 'viem';
+import { parseUnits } from 'viem';
+import { erc20ABI } from '@/lib/contracts/erc20ABI';
 
 interface SwapButtonProps {
   fromToken: string;
@@ -25,24 +22,15 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
   const { locale } = useLocale();
   const { t } = useTranslation(locale);
   const { address, isConnected, chainId } = useAccount();
-  const { approve: approveUSDT, isApproved: isUSDTApproved, refetchBalance: refetchUSDT } = useUSDT();
-  const { approve: approveRWA, isApproved: isRWAApproved, refetchBalance: refetchRWA } = useRWAToken();
-  
-  // 新增：USDT ↔ RWA 直接互换
-  const { swapUSDTToRWA, swapRWAToUSDT } = useUSDTRWASwap();
+  const publicClient = usePublicClient();
+  const { approve: approveUSDT } = useUSDT();
+  // 专用 USDT→RWA 互换（不依赖 PancakeSwap 流动性）
+  const { swapUSDTToRWA, swapAddress: internalSwapAddress } = useUSDTRWASwap();
   
   const addresses = chainId ? CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES] : undefined;
   const fromTokenAddress = fromToken === 'USDT' ? addresses?.usdtToken : addresses?.rwaToken;
   const toTokenAddress = toToken === 'USDT' ? addresses?.usdtToken : addresses?.rwaToken;
-  const swapContractAddress = addresses?.swapContract;
-  
-  // 使用 useSwap hook（通过 PancakeSwap Router）用于 USDT ↔ RWA
-  const { executeSwap, approveToken, checkAllowance, isLoading, error } = useSwap(
-    fromTokenAddress as Address,
-    toTokenAddress as Address,
-    fromToken === 'USDT' ? 6 : 18,
-    toToken === 'USDT' ? 6 : 18
-  );
+  const swapSpender = internalSwapAddress as `0x${string}` | undefined;
 
   const [isApproving, setIsApproving] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
@@ -62,6 +50,11 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
   const hasAmount = amount > 0;
   const priceImpact = 0.1;
   const isHighImpact = priceImpact > 3;
+  const isUSDTRWASwap = (fromToken === 'USDT' && toToken === 'RWA');
+  const internalSwapAvailable =
+    typeof internalSwapAddress === 'string' &&
+    /^0x[a-fA-F0-9]{40}$/.test(internalSwapAddress) &&
+    internalSwapAddress !== '0x0000000000000000000000000000000000000000';
 
   // 计算预期获得的代币数量
   const toAmount = hasAmount 
@@ -90,21 +83,18 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
 
     const checkApproval = async () => {
       try {
-        // 检测是否是 USDT ↔ RWA 直接互换
-        const isUSDTRWASwap = (fromToken === 'USDT' && toToken === 'RWA') || (fromToken === 'RWA' && toToken === 'USDT');
-        
-        if (fromToken === 'USDT') {
-          if (isUSDTRWASwap) {
-            // USDT ↔ RWA：默认需要授权（用户授权后 justApproved 会跳过检查）
-            setNeedsApproval(true);
-          } else {
-            const approved = isUSDTApproved(fromAmount);
-            setNeedsApproval(!approved);
-          }
-        } else if (fromToken === 'RWA') {
-          const approved = await checkAllowance(fromAmount);
-          setNeedsApproval(!approved);
+        if (!internalSwapAvailable || !swapSpender || !publicClient || !address || fromToken !== 'USDT') {
+          setNeedsApproval(false);
+          return;
         }
+        const amountWei = parseUnits(fromAmount, 6);
+        const allowance = await publicClient.readContract({
+          address: fromTokenAddress as `0x${string}`,
+          abi: erc20ABI,
+          functionName: 'allowance',
+          args: [address as `0x${string}`, swapSpender],
+        });
+        setNeedsApproval(allowance < amountWei);
       } catch (error) {
         console.error('Check approval error:', error);
         // 如果检查失败，默认需要授权
@@ -113,33 +103,23 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
     };
 
     checkApproval();
-  }, [showOverlay, justApproved, isConnected, hasAmount, fromToken, toToken, fromAmount, fromTokenAddress, isUSDTApproved, checkAllowance]);
+  }, [showOverlay, justApproved, isConnected, hasAmount, fromAmount, fromTokenAddress, internalSwapAvailable, swapSpender, publicClient, address, fromToken]);
 
   const handleApprove = useCallback(async () => {
     if (!fromTokenAddress) {
       setSwapError('合约地址未配置');
       return;
     }
+    if (!internalSwapAvailable || !swapSpender) {
+      setSwapError('USDT→RWA 互换暂未开放');
+      return;
+    }
 
     try {
       setIsApproving(true);
       setSwapError(null);
-
-      // 检测是否是 USDT ↔ RWA 直接互换
-      const isUSDTRWASwap = (fromToken === 'USDT' && toToken === 'RWA') || (fromToken === 'RWA' && toToken === 'USDT');
-      const spenderAddress = isUSDTRWASwap ? addresses?.usdtRwaSwap : swapContractAddress;
-
-      if (!spenderAddress) {
-        setSwapError('Swap合约地址未配置');
-        return;
-      }
-
-      if (fromToken === 'USDT') {
-        await approveUSDT(fromAmount, spenderAddress);
-      } else if (fromToken === 'RWA') {
-        const amount = parseUnits(fromAmount, 18);
-        await approveRWA(spenderAddress, amount);
-      }
+      // 授权给 USDTRWASwap 合约
+      await approveUSDT(fromAmount, swapSpender);
       
       setNeedsApproval(false);
       setJustApproved(true);
@@ -166,7 +146,7 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
     } finally {
       setIsApproving(false);
     }
-  }, [fromToken, fromAmount, fromTokenAddress, toToken, addresses, swapContractAddress, approveUSDT, approveRWA]);
+  }, [fromTokenAddress, internalSwapAvailable, swapSpender, approveUSDT, fromAmount]);
 
   const handleSwap = useCallback(async () => {
     if (!fromAmount || parseFloat(fromAmount) <= 0) {
@@ -181,26 +161,11 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
 
     try {
       setIsSwapping(true);
-
-      const isUSDTRWASwap = (fromToken === 'USDT' && toToken === 'RWA') || (fromToken === 'RWA' && toToken === 'USDT');
       
       let hash;
       try {
-        if (isUSDTRWASwap) {
-          console.log('Calling swap function...');
-          if (fromToken === 'USDT') {
-            hash = await swapUSDTToRWA(fromAmount);
-          } else {
-            hash = await swapRWAToUSDT(fromAmount);
-          }
-          console.log('Swap function returned:', hash);
-        } else {
-          const slippage = 0.005;
-          const outputAmount = fromToken === 'USDT' 
-            ? (parseFloat(fromAmount) * 1.173 * (1 - slippage)).toFixed(4)
-            : (parseFloat(fromAmount) * 0.8524 * (1 - slippage)).toFixed(4);
-          hash = await executeSwap(fromAmount, outputAmount, 20);
-        }
+        if (!internalSwapAvailable) throw new Error('USDT→RWA 互换暂未开放');
+        hash = await swapUSDTToRWA(fromAmount);
       } catch (swapError: any) {
         console.error('Swap function error:', swapError);
         throw swapError; // 重新抛出错误
@@ -224,10 +189,7 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
       setOverlayStatus('success');
       console.log('Success status set!');
       
-      // 后台刷新余额
-      Promise.all([refetchUSDT(), refetchRWA()]).catch(err => {
-        console.error('Failed to refresh balance:', err);
-      });
+      // 余额刷新由各自 hooks 的轮询/组件刷新承担
     } catch (error: any) {
       console.error('Swap error:', error);
       
@@ -249,7 +211,7 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
     } finally {
       setIsSwapping(false);
     }
-  }, [fromToken, fromAmount, toToken, executeSwap, swapUSDTToRWA, swapRWAToUSDT, refetchUSDT, refetchRWA]);
+  }, [fromAmount, internalSwapAvailable, swapUSDTToRWA]);
 
   const handleOverlayClose = () => {
     setShowOverlay(false);
@@ -281,6 +243,12 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
   if (needsApproval) {
     return (
       <div className="mt-4 space-y-2">
+        {isUSDTRWASwap && !internalSwapAvailable && (
+          <div className="flex items-center gap-2 rounded-lg border border-[#fbbf2440] bg-[#fbbf2412] p-2">
+            <AlertTriangle className="h-4 w-4 text-[#fbbf24]" />
+            <p className="text-xs text-[#fbbf24]">USDT→RWA 互换暂未开放</p>
+          </div>
+        )}
         {swapError && (
           <div className="flex items-center gap-2 rounded-lg border border-[#f43f5e40] bg-[#f43f5e10] p-2">
             <AlertTriangle className="h-4 w-4 text-[#f43f5e]" />
@@ -289,10 +257,10 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
         )}
         <button
           onClick={handleApprove}
-          disabled={isApproving || isLoading}
+          disabled={isApproving}
           className="w-full h-[60px] bg-surface-2 border border-border-active text-text-primary rounded-full font-bold hover:bg-surface-3 transition-colors disabled:opacity-50"
         >
-          {isApproving || isLoading ? (
+          {isApproving ? (
             <span className="flex items-center justify-center gap-2">
               <Loader2 className="w-5 h-5 animate-spin" />
               授权中
@@ -320,6 +288,12 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
         onClose={handleOverlayClose}
       />
       <div className="mt-4 space-y-2">
+        {isUSDTRWASwap && !internalSwapAvailable && (
+          <div className="flex items-center gap-2 rounded-lg border border-[#fbbf2440] bg-[#fbbf2412] p-2">
+            <AlertTriangle className="h-4 w-4 text-[#fbbf24]" />
+            <p className="text-xs text-[#fbbf24]">USDT→RWA 互换暂未开放</p>
+          </div>
+        )}
         {swapError && !showOverlay && (
           <div className="flex items-center gap-2 rounded-lg border border-[#f43f5e40] bg-[#f43f5e10] p-2">
             <AlertTriangle className="h-4 w-4 text-[#f43f5e]" />
@@ -328,14 +302,14 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
         )}
         <button
         onClick={handleSwap}
-        disabled={isSwapping || isLoading}
+        disabled={isSwapping || !internalSwapAvailable}
         className={`w-full h-[60px] rounded-full font-bold transition-all disabled:opacity-50 ${
           isHighImpact
             ? 'bg-warning text-void-black hover:brightness-110'
             : 'bg-plasma-cyan text-void-black hover:brightness-110 hover:scale-[1.02]'
         }`}
       >
-        {isSwapping || isLoading ? (
+        {isSwapping ? (
           <span className="flex items-center justify-center gap-2">
             <Loader2 className="w-5 h-5 animate-spin" />
             {t('swap.swapping')}

@@ -8,6 +8,7 @@ import { useTranslation } from '@/lib/i18n';
 import Link from 'next/link';
 import { useLottery } from '@/hooks/useLottery';
 import { formatEther } from 'viem';
+import { useRwaPrice } from '@/hooks/useRwaPrice'
 
 import type { LuckyPoolType } from './pool-switcher';
 
@@ -21,8 +22,9 @@ export default function TicketPurchaseCard({ poolType }: TicketPurchaseCardProps
   const { locale } = useLocale();
   const { t } = useTranslation(locale);
   const { address, isConnected } = useAccount();
+  const { price: rwaPrice } = useRwaPrice()
   
-  const [quantity, setQuantity] = useState(5);
+  const [quantity, setQuantity] = useState(1);
   const [purchaseSuccess, setPurchaseSuccess] = useState(false);
   const [showAllTickets, setShowAllTickets] = useState(false);
   
@@ -30,21 +32,14 @@ export default function TicketPurchaseCard({ poolType }: TicketPurchaseCardProps
   
   const ticketPrice = getTicketPriceByPool(POOL_TO_NUM[poolType]);
   const totalCost = quantity * ticketPrice;
-  const usdValue = totalCost * 0.8524;
+  const usdValue = totalCost * (rwaPrice || 0.85);
   
   const currentPool = poolType === 'weekly' ? weeklyPool : poolType === 'monthly' ? monthlyPool : poolType === 'realtime' ? realtimePool : annualPool;
   const totalTickets = currentPool?.ticketsSold ?? 1;
   const winChance = (quantity / (totalTickets + quantity) * 100).toFixed(2);
   
-  // 生成随机票号 - 根据数量动态生成
-  const generateTicketNumbers = (count: number) => {
-    return Array.from({ length: count }, () => 
-      Math.floor(100000 + Math.random() * 900000).toString()
-    );
-  };
-  
-  // 根据当前数量生成票号
-  const ticketNumbers = generateTicketNumbers(quantity);
+  // 票号由合约在链上生成；这里不做前端随机模拟，避免“数据不对”的错觉
+  const ticketNumbers: string[] = [];
   
   const handleQuantityChange = (newQuantity: number) => {
     if (newQuantity >= 1 && newQuantity <= 100) {
@@ -61,12 +56,19 @@ export default function TicketPurchaseCard({ poolType }: TicketPurchaseCardProps
       setTimeout(() => {
         setPurchaseSuccess(false);
       }, 3000);
-    } catch (error) {
+    } catch (error: any) {
       console.error(t('lucky.purchaseFailed'), error);
+      
+      // 显示错误提示
+      if (error?.message?.includes('User rejected')) {
+        alert('交易已取消');
+      } else {
+        alert('购买失败：' + (error?.message || '未知错误'));
+      }
     }
   };
   
-  const rwaBalanceNum = rwaBalance ? parseFloat(formatEther(rwaBalance)) : 845.50; // 模拟余额
+  const rwaBalanceNum = rwaBalance ? parseFloat(formatEther(rwaBalance)) : 0;
   const insufficientBalance = totalCost > rwaBalanceNum;
   const isPurchasing = isBuying || isApproving;
 
@@ -182,24 +184,9 @@ export default function TicketPurchaseCard({ poolType }: TicketPurchaseCardProps
           <div className="text-[11px] text-text-secondary">
             {t('lucky.ticketNumbers')}
           </div>
-          {ticketNumbers.length > 8 && (
-            <button
-              onClick={() => setShowAllTickets(!showAllTickets)}
-              className="text-[11px] text-plasma-cyan hover:underline"
-            >
-              {showAllTickets ? t('lucky.showLess') : t('lucky.showMore')}
-            </button>
-          )}
         </div>
-        <div className="flex gap-2 flex-wrap">
-          {(showAllTickets ? ticketNumbers : ticketNumbers.slice(0, 8)).map((num, i) => (
-            <div
-              key={i}
-              className="bg-surface-3 border border-border-subtle rounded-lg px-3 py-1.5 text-[12px] font-jetbrains text-text-secondary"
-            >
-              #{num}
-            </div>
-          ))}
+        <div className="text-[11px] text-text-secondary leading-relaxed">
+          票号将由合约在链上随机生成。购买成功后请在右侧「我的彩票」查看真实票号与状态。
         </div>
       </div>
 
@@ -225,23 +212,45 @@ export default function TicketPurchaseCard({ poolType }: TicketPurchaseCardProps
             </Link>
           </>
         ) : purchaseSuccess ? (
-          <div className="bg-success bg-opacity-10 rounded-xl p-4 text-center">
-            <div className="text-[32px]">🎉</div>
-            <div className="text-[20px] font-700 text-text-primary mt-2">
-              {t('lucky.purchaseSuccess')}
+          <div className="relative overflow-hidden bg-gradient-to-br from-plasma-cyan/10 to-void-purple/10 rounded-2xl p-6 text-center border border-plasma-cyan/30">
+            {/* 动画背景 */}
+            <div className="absolute inset-0 pointer-events-none">
+              {Array.from({ length: 20 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute rounded-full bg-plasma-cyan animate-ping"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                    width: `${Math.random() * 8 + 4}px`,
+                    height: `${Math.random() * 8 + 4}px`,
+                    animationDelay: `${Math.random() * 2}s`,
+                    animationDuration: `${Math.random() * 2 + 1}s`,
+                    opacity: Math.random() * 0.5 + 0.3,
+                  }}
+                />
+              ))}
             </div>
-            <div className="text-[14px] text-text-secondary mt-1">
-              {t('lucky.youHave')} {quantity} {t('lucky.tickets')}
+            
+            {/* 内容 */}
+            <div className="relative z-10">
+              <div className="text-[48px] animate-bounce">🎉</div>
+              <div className="text-[24px] font-700 text-plasma-cyan mt-3 animate-pulse">
+                {t('lucky.purchaseSuccess')}
+              </div>
+              <div className="text-[15px] text-text-primary mt-2">
+                {t('lucky.youHave')} <span className="font-700 text-plasma-cyan">{quantity}</span> {t('lucky.tickets')}
+              </div>
+              <div className="text-[13px] text-text-secondary mt-2">
+                {t('lucky.drawTime')}
+              </div>
+              <button
+                onClick={() => setPurchaseSuccess(false)}
+                className="mt-4 px-6 py-2.5 rounded-full bg-plasma-cyan text-void-black text-[13px] font-700 hover:brightness-110 transition-all"
+              >
+                {t('lucky.viewMyTickets')} ↓
+              </button>
             </div>
-            <div className="text-[12px] text-text-secondary mt-1">
-              {t('lucky.drawTime')}
-            </div>
-            <button
-              onClick={() => setPurchaseSuccess(false)}
-              className="mt-3 px-4 py-2 rounded-full border border-border-subtle text-[12px] text-text-secondary hover:border-border-active transition-colors"
-            >
-              {t('lucky.viewMyTickets')} ↓
-            </button>
           </div>
         ) : (
           <button
@@ -252,12 +261,12 @@ export default function TicketPurchaseCard({ poolType }: TicketPurchaseCardProps
             {isApproving ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                {t('lucky.approving')}
+                授权中... (1/2)
               </>
             ) : isPurchasing ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                {t('lucky.purchasing')}
+                购买中... (2/2)
               </>
             ) : (
               t('lucky.buyNow').replace('{n}', quantity.toString()) + ' →'

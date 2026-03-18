@@ -70,8 +70,12 @@ export function useRWA() {
     if (!rwaTokenAddress || !stakingAddress) {
       throw new Error('RWA token or staking contract not found')
     }
+    const amt = amount != null ? String(amount).trim() : ''
+    if (!amt || isNaN(parseFloat(amt))) {
+      throw new Error('请输入有效的质押金额')
+    }
 
-    const amountInWei = parseUnits(amount, 18) // RWA is 18 decimals
+    const amountInWei = parseUnits(amt, 18) // RWA is 18 decimals
 
     try {
       const hash = await writeContractAsync({

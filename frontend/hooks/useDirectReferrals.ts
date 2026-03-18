@@ -149,8 +149,15 @@ export function useDirectReferrals() {
 
         setReferrals(referralList)
         console.log(`✅ 共找到 ${referralList.length} 个直推用户`)
-      } catch (error) {
-        console.error('Failed to fetch referrals:', error)
+      } catch (error: any) {
+        // 部分 BSC 公共 RPC（例如 bsc-dataseed1.defibit.io）对 eth_getLogs 有「limit exceeded」限制，
+        // 当超出范围时直接视为「暂无推荐」，避免在前端抛出红色报错影响用户体验。
+        const msg = error?.message || String(error || '')
+        if (msg.includes('LimitExceededRpcError') || msg.includes('limit exceeded')) {
+          console.warn('Direct referrals log query hit RPC limit, treating as empty list.')
+        } else {
+          console.error('Failed to fetch referrals:', error)
+        }
         setReferrals([])
       } finally {
         setLoading(false)

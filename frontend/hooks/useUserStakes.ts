@@ -4,7 +4,11 @@ import { decodeEventLog } from 'viem'
 import { CONTRACT_ADDRESSES } from '@/lib/contracts/addresses'
 import { stakingContractABI } from '@/lib/contracts/stakingContractABI'
 
-const API_BASE = process.env.NEXT_PUBLIC_RELAYER_URL || 'http://localhost:3001'
+// Prefer backend API base (same as other dashboard cards)
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_RELAYER_URL ||
+  'http://localhost:3001'
 
 export interface UserStake {
   stakeId: string
@@ -47,21 +51,22 @@ export function useUserStakes() {
         const normalizedUser = address.toLowerCase()
         console.log('🔍 [useUserStakes] 开始查询质押，用户:', normalizedUser)
         
-        // 1. 先从后端获取
+        // 1. 先从后端获取（需要后端 EventMonitor 已把链上事件同步到 DB）
         let backendStakes: UserStake[] = []
         try {
-          const apiUrl = `${API_BASE}/stakes/${address}?chainId=${chainId}`
+          const apiUrl = `${API_BASE}/api/stakes/${address}?chainId=${chainId}`
           console.log('📡 [useUserStakes] 从后端获取:', apiUrl)
           const res = await fetch(apiUrl)
           if (res.ok) {
             const json = await res.json()
-            if (json.success && json.data?.stakes && Array.isArray(json.data.stakes)) {
-              backendStakes = json.data.stakes.map((s: any) => ({
-                stakeId: s.stakeId || s.id,
-                amount: s.amount,
+            const rows = Array.isArray(json?.data) ? json.data : (Array.isArray(json?.data?.stakes) ? json.data.stakes : [])
+            if (Array.isArray(rows) && rows.length > 0) {
+              backendStakes = rows.map((s: any) => ({
+                stakeId: String(s.stakeId || s.id || `${s.event_type || 'stake'}_${s.timestamp || 0}`),
+                amount: String(s.amount ?? '0'),
                 timestamp: Number(s.timestamp || s.created_at || 0),
-                lockPeriod: mapLockPeriod(s.lockPeriod || s.lock_period || 0),
-                isRWAStake: s.assetType === 'RWA' || s.asset_type === 'RWA',
+                lockPeriod: mapLockPeriod(Number(s.lockPeriod || s.lock_period || 0)),
+                isRWAStake: String(s.assetType || s.asset_type || s.event_type || '').toUpperCase().includes('RWA'),
                 tokenDecimals: 18,
               }))
               console.log('✅ [useUserStakes] 后端返回', backendStakes.length, '条记录')
