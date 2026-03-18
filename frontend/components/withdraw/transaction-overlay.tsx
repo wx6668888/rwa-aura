@@ -130,7 +130,10 @@ export function TransactionOverlay({ show, status, txHash, amount, withdrawType 
                 </a>
               )}
               <button
-                onClick={onClose}
+                onClick={() => {
+                  onClose()
+                  window.location.reload()
+                }}
                 className="w-full h-[48px] rounded-xl bg-gradient-to-r from-[#00ffc8] to-[#00d4aa] text-[#0a0a0f] text-[14px] font-[700] hover:shadow-[0_0_20px_rgba(0,255,200,0.4)] transition"
               >
                 完成

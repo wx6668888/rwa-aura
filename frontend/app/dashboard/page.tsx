@@ -7,9 +7,9 @@ import { PortfolioCard } from '@/components/dashboard/portfolio-card'
 import { EarningsCard } from '@/components/dashboard/earnings-card'
 import { InvestmentSharesCard } from '@/components/dashboard/investment-shares-card'
 import { ReinvestRewardsCard } from '@/components/dashboard/reinvest-rewards-card'
+import { TeamDividendCard } from '@/components/dashboard/team-dividend-card'
 import { StatCards } from '@/components/dashboard/stat-cards'
 import { FundActivityCard } from '@/components/dashboard/fund-activity-card'
-import { NodeLevelsInfo } from '@/components/dashboard/node-levels-info'
 import { StakesProvider } from '@/contexts/StakesContext'
 
 export default function DashboardPage() {
@@ -27,9 +27,18 @@ export default function DashboardPage() {
           <EarningsCard />
         </div>
 
-        {/* Row 2: Investment Shares + Reinvest Rewards — 2 equal columns on desktop */}
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+        {/* Row 2: Investment Shares — full width */}
+        <div className="mt-4">
           <InvestmentSharesCard />
+        </div>
+
+        {/* Row 2.5: Team Dividend — full width */}
+        <div className="mt-4">
+          <TeamDividendCard />
+        </div>
+
+        {/* Row 3: Reinvest Rewards — full width */}
+        <div className="mt-4">
           <ReinvestRewardsCard />
         </div>
 
@@ -41,11 +50,6 @@ export default function DashboardPage() {
         {/* Row 3: 资金活动 — full width */}
         <div className="mt-4">
           <FundActivityCard />
-        </div>
-
-        {/* Row 4: Node Levels Info — full width */}
-        <div className="mt-4">
-          <NodeLevelsInfo />
         </div>
       </main>
     </div>

@@ -18,20 +18,26 @@ export function AssetTree({ activePanel, onPanelSwitch, data }: Props) {
   const principalUSD = (parseFloat(data.rwaPrincipal || '0') * RWA_TO_USD + parseFloat(data.usdtPrincipal || '0')).toFixed(2)
 
   const items = [
-    { id: 'yield' as PanelId, icon: TrendingUp, name: 'RWA 收益', sub: '每日 0.8% 收益率', amount: `${data.yieldAmount} RWA`, status: '可提取', color: '#22c55e', value: parseFloat(data.yieldAmount || '0') * RWA_TO_USD },
-    { id: 'principal' as PanelId, icon: Briefcase, name: '质押本金', sub: `RWA: ${data.rwaPrincipal} | USDT: ${data.usdtPrincipal}`, amount: `${principalUSD} USDT`, status: '可提取', color: '#00ffc8', value: parseFloat(principalUSD) },
-    { id: 'referral' as PanelId, icon: Users, name: '推荐奖励', sub: '每周结算', amount: `${data.referralAmount} USDT`, status: '可提取', color: '#f59e0b', value: parseFloat(data.referralAmount || '0') },
-    { id: 'dividend' as PanelId, icon: PieChart, name: '项目分红', sub: '每月结算', amount: `${data.dividendAmount} USDT`, status: '可提取', color: '#a855f7', value: parseFloat(data.dividendAmount || '0') },
-    { id: 'strwa' as PanelId, icon: Shield, name: 'stRWA 凭证', sub: '资产解锁', amount: data.strwaAmount, status: 'stRWA', color: '#00ffc8', value: parseFloat(data.strwaAmount || '0') * RWA_TO_USD },
+    // 下方各资产行：统一使用主霓虹青绿做点缀，避免多色干扰
+    { id: 'yield' as PanelId, icon: TrendingUp, name: 'RWA 收益', sub: '每日 0.8% 收益率', amount: `${data.yieldAmount} RWA`, status: '可提取', color: '#00f5d4', value: parseFloat(data.yieldAmount || '0') * RWA_TO_USD },
+    { id: 'principal' as PanelId, icon: Briefcase, name: '质押本金', sub: `RWA: ${data.rwaPrincipal} | USDT: ${data.usdtPrincipal}`, amount: `${principalUSD} USDT`, status: '可提取', color: '#00f5d4', value: parseFloat(principalUSD) },
+    { id: 'referral' as PanelId, icon: Users, name: '推荐奖励', sub: '每周结算', amount: `${data.referralAmount} USDT`, status: '可提取', color: '#00f5d4', value: parseFloat(data.referralAmount || '0') },
+    { id: 'dividend' as PanelId, icon: PieChart, name: '项目分红', sub: '每月结算', amount: `${data.dividendAmount} USDT`, status: '可提取', color: '#00f5d4', value: parseFloat(data.dividendAmount || '0') },
+    { id: 'strwa' as PanelId, icon: Shield, name: 'stRWA 凭证', sub: '资产解锁', amount: data.strwaAmount, status: 'stRWA', color: '#00f5d4', value: parseFloat(data.strwaAmount || '0') * RWA_TO_USD },
   ]
 
-  // Add quick withdraw at the beginning for display
   const quickItem = { id: 'quick' as PanelId, icon: Zap, name: '一键提取', sub: '快速提取所有资产', amount: `$${data.totalUSD}`, status: '快捷', color: '#fbbf24', value: 0 }
   const displayItems = [quickItem, ...items]
 
   // Calculate percentages (excluding quick withdraw)
   const total = items.reduce((sum, item) => sum + item.value, 0)
   const percentages = items.map(item => total > 0 ? (item.value / total * 100) : 0)
+  // 圆环配色：与仪表台保持一致，只用主霓虹绿 + 暗底色
+  const ringColor = '#00f5d4'
+
+  const activeIndex = items.findIndex(item => item.id === activePanel)
+  const activePercent = activeIndex >= 0 ? percentages[activeIndex] : 0
+  const activeLabel = activeIndex >= 0 ? items[activeIndex].name : '资产类型'
 
   return (
     <div className="bg-[#0d1018] border-r border-[rgba(255,255,255,0.08)] flex flex-col h-full relative overflow-hidden">
@@ -42,49 +48,43 @@ export function AssetTree({ activePanel, onPanelSwitch, data }: Props) {
       <div className="relative p-5 pb-4 border-b border-[rgba(255,255,255,0.08)]">
         <div className="text-[10px] uppercase tracking-[0.2em] text-[rgba(238,242,255,0.4)] mb-4 flex items-center gap-2">
           <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-          资产构成
+          资产构成一览
         </div>
         
         {/* Enhanced Donut Chart with Percentages */}
         <div className="flex flex-col items-center py-3 pb-4">
           <div className="relative w-[120px] h-[120px]">
-            {/* Animated percentage rings */}
+            {/* Animated percentage ring：与仪表台圆环配色保持一致，仅使用主霓虹绿 */}
             <svg className="absolute inset-0 -rotate-90" viewBox="0 0 120 120">
-              <circle cx="60" cy="60" r="50" fill="none" stroke="#1a1f2e" strokeWidth="12" />
-              {percentages.map((percent, index) => {
-                const offset = percentages.slice(0, index).reduce((sum, p) => sum + p, 0)
-                const circumference = 2 * Math.PI * 50
-                const dashArray = (percent / 100) * circumference
-                const dashOffset = -(offset / 100) * circumference
-                
-                return (
-                  <circle
-                    key={index}
-                    cx="60"
-                    cy="60"
-                    r="50"
-                    fill="none"
-                    stroke={items[index].color}
-                    strokeWidth="12"
-                    strokeDasharray={`${dashArray} ${circumference}`}
-                    strokeDashoffset={dashOffset}
-                    opacity="0.8"
-                    style={{
-                      transition: 'all 1s ease-out',
-                      filter: `drop-shadow(0 0 4px ${items[index].color})`
-                    }}
-                  />
-                )
-              })}
+              {/* 背景环 */}
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#020617" strokeWidth="12" />
+              {/* 前景环：使用选中资产的占比，颜色固定为主色 */}
+              {total > 0 && (
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="50"
+                  fill="none"
+                  stroke={ringColor}
+                  strokeWidth="12"
+                  strokeDasharray={`${(activePercent / 100) * 2 * Math.PI * 50} ${2 * Math.PI * 50}`}
+                  strokeDashoffset="0"
+                  opacity="0.9"
+                  style={{
+                    transition: 'all 0.8s ease-out',
+                    filter: 'drop-shadow(0 0 8px rgba(0,245,212,0.6))'
+                  }}
+                />
+              )}
             </svg>
             
             {/* Center content */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
                 <div className="text-[18px] font-[700] text-[#00ffc8] mb-0.5" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
-                  5项
+                  {total > 0 ? `${activePercent.toFixed(1)}%` : '--'}
                 </div>
-                <div className="text-[9px] text-[rgba(238,242,255,0.3)]">资产类型</div>
+                <div className="text-[9px] text-[rgba(238,242,255,0.3)]">{activeLabel}</div>
               </div>
             </div>
           </div>
@@ -144,7 +144,7 @@ export function AssetTree({ activePanel, onPanelSwitch, data }: Props) {
                     <span 
                       className="text-[10px] font-mono px-1.5 py-0.5 rounded"
                       style={{ 
-                        backgroundColor: `${item.color}20`,
+                        backgroundColor: `${item.color}26`,
                         color: item.color
                       }}
                     >
@@ -160,20 +160,23 @@ export function AssetTree({ activePanel, onPanelSwitch, data }: Props) {
                 <div 
                   className="text-[13px] font-[600] transition-all duration-300" 
                   style={{ 
-                    fontFamily: 'var(--font-jetbrains-mono)', 
-                    color: item.color,
-                    textShadow: isActive ? `0 0 10px ${item.color}60` : 'none'
+                    fontFamily: 'var(--font-jetbrains-mono)',
+                    color: '#e2e8f0',
+                    textShadow: isActive ? `0 0 10px rgba(0,245,212,0.4)` : 'none'
                   }}
                 >
                   {isConnected ? item.amount : '--'}
                 </div>
-                <div className={`text-[10px] mt-0.5 transition-colors ${
-                  item.status === '可提取' ? 'text-[#22c55e]' : 
-                  item.status === '快捷' ? 'text-[#fbbf24]' : 
-                  'text-[rgba(238,242,255,0.3)]'
-                }`}>
-                  {item.status}
-                </div>
+                {item.id !== 'quick' && (
+                  <div className="text-[10px] mt-0.5 text-[#22c55e]">
+                    {item.status}
+                  </div>
+                )}
+                {item.id === 'quick' && (
+                  <div className="text-[10px] mt-0.5 text-[#fbbf24]">
+                    {item.status}
+                  </div>
+                )}
               </div>
             </button>
           )

@@ -69,7 +69,7 @@ async function getUnifiedData(address: string, dataType: string) {
       
       case 'stakeList': {
         const [events] = await pool.query(
-          `SELECT event_type, amount, UNIX_TIMESTAMP(timestamp) as timestamp, lock_period, block_number FROM stake_events WHERE LOWER(user_address) = LOWER(?) ORDER BY timestamp DESC`,
+          `SELECT event_type, amount, timestamp, lock_period, block_number FROM stake_events WHERE LOWER(user_address) = LOWER(?) ORDER BY timestamp DESC`,
           [address]
         );
         const stakes = (events as any[]).map((e: any) => ({

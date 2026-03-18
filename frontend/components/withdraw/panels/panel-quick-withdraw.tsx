@@ -111,9 +111,9 @@ export function PanelQuickWithdraw({ onMobileBack, data }: Props) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0f]/40">
-      {/* Enhanced Header */}
-      <div className="flex items-center justify-between p-6 border-b border-[rgba(0,255,200,0.12)]">
+    <div className="flex flex-col h-full bg-[#020617]/40">
+      {/* Header：毛玻璃样式，与一级卡片统一 */}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/[0.06] bg-white/[0.03] backdrop-blur-xl">
         <button
           onClick={onMobileBack}
           className="lg:hidden flex items-center gap-2 text-[rgba(238,242,255,0.5)] hover:text-emerald-400 transition-colors"
@@ -121,38 +121,35 @@ export function PanelQuickWithdraw({ onMobileBack, data }: Props) {
           <ArrowLeft className="w-4 h-4" />
           <span className="text-sm">返回</span>
         </button>
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 p-0.5">
-            <div className="w-full h-full bg-[#0a0a0f] rounded-xl flex items-center justify-center">
-              <Zap className="w-6 h-6 text-amber-400" />
-            </div>
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-white">一键提取</h2>
-            <p className="text-xs text-white/40 mt-0.5">快速提取所有可用资产</p>
-          </div>
+        <div className="min-w-0 ml-auto text-right">
+          <h2 className="text-[14px] font-semibold text-[#e2e8f0] tracking-tight truncate">
+            一键提取
+          </h2>
+          <p className="text-[11px] text-[#64748b] mt-0.5 truncate max-w-[210px]">
+            聚合多种资产，一次签名完成提取
+          </p>
         </div>
       </div>
 
       {/* Body */}
-      <div className="flex-1 p-6 overflow-y-auto">
-        <div className="max-w-2xl mx-auto space-y-6">
-          {/* Enhanced 币种选择 */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-[640px] mx-auto px-4 py-6 space-y-5">
+          {/* 币种选择：主操作切换 */}
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => setWithdrawType('rwa')}
               className={`relative overflow-hidden px-6 py-8 rounded-2xl border transition-all duration-300 ${
                 withdrawType === 'rwa'
-                  ? 'bg-amber-500/10 border-amber-500/30 shadow-lg shadow-amber-500/20'
-                  : 'bg-white/[0.02] border-white/10 hover:bg-white/[0.04] hover:border-white/15'
+                  ? 'bg-white/[0.06] backdrop-blur-xl border-[#00f5d450] shadow-lg shadow-[rgba(0,245,212,0.25)]'
+                  : 'bg-white/[0.02] backdrop-blur-xl border-white/[0.08] hover:bg-white/[0.04] hover:border-white/[0.15]'
               }`}
             >
               {withdrawType === 'rwa' && (
-                <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 to-orange-500/10 animate-pulse" />
+                <div className="absolute inset-0 bg-gradient-to-br from-[#00f5d433] to-[#22c55e26] animate-pulse" />
               )}
               <div className="relative z-10 text-center">
-                <div className="text-sm font-semibold text-amber-400 mb-3">提取 RWA</div>
-                <div className="text-3xl font-bold text-white mb-2" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
+                <div className="text-sm font-semibold text-[#00f5d4] mb-3">提取 RWA</div>
+                <div className="text-2xl md:text-3xl font-bold text-white mb-2" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
                   {totalRWA.toFixed(2)}
                 </div>
                 <div className="text-xs text-white/40">
@@ -165,16 +162,16 @@ export function PanelQuickWithdraw({ onMobileBack, data }: Props) {
               onClick={() => setWithdrawType('usdt')}
               className={`relative overflow-hidden px-6 py-8 rounded-2xl border transition-all duration-300 ${
                 withdrawType === 'usdt'
-                  ? 'bg-emerald-500/10 border-emerald-500/30 shadow-lg shadow-emerald-500/20'
-                  : 'bg-white/[0.02] border-white/10 hover:bg-white/[0.04] hover:border-white/15'
+                  ? 'bg-white/[0.06] backdrop-blur-xl border-[#00f5d450] shadow-lg shadow-[rgba(0,245,212,0.25)]'
+                  : 'bg-white/[0.02] backdrop-blur-xl border-white/[0.08] hover:bg-white/[0.04] hover:border-white/[0.15]'
               }`}
             >
               {withdrawType === 'usdt' && (
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-teal-500/10 animate-pulse" />
+                <div className="absolute inset-0 bg-gradient-to-br from-[#00f5d433] to-[#22c55e26] animate-pulse" />
               )}
               <div className="relative z-10 text-center">
-                <div className="text-sm font-semibold text-emerald-400 mb-3">提取 USDT</div>
-                <div className="text-3xl font-bold text-white mb-2" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
+                <div className="text-sm font-semibold text-[#00f5d4] mb-3">提取 USDT</div>
+                <div className="text-2xl md:text-3xl font-bold text-white mb-2" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
                   {totalUSDT.toFixed(2)}
                 </div>
                 <div className="text-xs text-white/40">
@@ -184,39 +181,60 @@ export function PanelQuickWithdraw({ onMobileBack, data }: Props) {
             </button>
           </div>
 
-          {/* Enhanced 明细卡片 */}
-          <div className="bg-white/[0.02] backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-            <h3 className="text-sm font-semibold text-white/70 mb-4 flex items-center gap-2">
-              <div className="w-1 h-4 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full" />
-              提取明细
-            </h3>
+          {/* 明细 + 结构：玻璃主卡 */}
+          <div className="bg-white/[0.03] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.06] shadow-[0_0_25px_rgba(15,23,42,0.6)]">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-white/80 flex items-center gap-2">
+                <div className="w-1 h-4 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full" />
+                资产拆分
+              </h3>
+              <span className="text-[10px] text-slate-400">
+                一键提取会自动按下列顺序聚合执行
+              </span>
+            </div>
             <div className="space-y-3">
               {withdrawType === 'rwa' ? (
                 <>
                   {rwaPrincipal > 0 && (
-                    <div className="flex items-center justify-between py-3 px-4 bg-white/[0.02] rounded-xl">
+                    <div className="flex items-center justify-between gap-4 py-3 px-4 rounded-xl bg-white/[0.02] backdrop-blur-md border border-white/[0.06]">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                          <Briefcase className="w-4 h-4 text-emerald-400" />
+                        <div className="w-8 h-8 rounded-lg bg-[#00f5d41a] flex items-center justify-center">
+                          <Briefcase className="w-4 h-4 text-[#00f5d4]" />
                         </div>
-                        <span className="text-sm text-white/70">质押本金</span>
+                        <div className="flex flex-col">
+                          <span className="text-sm text-white/80">质押本金</span>
+                          <span className="text-[11px] text-slate-400">RWA 灵活 / 到期锁仓本金</span>
+                        </div>
                       </div>
-                      <span className="text-sm font-semibold text-white" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
-                        {rwaPrincipal.toFixed(2)} RWA
-                      </span>
+                      <div className="text-right">
+                        <span className="text-sm font-semibold text-white font-mono block">
+                          {rwaPrincipal.toFixed(2)} RWA
+                        </span>
+                        <span className="text-[10px] text-slate-400 block">
+                          ≈ {(rwaPrincipal * 0.85).toFixed(2)} USDT
+                        </span>
+                      </div>
                     </div>
                   )}
                   {rwaYield > 0 && (
-                    <div className="flex items-center justify-between py-3 px-4 bg-white/[0.02] rounded-xl">
+                    <div className="flex items-center justify-between gap-4 py-3 px-4 rounded-xl bg-white/[0.02] backdrop-blur-md border border-white/[0.06]">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
-                          <TrendingUp className="w-4 h-4 text-green-400" />
+                        <div className="w-8 h-8 rounded-lg bg-[#00f5d41a] flex items-center justify-center">
+                          <TrendingUp className="w-4 h-4 text-[#00f5d4]" />
                         </div>
-                        <span className="text-sm text-white/70">RWA 收益</span>
+                        <div className="flex flex-col">
+                          <span className="text-sm text-white/80">RWA 收益</span>
+                          <span className="text-[11px] text-slate-400">已结算，可立即提取或兑换 stRWA</span>
+                        </div>
                       </div>
-                      <span className="text-sm font-semibold text-white" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
-                        {rwaYield.toFixed(2)} RWA
-                      </span>
+                      <div className="text-right">
+                        <span className="text-sm font-semibold text-white font-mono block">
+                          {rwaYield.toFixed(2)} RWA
+                        </span>
+                        <span className="text-[10px] text-slate-400 block">
+                          ≈ {(rwaYield * 0.85).toFixed(2)} USDT
+                        </span>
+                      </div>
                     </div>
                   )}
                   {strwa > 0 && (
@@ -234,14 +252,21 @@ export function PanelQuickWithdraw({ onMobileBack, data }: Props) {
               ) : (
                 <>
                   {usdtPrincipal > 0 && (
-                    <div className="flex items-center justify-between py-2">
-                      <div className="flex items-center gap-2">
-                        <Briefcase className="w-4 h-4 text-[#00ffc8]" />
-                        <span className="text-[13px] text-[rgba(238,242,255,0.7)]">质押本金</span>
+                    <div className="flex items-center justify-between gap-4 py-3 px-4 rounded-xl bg-white/[0.02] backdrop-blur-md border border-white/[0.06]">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-[#00f5d41a] flex items-center justify-center">
+                          <Briefcase className="w-4 h-4 text-[#00f5d4]" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[13px] text-[rgba(238,242,255,0.9)] truncate">质押本金</span>
+                          <span className="text-[11px] text-slate-400">USDT 灵活 / 到期锁仓本金</span>
+                        </div>
                       </div>
-                      <span className="text-[14px] font-[600] text-[#f1f5f9]" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
-                        {usdtPrincipal.toFixed(2)} USDT
-                      </span>
+                      <div className="text-right">
+                        <span className="text-[14px] font-[600] text-[#f1f5f9] font-mono block">
+                          {usdtPrincipal.toFixed(2)} USDT
+                        </span>
+                      </div>
                     </div>
                   )}
                   {referral > 0 && (
@@ -281,6 +306,10 @@ export function PanelQuickWithdraw({ onMobileBack, data }: Props) {
             <Zap className="w-5 h-5" />
             {loading ? '处理中...' : `一键提取 ${withdrawType === 'rwa' ? 'RWA' : 'USDT'}`}
           </button>
+
+          <p className="text-[10px] text-slate-500 text-center">
+            系统将按上方顺序依次执行多笔提取操作，失败时只会回退未成功部分，已到账资产不会回滚。
+          </p>
         </div>
       </div>
 

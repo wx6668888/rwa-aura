@@ -9,7 +9,7 @@ router.get('/:address', async (req, res) => {
     const limit = parseInt(req.query.limit as string) || 20;
 
     const sql = `
-      (SELECT id, 'stake' as type, event_type, amount, block_number, UNIX_TIMESTAMP(timestamp) as timestamp FROM stake_events WHERE LOWER(user_address) = LOWER(?))
+      (SELECT id, 'stake' as type, event_type, amount, block_number, timestamp FROM stake_events WHERE LOWER(user_address) = LOWER(?))
       UNION ALL
       (SELECT id, 'withdrawal' as type, event_type, amount, block_number, timestamp FROM withdrawal_events WHERE LOWER(user_address) = LOWER(?))
       ORDER BY timestamp DESC LIMIT ?

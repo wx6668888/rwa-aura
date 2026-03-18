@@ -81,69 +81,6 @@ export default function CalculatorResultsPanel() {
           </div>
         )}
 
-        {/* Differential Reward Simulation (Level Compression) */}
-        {state.referralEnabled && results.differentialBestCase && (
-          <div className="mt-3 rounded-xl bg-surface-2/80 border border-border-active p-3">
-            <div className="text-[11px] uppercase tracking-widest text-text-secondary mb-2">
-              {t('calc.differentialSimulationTitle') || 'Differential Reward Simulation'}
-            </div>
-            
-            {/* Best-case chain */}
-            <div className="mb-2">
-              <div className="text-[11px] text-text-secondary mb-1">
-                {t('calc.differentialBestCase') || 'Best case: all uplines are lower or equal to you'}
-              </div>
-              <div className="space-y-1">
-                {results.differentialBestCase.map((row, idx) => (
-                  <div
-                    key={`best-${idx}-${row.levelCode}`}
-                    className="flex justify-between text-[11px]"
-                  >
-                    <span className="text-text-secondary">
-                      {row.role === 'directRef'
-                        ? (t('calc.roleDirectRef') || 'Direct referral')
-                        : (t('calc.roleYou') || 'You')}{' '}
-                      ({row.levelCode} {row.levelName})
-                    </span>
-                    <span className="font-jetbrains text-text-primary">
-                      {row.differentialPercentage.toFixed(1)}% → ${row.amount.toFixed(2)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Compressed chain (level suppression) */}
-            {results.differentialCompressedCase && (
-              <div className="mt-2 pt-2 border-t border-border-subtle">
-                <div className="text-[11px] text-text-secondary mb-1">
-                  {t('calc.differentialCompressedCase') || 'Compressed case: a higher-level upline above you'}
-                </div>
-                <div className="space-y-1">
-                  {results.differentialCompressedCase.map((row, idx) => (
-                    <div
-                      key={`compressed-${idx}-${row.levelCode}`}
-                      className="flex justify-between text-[11px]"
-                    >
-                      <span className="text-text-secondary">
-                        {row.role === 'directRef'
-                          ? (t('calc.roleDirectRef') || 'Direct referral')
-                          : row.role === 'higherUpline'
-                            ? (t('calc.roleHigherUpline') || 'Higher upline')
-                            : (t('calc.roleYou') || 'You')}{' '}
-                        ({row.levelCode} {row.levelName})
-                      </span>
-                      <span className={`font-jetbrains ${row.role === 'you' && row.differentialPercentage === 0 ? 'text-danger' : 'text-text-primary'}`}>
-                        {row.differentialPercentage.toFixed(1)}% → ${row.amount.toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Reinvest Bonus */}
         {state.reinvestEnabled && results.reinvestBonus > 0 && (
           <div className="flex justify-between items-center">

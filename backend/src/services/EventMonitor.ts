@@ -278,6 +278,9 @@ export class EventMonitor {
             const txHash = event.transactionHash;
             const blockNumber = event.blockNumber;
             
+            // 输入验证
+            this.validateStakeParams(timestamp, amount, lockPeriod);
+            
             logger.info(`Processing StakeEvent: user=${user}, stakeId=${stakeId}, tx=${txHash}`);
             
             const existing = await query<Stake[]>(
@@ -292,18 +295,40 @@ export class EventMonitor {
             
             await transaction(async (connection) => {
                 await connection.query(
-                    `INSERT INTO stake_events (stake_id, user_address, amount, lock_period, event_type, tx_hash, block_number, timestamp)
-                     VALUES (?, ?, ?, ?, 'USDT', ?, ?, FROM_UNIXTIME(?))`,
+                    `INSERT IGNORE INTO stake_events (stake_id, user_address, amount, lock_period, event_type, referrer_address, tx_hash, block_number, timestamp)
+                     VALUES (?, ?, ?, ?, 'USDT', ?, ?, ?, ?)`,
                     [
                         stakeId.toString(),
                         user.toLowerCase(),
                         amount.toString(),
                         lockPeriod?.toString() || '0',
+                        referrer !== ethers.ZeroAddress ? referrer.toLowerCase() : null,
                         txHash,
                         blockNumber,
                         timestamp.toString()
                     ]
                 );
+                
+                // 如果是锁仓质押，插入locked_stakes表
+                const lockPeriodNum = Number(lockPeriod?.toString() || '0');
+                if (lockPeriodNum > 0) {
+                    const lockEndTime = Number(timestamp.toString()) + (lockPeriodNum * 86400);
+                    await connection.query(
+                        `INSERT IGNORE INTO locked_stakes (stake_id, user_address, amount, is_rwa_stake, lock_period, lock_end_time, is_withdrawn, block_number, transaction_hash)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        [
+                            stakeId.toString(),
+                            user.toLowerCase(),
+                            amount.toString(),
+                            0, // USDT
+                            lockPeriodNum,
+                            lockEndTime,
+                            0,
+                            blockNumber,
+                            txHash
+                        ]
+                    );
+                }
                 
                 // 更新cumulative_personal_stake（USDT转18位精度）
                 const usdtAmount18 = BigInt(amount.toString()) * BigInt(1e12);
@@ -401,6 +426,9 @@ export class EventMonitor {
             const txHash = event.transactionHash;
             const blockNumber = event.blockNumber;
             
+            // 输入验证
+            this.validateStakeParams(timestamp, amount, lockPeriod);
+            
             logger.info(`Processing RWAStakeEvent: user=${user}, stakeId=${stakeId}, tx=${txHash}`);
             
             const existing = await query<Stake[]>(
@@ -415,18 +443,40 @@ export class EventMonitor {
             
             await transaction(async (connection) => {
                 await connection.query(
-                    `INSERT INTO stake_events (stake_id, user_address, amount, lock_period, event_type, tx_hash, block_number, timestamp)
-                     VALUES (?, ?, ?, ?, 'RWA', ?, ?, FROM_UNIXTIME(?))`,
+                    `INSERT IGNORE INTO stake_events (stake_id, user_address, amount, lock_period, event_type, referrer_address, tx_hash, block_number, timestamp)
+                     VALUES (?, ?, ?, ?, 'RWA', ?, ?, ?, ?)`,
                     [
                         stakeId.toString(),
                         user.toLowerCase(),
                         amount.toString(),
                         lockPeriod?.toString() || '0',
+                        referrer !== ethers.ZeroAddress ? referrer.toLowerCase() : null,
                         txHash,
                         blockNumber,
                         timestamp.toString()
                     ]
                 );
+
+                // 如果是锁仓质押，插入locked_stakes表
+                const lockPeriodNum = Number(lockPeriod?.toString() || '0');
+                if (lockPeriodNum > 0) {
+                    const lockEndTime = Number(timestamp.toString()) + (lockPeriodNum * 86400);
+                    await connection.query(
+                        `INSERT IGNORE INTO locked_stakes (stake_id, user_address, amount, is_rwa_stake, lock_period, lock_end_time, is_withdrawn, block_number, transaction_hash)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        [
+                            stakeId.toString(),
+                            user.toLowerCase(),
+                            amount.toString(),
+                            1, // RWA
+                            lockPeriodNum,
+                            lockEndTime,
+                            0,
+                            blockNumber,
+                            txHash
+                        ]
+                    );
+                }
 
                 const contractAmount = BigInt(amount.toString()) / 2n;
                 
@@ -589,6 +639,27 @@ export class EventMonitor {
             txHash
         );
         
+        // 更新 user_stats 表（实时同步）
+        try {
+            let withdrawAmount = BigInt(amount);
+            let withdrawAssetType: 'USDT' | 'RWA' = assetType as 'USDT' | 'RWA';
+            
+            // RWA提现需要从USDT等值转换回RWA
+            if (assetType === 'RWA') {
+                const amountUsdtEquivBigInt = BigInt(amountUsdtEquiv);
+                withdrawAmount = (amountUsdtEquivBigInt * 100n) / 85n; // USDT等值转RWA
+            }
+            
+            await this.userStatsService.onWithdrawEvent(
+                user,
+                withdrawAmount,
+                withdrawAssetType
+            );
+            logger.info(`✅ user_stats updated for ${user} (${withdrawAssetType} withdraw)`);
+        } catch (error) {
+            logger.error(`Failed to update user_stats for ${user}:`, error);
+        }
+        
         await this.syncUserState(user);
         await this.syncRWAStakeState(user);
     }
@@ -640,7 +711,7 @@ export class EventMonitor {
         const svc = new TeamVolumeService();
         await transaction(async (conn) => {
             await conn.query(
-                'INSERT INTO withdrawal_events (user_address, event_type, amount, stake_id, timestamp, block_number, tx_hash) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                'INSERT IGNORE INTO withdrawal_events (user_address, event_type, amount, stake_id, timestamp, block_number, tx_hash) VALUES (?, ?, ?, ?, ?, ?, ?)',
                 [userAddress, eventType, amountUsdtEquiv, 0, timestamp, blockNumber, txHash]
             );
         });
@@ -825,6 +896,36 @@ export class EventMonitor {
             
         } catch (error) {
             logger.error(`Failed to process rewards for stakeId=${stakeId}:`, error);
+        }
+    }
+    
+    /**
+     * 验证质押参数
+     * @throws Error 如果参数无效
+     */
+    private validateStakeParams(timestamp: any, amount: any, lockPeriod: any): void {
+        const ts = Number(timestamp?.toString() || '0');
+        const amt = BigInt(amount?.toString() || '0');
+        const lock = Number(lockPeriod?.toString() || '0');
+        
+        // 验证timestamp
+        if (ts <= 0) {
+            throw new Error(`Invalid timestamp: ${ts} (must be > 0)`);
+        }
+        const now = Math.floor(Date.now() / 1000);
+        if (ts > now + 3600) {
+            throw new Error(`Invalid timestamp: ${ts} (future time not allowed)`);
+        }
+        
+        // 验证amount
+        if (amt <= 0n) {
+            throw new Error(`Invalid amount: ${amt} (must be > 0)`);
+        }
+        
+        // 验证lockPeriod
+        const validLockPeriods = [0, 30, 90, 180, 365];
+        if (!validLockPeriods.includes(lock)) {
+            throw new Error(`Invalid lockPeriod: ${lock} (must be one of ${validLockPeriods.join(', ')})`);
         }
     }
     

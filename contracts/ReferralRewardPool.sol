@@ -18,6 +18,7 @@ contract ReferralRewardPool is Ownable, ReentrancyGuard {
         uint256 stakeAmount;
         uint256 timestamp;
         bool settled;
+        uint8 levelSnapshot; // referrer level at stake time (1-9)
     }
     
     PendingReward[] public pendingRewards;
@@ -27,7 +28,7 @@ contract ReferralRewardPool is Ownable, ReentrancyGuard {
     uint256 public constant MIN_WITHDRAWAL = 100 * 10**6;
     uint256 public constant WITHDRAWAL_FEE = 8;
     
-    event RewardRecorded(address indexed referrer, address indexed referee, uint256 stakeAmount, uint256 index);
+    event RewardRecorded(address indexed referrer, address indexed referee, uint256 stakeAmount, uint8 levelSnapshot, uint256 index);
     event RewardSettled(address indexed referrer, uint256 amount, uint256 count);
     event RewardWithdrawn(address indexed user, uint256 amount, uint256 fee);
     
@@ -37,23 +38,29 @@ contract ReferralRewardPool is Ownable, ReentrancyGuard {
         lastSettlementTime = block.timestamp;
     }
     
-    function recordReferralReward(address referrer, address referee, uint256 stakeAmount, uint256, uint8) external {
+    function recordReferralReward(address referrer, address referee, uint256 stakeAmount, uint256, uint8 userLevel) external {
         require(msg.sender == stakingContract, "Only staking");
+        require(userLevel >= 1 && userLevel <= 9, "Invalid level");
         uint256 index = pendingRewards.length;
-        pendingRewards.push(PendingReward(referrer, referee, stakeAmount, block.timestamp, false));
+        pendingRewards.push(PendingReward(referrer, referee, stakeAmount, block.timestamp, false, userLevel));
         userPendingIndexes[referrer].push(index);
-        emit RewardRecorded(referrer, referee, stakeAmount, index);
+        emit RewardRecorded(referrer, referee, stakeAmount, userLevel, index);
     }
     
+    /**
+     * @notice Weekly settlement entrypoint (compatibility)
+     * @dev `levels` is kept for backward compatibility but is ignored.
+     *      Each PendingReward carries `levelSnapshot` captured at stake time.
+     */
     function settleWeeklyRewards(address[] calldata referrers, uint8[] calldata levels) external onlyOwner nonReentrant {
         require(referrers.length == levels.length, "Length mismatch");
         for (uint256 i = 0; i < referrers.length; i++) {
-            _settleUserRewards(referrers[i], levels[i]);
+            _settleUserRewards(referrers[i]);
         }
         lastSettlementTime = block.timestamp;
     }
     
-    function _settleUserRewards(address referrer, uint8 level) internal {
+    function _settleUserRewards(address referrer) internal {
         uint256[] storage indexes = userPendingIndexes[referrer];
         uint256 totalReward = 0;
         uint256 count = 0;
@@ -61,7 +68,7 @@ contract ReferralRewardPool is Ownable, ReentrancyGuard {
         for (uint256 i = 0; i < indexes.length; i++) {
             PendingReward storage reward = pendingRewards[indexes[i]];
             if (!reward.settled) {
-                uint256 rate = _getReferralRewardRate(level);
+                uint256 rate = _getReferralRewardRate(reward.levelSnapshot);
                 totalReward += (reward.stakeAmount * rate) / 10000;
                 reward.settled = true;
                 count++;

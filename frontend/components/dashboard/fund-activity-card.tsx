@@ -104,7 +104,7 @@ function TypePill({
 async function parseLogsToRows(
   logs: { data: `0x${string}`; topics: (`0x${string}` | `0x${string}`[])[]; blockNumber: bigint; logIndex?: bigint; transactionHash?: `0x${string}` }[],
   normalizedUser: string,
-  publicClient: { getBlock: (p: { blockNumber: bigint }) => Promise<{ timestamp: number }> },
+  publicClient: { getBlock: (p: { blockNumber: bigint }) => Promise<{ timestamp: bigint }> },
   locale: string
 ): Promise<FundActivityRow[]> {
   const activities: FundActivityRow[] = []
@@ -125,7 +125,8 @@ async function parseLogsToRows(
       if (eventUser && eventUser !== normalizedUser) continue
 
       const block = await publicClient.getBlock({ blockNumber: log.blockNumber })
-      const timeStr = new Date(Number(block.timestamp) * 1000).toLocaleString(localeKey, {
+      const timestampMs = Number(block.timestamp) * 1000
+      const timeStr = new Date(timestampMs).toLocaleString(localeKey, {
         month: '2-digit',
         day: '2-digit',
         hour: '2-digit',
@@ -276,7 +277,7 @@ async function parseLogsToRows(
 async function parseStRWABurnLogs(
   logs: { data: `0x${string}`; topics: (`0x${string}` | `0x${string}`[])[]; blockNumber: bigint; logIndex?: bigint; transactionHash?: `0x${string}` }[],
   _normalizedUser: string,
-  publicClient: { getBlock: (p: { blockNumber: bigint }) => Promise<{ timestamp: number }> },
+  publicClient: { getBlock: (p: { blockNumber: bigint }) => Promise<{ timestamp: bigint }> },
   locale: string
 ): Promise<FundActivityRow[]> {
   const rows: FundActivityRow[] = []
@@ -291,7 +292,8 @@ async function parseStRWABurnLogs(
       if (decoded.eventName !== 'Burned') continue
       const amount = decoded.args.amount != null ? formatUnits(decoded.args.amount, 18) : '0'
       const block = await publicClient.getBlock({ blockNumber: log.blockNumber })
-      const timeStr = new Date(Number(block.timestamp) * 1000).toLocaleString(localeKey, {
+      const timestampMs = Number(block.timestamp) * 1000
+      const timeStr = new Date(timestampMs).toLocaleString(localeKey, {
         month: '2-digit',
         day: '2-digit',
         hour: '2-digit',

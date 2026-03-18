@@ -28,9 +28,6 @@ export function WithdrawPageV3() {
     decimals: 2 
   })
 
-  console.log('=== WithdrawPageV3 Render ===')
-  console.log('data:', data)
-
   const handlePanelSwitch = (panelId: PanelId) => {
     setActivePanel(panelId)
     setShowMobilePanel(true)
@@ -73,7 +70,7 @@ export function WithdrawPageV3() {
 
       <div className="relative z-10 pt-[100px] pb-24 px-4 max-w-[1400px] mx-auto">
         {/* Enhanced Hero Total */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full mb-4 backdrop-blur-sm">
             <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
             <span className="text-[11px] tracking-[0.15em] text-emerald-400/80 uppercase font-medium">
@@ -91,7 +88,6 @@ export function WithdrawPageV3() {
           >
             {data.loading ? '...' : isConnected ? `$${animatedTotal}` : '--'}
           </div>
-          <p className="text-sm text-white/40">Ready to withdraw anytime</p>
         </div>
 
         {/* Enhanced Main Container */}
@@ -113,6 +109,7 @@ export function WithdrawPageV3() {
             </div>
           </div>
         </div>
+
       </div>
 
       <style jsx>{`

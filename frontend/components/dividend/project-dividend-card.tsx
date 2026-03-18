@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
 import { useAccount, useChainId } from 'wagmi'
 import { useTeamStats } from '@/hooks/useTeamStats'
 import { useStakingContract } from '@/hooks/useStakingContract'
+import { useLevelInfo } from '@/hooks/useLevelInfo'
 import { useEstimatedDividend } from '@/hooks/useEstimatedDividend'
 import { getNodeLevelConfig, NODE_LEVELS } from '@/lib/node-levels'
 import { Gift, Loader2 } from 'lucide-react'
@@ -26,31 +27,7 @@ export function ProjectDividendCard() {
   const chainId = useChainId()
   const teamStats = useTeamStats()
   const { userStakeInfo, rwaStakeInfo } = useStakingContract()
-
-  // 使用链上数据计算等级
-  const usdtStaked = parseFloat(userStakeInfo?.totalStaked || '0')
-  const rwaStaked = parseFloat(rwaStakeInfo?.totalStakedRWA || '0')
-  const personalStakeCurrent = usdtStaked + rwaStaked * RWA_PRICE
-  const teamVolumeCurrent = teamStats.teamVolume
-  const teamRetainedCurrent = teamStats.teamRetained
-  
-  let calculatedLevel = 1
-  for (let i = NODE_LEVELS.length - 1; i >= 0; i--) {
-    const level = NODE_LEVELS[i]
-    const meetsPersonal = personalStakeCurrent >= (level.personalStakeUSDT || 0)
-    const meetsTeam = teamVolumeCurrent >= level.teamVolumeUSDT
-    const meetsRetained = teamRetainedCurrent >= (level.teamRetainedUSDT ?? 0)
-    if (meetsPersonal && meetsTeam && meetsRetained) {
-      calculatedLevel = level.level
-      break
-    }
-  }
-  const nodeLevel = isConnected ? calculatedLevel : 1
-  const config = getNodeLevelConfig(nodeLevel)
-  const isEligible = config?.projectDividendEligible ?? false
-  
-  // 使用新的 hook 计算预估分红
-  const { estimatedDividend, teamRetained } = useEstimatedDividend(nodeLevel)
+  const levelInfo = useLevelInfo()
 
   const { data: dividendData, refetch: refetchDividend } = useQuery({
     queryKey: ['dividend-user', address?.toLowerCase(), chainId],
@@ -76,6 +53,14 @@ export function ProjectDividendCard() {
   const currentMonth = dividendData?.currentMonth
   const estimated = currentMonth?.estimatedDividend ? parseFloat(currentMonth.estimatedDividend) : 0
   const netGrowth = currentMonth?.netGrowth ? parseFloat(currentMonth.netGrowth) : 0
+
+  // 分红资格等级：统一使用后端 level-info（useLevelInfo），与 dashboard 节点卡片保持一致
+  const effectiveNodeLevel = isConnected ? (levelInfo?.nodeLevel ?? 1) : 1
+  const config = getNodeLevelConfig(effectiveNodeLevel)
+  const isEligible = (config?.projectDividendEligible ?? false) && effectiveNodeLevel >= 2
+
+  // 使用新的 hook 计算预估分红（按有效等级）
+  const { estimatedDividend, teamRetained } = useEstimatedDividend(effectiveNodeLevel)
 
   const { writeContract, data: txHash, isPending } = useWriteContract()
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash: txHash })

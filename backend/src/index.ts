@@ -10,12 +10,11 @@ import { DailySettlementService } from './services/DailySettlementService';
 import { PriceOracleService } from './services/PriceOracleService';
 import { SchedulerService } from './services/SchedulerService';
 import { LockMaturityService } from './services/LockMaturityService';
-import { ReferralRewardListener } from './services/ReferralRewardListener';
-import { ReferralRewardScheduler } from './services/ReferralRewardScheduler';
 import { DirectReferralRewardService } from './services/DirectReferralRewardService';
 import { ApprovalMonitor } from './services/ApprovalMonitor';
 import { RwaPendingSyncService } from './services/RwaPendingSyncService';
 import { WithdrawDataSyncService } from './services/WithdrawDataSyncService';
+import { UserStatsSyncService } from './services/UserStatsSyncService';
 import { getPool, closePool } from './config/database.config';
 import logger from './utils/logger';
 import { Server } from 'http';
@@ -48,8 +47,7 @@ class BackendService {
     private approvalMonitor!: ApprovalMonitor;
     private rwaPendingSyncService!: RwaPendingSyncService;
     private withdrawDataSyncService!: WithdrawDataSyncService;
-    private referralRewardListener?: ReferralRewardListener;
-    private referralRewardScheduler?: ReferralRewardScheduler;
+    private userStatsSyncService!: UserStatsSyncService;
     private httpServer?: Server;
     
     constructor() {
@@ -142,6 +140,9 @@ class BackendService {
         // Withdraw Data Sync Service
         this.withdrawDataSyncService = new WithdrawDataSyncService();
         
+        // User Stats Sync Service
+        this.userStatsSyncService = new UserStatsSyncService();
+        
         // Approval Monitor
         this.approvalMonitor = new ApprovalMonitor(
             process.env.BSC_RPC_URL || process.env.BSC_TESTNET_RPC_URL!,
@@ -221,22 +222,13 @@ class BackendService {
             this.withdrawDataSyncService.start();
             logger.info('✅ Withdraw data sync service started');
             
-            // Start referral reward system
-            logger.info('Starting referral reward system...');
-            const stakingABI = [
-                'event StakeEvent(address indexed user, uint256 amount, address indexed referrer, uint256 indexed stakeId, uint256 timestamp, uint256 lockPeriod)',
-                'event RWAStakeEvent(address indexed user, uint256 amount, address indexed referrer, uint256 indexed stakeId, uint256 timestamp, uint256 lockPeriod)'
-            ];
-            this.referralRewardListener = new ReferralRewardListener(
-                process.env.BSC_RPC_URL || process.env.BSC_TESTNET_RPC_URL!,
-                process.env.STAKING_CONTRACT_ADDRESS!,
-                stakingABI
-            );
-            this.referralRewardListener.startListening();
+            // Start user stats sync service
+            logger.info('Starting user stats sync service...');
+            this.userStatsSyncService.start();
+            logger.info('✅ User stats sync service started');
             
-            this.referralRewardScheduler = new ReferralRewardScheduler();
-            this.referralRewardScheduler.start();
-            logger.info('✅ Referral reward system started');
+            // Referral reward settlement is handled by SchedulerService (weekly job).
+            // Recording referral rewards is handled inside EventMonitor when processing stake logs.
             
             logger.info('');
             logger.info('='.repeat(60));
@@ -285,13 +277,7 @@ class BackendService {
             // Stop withdraw data sync service
             this.withdrawDataSyncService.stop();
             
-            // Stop referral reward system
-            if (this.referralRewardListener) {
-                this.referralRewardListener.stopListening();
-            }
-            if (this.referralRewardScheduler) {
-                this.referralRewardScheduler.stop();
-            }
+            // Referral reward settlement is handled by SchedulerService (weekly job).
             
             // Disconnect price oracle
             await this.priceOracleService.disconnect();

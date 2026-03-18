@@ -148,9 +148,9 @@ export function PortfolioCard() {
   // RWA 价格（用于转换）
   const rwaPrice = 0.85 // 1 RWA ≈ 0.85 USDT
 
-  // 用户数据：优先使用 API，回退到合约
-  const usdtStaked = apiData ? parseFloat(apiData.usdtStaked) / 1e18 : parseFloat(userStakeInfo?.totalStaked || '0')
-  const rwaStaked = apiData ? parseFloat(apiData.rwaStaked) / 1e18 : parseFloat(rwaStakeInfo?.totalStakedRWA || '0')
+  // 用户数据：优先使用链上实时数据，API作为fallback
+  const usdtStaked = userStakeInfo?.totalStaked ? parseFloat(userStakeInfo.totalStaked) : (apiData ? parseFloat(apiData.usdtStaked) / 1e18 : 0)
+  const rwaStaked = rwaStakeInfo?.totalStakedRWA ? parseFloat(rwaStakeInfo.totalStakedRWA) : (apiData ? parseFloat(apiData.rwaStaked) / 1e18 : 0)
   const usdtStakedInRWA = usdtStaked / rwaPrice // USDT 质押转换为 RWA
   const totalStakedRWA = usdtStakedInRWA + rwaStaked // 合并总质押（RWA）
   const totalStakedUSDT = totalStakedRWA * rwaPrice // 转换为 USDT 等值（用于小字显示）

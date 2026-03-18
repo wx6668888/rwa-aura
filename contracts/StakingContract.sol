@@ -530,13 +530,16 @@ contract StakingContract is Ownable, Pausable, ReentrancyGuard, MetaStakingExten
         }
         
         // 记录推荐奖励（不立即发放，等待每周结算）
+        // 规则：按推荐人“当时等级”快照写入 ReferralRewardPool，结算时按快照等级计算
         if (effectiveReferrer != address(0) && referralRewardPool != address(0)) {
+            uint8 refLevel = users[effectiveReferrer].nodeLevel;
+            if (refLevel < 1) refLevel = 1;
             IReferralRewardPool(referralRewardPool).recordReferralReward(
                 effectiveReferrer,
                 msg.sender,
                 internalAmount / PRECISION_MULTIPLIER,
                 0,
-                0
+                refLevel
             );
         }
         
@@ -868,14 +871,17 @@ contract StakingContract is Ownable, Pausable, ReentrancyGuard, MetaStakingExten
         }));
         
         // 记录推荐奖励（不立即发放，等待每周结算）
+        // 规则：按推荐人“当时等级”快照写入 ReferralRewardPool，结算时按快照等级计算
         if (effectiveReferrer != address(0) && referralRewardPool != address(0)) {
             uint256 usdtEquivalent = (amount * 85) / 100; // RWA * 0.85
+            uint8 refLevel = users[effectiveReferrer].nodeLevel;
+            if (refLevel < 1) refLevel = 1;
             IReferralRewardPool(referralRewardPool).recordReferralReward(
                 effectiveReferrer,
                 msg.sender,
                 usdtEquivalent / PRECISION_MULTIPLIER,
                 0,
-                0
+                refLevel
             );
         }
         
@@ -947,12 +953,14 @@ contract StakingContract is Ownable, Pausable, ReentrancyGuard, MetaStakingExten
         
         if (effectiveReferrer != address(0) && referralRewardPool != address(0)) {
             uint256 usdtEquivalent = (amount * 85) / 100;
+            uint8 refLevel = users[effectiveReferrer].nodeLevel;
+            if (refLevel < 1) refLevel = 1;
             IReferralRewardPool(referralRewardPool).recordReferralReward(
                 effectiveReferrer,
                 user,
                 usdtEquivalent / PRECISION_MULTIPLIER,
                 0,
-                0
+                refLevel
             );
         }
         

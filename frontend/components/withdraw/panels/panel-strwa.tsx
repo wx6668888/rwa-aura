@@ -60,63 +60,58 @@ export function PanelStRWA({ onMobileBack, data }: Props) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0f]/40">
-      {/* Enhanced Header */}
-      <div className="flex items-center justify-between p-6 border-b border-cyan-500/10">
+    <div className="flex flex-col h-full bg-[#020617]/40">
+      {/* Header：毛玻璃样式，与其它二级页统一 */}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/[0.06] bg-white/[0.03] backdrop-blur-xl">
         <button
           onClick={onMobileBack}
-          className="lg:hidden flex items-center gap-2 text-white/50 hover:text-cyan-400 transition-colors"
+          className="lg:hidden flex items-center gap-2 text-white/50 hover:text-[#00f5d4] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span className="text-sm">返回</span>
         </button>
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 p-0.5">
-            <div className="w-full h-full bg-[#0a0a0f] rounded-xl flex items-center justify-center">
-              <Coins className="w-6 h-6 text-cyan-400" />
-            </div>
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-white">stRWA 凭证</h2>
-            <p className="text-xs text-white/40 mt-0.5">质押凭证，可兑换</p>
-          </div>
-        </div>
-        <div className="px-4 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
-          <span className="text-sm font-semibold text-cyan-400" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
-            {data.loading ? '...' : isConnected ? `${data.strwaAmount} stRWA` : '--'}
-          </span>
+        <div className="min-w-0 ml-auto text-right">
+          <h2 className="text-[14px] font-semibold text-[#e2e8f0] tracking-tight truncate">
+            stRWA 凭证
+          </h2>
+          <p className="text-[11px] text-[#64748b] mt-0.5 truncate max-w-[220px]">
+            质押凭证 · 无手续费 1:1 兑换 RWA
+          </p>
         </div>
       </div>
 
       {/* Body */}
-      <div className="flex-1 p-6 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto">
         {hasStrwa ? (
-          <div className="max-w-2xl mx-auto space-y-6">
-            {/* Enhanced 提取金额输入 */}
-            <div className="bg-white/[0.02] backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-              <div className="flex justify-between items-center mb-4">
+          <div className="max-w-[640px] mx-auto px-4 py-6 space-y-6">
+            {/* 数量卡片：玻璃风格 */}
+            <div className="bg-white/[0.03] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.06]">
+              <div className="flex justify-between items-center mb-3">
                 <label className="text-sm font-semibold text-white/70">兑换数量</label>
+              </div>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 pr-16 py-4 text-lg font-semibold text-white placeholder:text-white/20 focus:outline-none focus:border-[#00f5d4]/40 transition"
+                  style={{ fontFamily: 'var(--font-jetbrains-mono)' }}
+                />
                 <button
-                  className="px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-xs font-semibold text-cyan-400 hover:bg-cyan-500/20 transition"
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg bg-[#00f5d41a] border border-[#00f5d433] text-[11px] font-semibold text-[#00f5d4] hover:bg-[#00f5d426] transition"
                   onClick={() => setAmount(data.strwaAmount)}
                 >
                   MAX
                 </button>
               </div>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-4 text-lg font-semibold text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-500/30 transition"
-                style={{ fontFamily: 'var(--font-jetbrains-mono)' }}
-              />
-              <div className="mt-4 flex items-start gap-2 text-xs text-white/50">
+              <div className="mt-4 flex items-start gap-2 text-xs text-[#94a3b8]">
                 <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <div>
                   <div>无手续费，1:1 兑换为 RWA</div>
                   {amount && parseFloat(amount) > 0 && (
-                    <div className="mt-1 text-cyan-400 font-semibold">
+                    <div className="mt-1 text-[#22c55e] font-semibold">
                       到账: {parseFloat(amount).toFixed(2)} RWA
                     </div>
                   )}
@@ -124,11 +119,11 @@ export function PanelStRWA({ onMobileBack, data }: Props) {
               </div>
             </div>
 
-            {/* Enhanced 提取按钮 */}
+            {/* 主操作按钮：金色 */}
             <button
               onClick={handleWithdraw}
               disabled={!isConnected || !amount || parseFloat(amount) <= 0 || loading || !hasStrwa}
-              className="w-full h-14 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white text-base font-bold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-cyan-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0"
+              className="w-full h-14 rounded-2xl bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-[#0a0a0f] text-base font-bold flex items-center justify-center gap-2 hover:shadow-[0_0_30px_rgba(251,191,36,0.4)] hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0"
             >
               <Coins className="w-5 h-5" />
               {loading ? '处理中...' : '兑换 stRWA'}
@@ -136,10 +131,10 @@ export function PanelStRWA({ onMobileBack, data }: Props) {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="w-20 h-20 rounded-2xl bg-white/[0.02] flex items-center justify-center mb-4">
-              <Coins className="w-10 h-10 text-white/20" />
+            <div className="w-20 h-20 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
+              <Coins className="w-10 h-10 text-[rgba(238,242,255,0.26)]" />
             </div>
-            <div className="text-white/40 text-sm">暂无 stRWA 凭证</div>
+            <div className="text-[rgba(238,242,255,0.52)] text-[14px]">暂无 stRWA 凭证</div>
           </div>
         )}
       </div>

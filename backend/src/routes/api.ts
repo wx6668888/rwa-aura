@@ -1,7 +1,9 @@
 import express from 'express';
 import { getPool } from '../config/database.config';
+import { EffectiveLevelService } from '../services/EffectiveLevelService';
 
 const router = express.Router();
+const effectiveLevelService = new EffectiveLevelService();
 
 // 获取用户质押记录
 router.get('/stakes/:address', async (req, res) => {
@@ -27,41 +29,19 @@ router.get('/stakes/:address', async (req, res) => {
 router.get('/user/:address/level-info', async (req, res) => {
   try {
     const { address } = req.params;
-    const pool = getPool();
-    
-    // 直接从 user_stats 表读取
-    const [stats] = await pool.query(
-      'SELECT * FROM user_stats WHERE LOWER(user_address) = LOWER(?)',
-      [address]
-    );
-    
-    const stat = (stats as any[])[0];
-    
-    if (stat) {
-      res.json({
-        success: true,
-        data: {
-          nodeLevel: stat.current_level || 1,
-          cumulativePersonalStake: stat.personal_usdt_staked || '0',
-          teamVolume: (BigInt(Math.floor((stat.team_volume_usdt || 0) * 1e18))).toString(),
-          teamTotalDeposited: (BigInt(Math.floor((stat.team_volume_usdt || 0) * 1e18))).toString(),
-          teamTotalWithdrawn: '0',
-          teamRetained: (BigInt(Math.floor((stat.team_retained_usdt || 0) * 1e18))).toString(),
-        }
-      });
-    } else {
-      res.json({
-        success: true,
-        data: {
-          nodeLevel: 1,
-          cumulativePersonalStake: '0',
-          teamVolume: '0',
-          teamTotalDeposited: '0',
-          teamTotalWithdrawn: '0',
-          teamRetained: '0',
-        }
-      });
-    }
+    const result = await effectiveLevelService.getEffectiveLevel(address);
+
+    res.json({
+      success: true,
+      data: {
+        nodeLevel: result.level,
+        cumulativePersonalStake: result.cumulativePersonalStake,
+        teamVolume: result.teamVolume,
+        teamTotalDeposited: result.teamTotalDeposited,
+        teamTotalWithdrawn: result.teamTotalWithdrawn,
+        teamRetained: result.teamRetained,
+      },
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }

@@ -94,13 +94,9 @@ export function EarningsCard() {
   // RWA 价格（用于转换）
   const rwaPrice = 0.85 // 1 RWA ≈ 0.85 USDT
 
-  // RWA 待领取（优先使用 v2 API，fallback 到链上数据）
-  const usdtRwaPending = rwaPendingData 
-    ? parseFloat(rwaPendingData.usdtRwaPending) / 1e18
-    : parseFloat(userRewards?.rwaPending || '0')
-  const rwaRwaPending = rwaPendingData
-    ? parseFloat(rwaPendingData.rwaRwaPending) / 1e18
-    : parseFloat(rwaStakeInfo?.rwaPending || '0')
+  // RWA 待领取：完全与 /withdraw 页保持一致，只使用链上数据
+  const usdtRwaPending = userRewards?.rwaPending ? parseFloat(userRewards.rwaPending) : 0
+  const rwaRwaPending = rwaStakeInfo?.rwaPending ? parseFloat(rwaStakeInfo.rwaPending) : 0
   const rwaPendingNum = usdtRwaPending + rwaRwaPending
   
   // 质押金额：合并 USDT 和 RWA 质押
@@ -296,6 +292,13 @@ export function EarningsCard() {
           const amountNum = typeof stake.amount === 'string' ? parseFloat(stake.amount) : stake.amount
           const stakeAmount = parseFloat(formatUnits(BigInt(Math.floor(amountNum)), 18))
           const stakeTime = stake.timestamp
+          
+          // 验证stakeTime的有效性
+          if (!stakeTime || stakeTime <= 0 || stakeTime > currentTime) {
+            console.error(`❌ Invalid stakeTime for stake #${stake.stakeId}:`, stakeTime)
+            continue
+          }
+          
           const lockMultiplier = getLockPeriodMultiplier(stake.lockPeriod)
           
           console.log(`  💰 处理质押 #${stake.stakeId}:`, {
@@ -319,16 +322,35 @@ export function EarningsCard() {
             const dailyRWAYield = stakeAmount * adjustedDailyRate
             const perSecondRWAYield = dailyRWAYield / 86400
             
+            // 计算最近一次08:00（UTC 00:00 = 北京时间08:00）
+            const last8AM = Math.floor(currentTime / 86400) * 86400
+            // 使用stakeTime和last8AM中较晚的时间作为起点
+            const startTime = Math.max(stakeTime, last8AM)
+            
             console.log(`    🕐 时间调试:`, {
               currentTime,
               stakeTime,
-              rawElapsed: currentTime - stakeTime,
-              currentTimeDate: (currentTime && !isNaN(currentTime)) ? new Date(currentTime * 1000).toISOString() : 'Invalid',
-              stakeTimeDate: (stakeTime && !isNaN(stakeTime)) ? new Date(stakeTime * 1000).toISOString() : 'Invalid',
+              last8AM,
+              startTime,
+              currentTimeDate: new Date(currentTime * 1000).toISOString(),
+              stakeTimeDate: new Date(stakeTime * 1000).toISOString(),
+              last8AMDate: new Date(last8AM * 1000).toISOString(),
+              startTimeDate: new Date(startTime * 1000).toISOString(),
             })
             
-            const elapsedSeconds = Math.max(0, currentTime - stakeTime)
+            const elapsedSeconds = Math.max(0, currentTime - startTime)
             const elapsedDays = elapsedSeconds / 86400
+            
+            // 验证计算结果
+            if (elapsedDays > 365) {
+              console.error(`❌ 异常的天数计算:`, {
+                elapsedDays,
+                elapsedSeconds,
+                currentTime,
+                stakeTime,
+                calculation: `(${currentTime} - ${stakeTime}) / 86400 = ${elapsedDays}`
+              })
+            }
             
             const stakeRWA = perSecondRWAYield * elapsedSeconds
             total += stakeRWA
@@ -350,7 +372,11 @@ export function EarningsCard() {
             const dailyUSDTYield = stakeAmount * adjustedDailyRate
             const dailyRWAYield = dailyUSDTYield / rwaPrice
             const perSecondRWAYield = dailyRWAYield / 86400
-            const elapsedSeconds = currentTime - stakeTime
+            
+            // 计算最近一次08:00（UTC 00:00 = 北京时间08:00）
+            const last8AM = Math.floor(currentTime / 86400) * 86400
+            const startTime = Math.max(stakeTime, last8AM)
+            const elapsedSeconds = currentTime - startTime
             const elapsedDays = elapsedSeconds / 86400
             
             if (elapsedSeconds > 0 && elapsedSeconds <= 31536000) {
@@ -395,7 +421,11 @@ export function EarningsCard() {
           const dailyUSDTYield = usdtStaked * baseDailyRate
           const dailyRWAYield = dailyUSDTYield / rwaPrice
           const perSecondRWAYield = dailyRWAYield / 86400
-          const elapsedSeconds = currentTime - usdtFirstStakeTime
+          
+          // 计算最近一次08:00
+          const last8AM = Math.floor(currentTime / 86400) * 86400
+          const startTime = Math.max(usdtFirstStakeTime, last8AM)
+          const elapsedSeconds = currentTime - startTime
           const elapsedDays = elapsedSeconds / 86400
           
           if (elapsedSeconds > 0) {
@@ -418,8 +448,12 @@ export function EarningsCard() {
         if (rwaStaked > 0 && rwaStakeInfo?.firstStakeTime) {
           const rwaFirstStakeTime = Number(rwaStakeInfo.firstStakeTime)
           const dailyRWAYield = rwaStaked * baseDailyRate
-        const perSecondRWAYield = dailyRWAYield / 86400
-          const elapsedSeconds = currentTime - rwaFirstStakeTime
+          const perSecondRWAYield = dailyRWAYield / 86400
+          
+          // 计算最近一次08:00
+          const last8AM = Math.floor(currentTime / 86400) * 86400
+          const startTime = Math.max(rwaFirstStakeTime, last8AM)
+          const elapsedSeconds = currentTime - startTime
           const elapsedDays = elapsedSeconds / 86400
           
           if (elapsedSeconds > 0) {

@@ -1,6 +1,7 @@
 import BigNumber from 'bignumber.js';
 import { query, transaction } from '../config/database.config';
 import logger from '../utils/logger';
+import { EffectiveLevelService } from './EffectiveLevelService';
 
 /**
  * 直推奖励服务
@@ -24,6 +25,8 @@ const LEVEL_REWARD_RATES: Record<number, number> = {
     8: 3500,  // 35%
     9: 4000   // 40%
 };
+
+const effectiveLevelService = new EffectiveLevelService();
 
 export class DirectReferralRewardService {
     
@@ -57,21 +60,20 @@ export class DirectReferralRewardService {
                 return;
             }
             
-            // 获取推荐人等级
-            const [referrerInfo] = await query(
-                'SELECT node_level FROM users WHERE LOWER(address) = LOWER(?)',
-                [referrerAddress]
-            ) as any[];
-            
-            if (!referrerInfo) {
-                logger.warn(`Referrer not found: ${referrerAddress}`);
-                return;
+            // 获取推荐人等级：使用统一的 EffectiveLevelService（基于 users 表快照）
+            let referrerLevel = 1;
+            try {
+                const effective = await effectiveLevelService.getEffectiveLevel(referrerAddress);
+                referrerLevel = effective.level || 1;
+            } catch (e: any) {
+                logger.error(`[DirectReferralRewardService] Failed to get effective level for ${referrerAddress}: ${e?.message ?? e}`);
+                // 保底：若等级获取失败，则按 L1 记账，避免阻塞主流程
+                referrerLevel = 1;
             }
-            
-            const referrerLevel = referrerInfo.node_level || 1;
+
             const rewardRate = LEVEL_REWARD_RATES[referrerLevel];
             
-            // 计算奖励
+            // 计算奖励：以 USDT 等值金额 × 等级对应比例（bps）
             let stakeAmountDecimal = new BigNumber(stakeAmount).dividedBy(1e18);
             
             // 直接按质押金额计算奖励，无需0.85转换

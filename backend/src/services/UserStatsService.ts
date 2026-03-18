@@ -182,6 +182,49 @@ export class UserStatsService {
   }
 
   /**
+   * 完整更新用户统计数据（提现事件触发）
+   * @param userAddress 用户地址
+   * @param amount 提现金额（wei，USDT等值）
+   * @param assetType 资产类型
+   */
+  async onWithdrawEvent(
+    userAddress: string,
+    amount: bigint,
+    assetType: 'USDT' | 'RWA'
+  ): Promise<void> {
+    try {
+      const amountStr = amount.toString();
+      const field = assetType === 'USDT' ? 'personal_usdt_staked' : 'personal_rwa_staked';
+      
+      // 减少个人质押
+      await query(
+        `UPDATE user_stats 
+         SET ${field} = GREATEST(CAST(${field} AS SIGNED) - ?, 0),
+             updated_at = NOW()
+         WHERE LOWER(user_address) = LOWER(?)`,
+        [amountStr, userAddress.toLowerCase()]
+      );
+      
+      // 重新计算 personal_total_usdt
+      const rwaPrice = 0.85;
+      await query(
+        `UPDATE user_stats 
+         SET personal_total_usdt = (
+           CAST(personal_usdt_staked AS DECIMAL(38,0)) + 
+           CAST(personal_rwa_staked AS DECIMAL(38,0)) * ${rwaPrice}
+         ) / 1e18
+         WHERE LOWER(user_address) = LOWER(?)`,
+        [userAddress]
+      );
+      
+      logger.info(`[UserStatsService] Decreased personal stake: ${userAddress}, ${assetType}, ${amount}`);
+    } catch (error: any) {
+      logger.error(`[UserStatsService] Failed onWithdrawEvent: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
    * 完整更新用户统计数据（质押事件触发）
    * @param userAddress 用户地址
    * @param amount 质押金额（wei）

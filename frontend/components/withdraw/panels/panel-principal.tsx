@@ -81,54 +81,46 @@ export function PanelPrincipal({ onMobileBack, data }: Props) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0f]/40">
-      {/* Enhanced Header */}
-      <div className="flex items-center justify-between p-6 border-b border-emerald-500/10">
+    <div className="flex flex-col h-full bg-[#020617]/40">
+      {/* Header：毛玻璃样式，与其它二级页/一级卡片统一 */}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/[0.06] bg-white/[0.03] backdrop-blur-xl">
         <button
           onClick={onMobileBack}
-          className="lg:hidden flex items-center gap-2 text-white/50 hover:text-emerald-400 transition-colors"
+          className="lg:hidden flex items-center gap-2 text-white/50 hover:text-[#00f5d4] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span className="text-sm">返回</span>
         </button>
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 p-0.5">
-            <div className="w-full h-full bg-[#0a0a0f] rounded-xl flex items-center justify-center">
-              <Briefcase className="w-6 h-6 text-emerald-400" />
-            </div>
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-white">质押本金</h2>
-            <p className="text-xs text-white/40 mt-0.5">灵活质押，随时提取</p>
-          </div>
-        </div>
-        <div className="px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-          <span className="text-sm font-semibold text-emerald-400" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
-            {data.loading ? '...' : isConnected ? `${data.rwaPrincipal} RWA` : '--'}
-          </span>
+        <div className="min-w-0 ml-auto text-right">
+          <h2 className="text-[14px] font-semibold text-[#e2e8f0] tracking-tight truncate">
+            质押本金
+          </h2>
+          <p className="text-[11px] text-[#64748b] mt-0.5 truncate max-w-[220px]">
+            支持 RWA / USDT 灵活本金快速提取
+          </p>
         </div>
       </div>
 
       {/* Body */}
-      <div className="flex-1 p-6 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto">
         {hasRWA || hasUSDT ? (
-          <div className="max-w-2xl mx-auto space-y-6">
-            {/* Enhanced 币种选择 */}
+          <div className="max-w-[640px] mx-auto px-4 py-6 space-y-6">
+            {/* 币种选择 */}
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => setWithdrawType('rwa')}
                 disabled={!hasRWA}
                 className={`relative overflow-hidden px-6 py-5 rounded-2xl border transition-all ${
                   withdrawType === 'rwa'
-                    ? 'bg-emerald-500/10 border-emerald-500/30 shadow-lg shadow-emerald-500/20'
+                    ? 'bg-[#022c22] border-[#00f5d450] shadow-lg shadow-[rgba(0,245,212,0.25)]'
                     : 'bg-white/[0.02] border-white/10 hover:bg-white/[0.04]'
                 } ${!hasRWA ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {withdrawType === 'rwa' && hasRWA && (
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-teal-500/10 animate-pulse" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#00f5d433] to-[#22c55e26] animate-pulse" />
                 )}
                 <div className="relative z-10">
-                  <div className="text-sm font-semibold text-emerald-400 mb-2">RWA 本金</div>
+                  <div className="text-sm font-semibold text-[#00f5d4] mb-2">RWA 本金</div>
                   <div className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
                     {data.rwaPrincipal}
                   </div>
@@ -139,15 +131,15 @@ export function PanelPrincipal({ onMobileBack, data }: Props) {
                 disabled={!hasUSDT}
                 className={`relative overflow-hidden px-6 py-5 rounded-2xl border transition-all ${
                   withdrawType === 'usdt'
-                    ? 'bg-emerald-500/10 border-emerald-500/30 shadow-lg shadow-emerald-500/20'
+                    ? 'bg-[#022c22] border-[#00f5d450] shadow-lg shadow-[rgba(0,245,212,0.25)]'
                     : 'bg-white/[0.02] border-white/10 hover:bg-white/[0.04]'
                 } ${!hasUSDT ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {withdrawType === 'usdt' && hasUSDT && (
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-teal-500/10 animate-pulse" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#00f5d433] to-[#22c55e26] animate-pulse" />
                 )}
                 <div className="relative z-10">
-                  <div className="text-sm font-semibold text-emerald-400 mb-2">USDT 本金</div>
+                  <div className="text-sm font-semibold text-[#00f5d4] mb-2">USDT 本金</div>
                   <div className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
                     {data.usdtPrincipal}
                   </div>
@@ -155,31 +147,34 @@ export function PanelPrincipal({ onMobileBack, data }: Props) {
               </button>
             </div>
 
-            {/* Enhanced 提取金额输入 */}
-            <div className="bg-white/[0.02] backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-              <div className="flex justify-between items-center mb-4">
+            {/* 提取金额输入：玻璃卡（MAX 按钮内嵌） */}
+            <div className="bg-white/[0.03] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.06]">
+              <div className="flex justify-between items-center mb-3">
                 <label className="text-sm font-semibold text-white/70">提取金额</label>
+              </div>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="100"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 pr-16 py-4 text-lg font-semibold text-white placeholder:text-white/20 focus:outline-none focus:border-[#00f5d4]/40 transition"
+                  style={{ fontFamily: 'var(--font-jetbrains-mono)' }}
+                />
                 <button
-                  className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/20 transition"
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg bg-[#00f5d41a] border border-[#00f5d433] text-[11px] font-semibold text-[#00f5d4] hover:bg-[#00f5d426] transition"
                   onClick={() => setAmount(withdrawType === 'rwa' ? data.rwaPrincipal : data.usdtPrincipal)}
                 >
                   MAX
                 </button>
               </div>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="100"
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-4 text-lg font-semibold text-white placeholder:text-white/20 focus:outline-none focus:border-emerald-500/30 transition"
-                style={{ fontFamily: 'var(--font-jetbrains-mono)' }}
-              />
-              <div className="mt-4 flex items-start gap-2 text-xs text-white/50">
+              <div className="mt-4 flex items-start gap-2 text-xs text-[#94a3b8]">
                 <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <div>
                   <div>扣除 8% 手续费，最低提取 100 {withdrawType === 'rwa' ? 'RWA' : 'USDT'}</div>
                   {amount && parseFloat(amount) >= 100 && (
-                    <div className="mt-1 text-emerald-400 font-semibold">
+                    <div className="mt-1 text-[#22c55e] font-semibold">
                       实际到账: {(parseFloat(amount) * 0.92).toFixed(2)} {withdrawType === 'rwa' ? 'RWA' : 'USDT'}
                     </div>
                   )}
@@ -187,20 +182,15 @@ export function PanelPrincipal({ onMobileBack, data }: Props) {
               </div>
             </div>
 
-            {/* Enhanced 提取按钮 */}
+            {/* 提取按钮 */}
             <button
               onClick={handleWithdraw}
               disabled={!isConnected || !amount || parseFloat(amount) < 100 || loading || (!hasRWA && !hasUSDT)}
-              className="w-full h-14 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-black text-base font-bold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-emerald-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0"
+              className="w-full h-14 rounded-2xl bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-[#0a0a0f] text-base font-bold flex items-center justify-center gap-2 hover:shadow-[0_0_30px_rgba(251,191,36,0.4)] hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0"
             >
               <Briefcase className="w-5 h-5" />
               {loading ? '处理中...' : '提取质押本金'}
             </button>
-
-            {/* 锁仓订单 */}
-            {isConnected && data.lockedStakes && data.lockedStakes.length > 0 && (
-              <LockedStakesList stakes={data.lockedStakes} />
-            )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-20">
@@ -208,6 +198,13 @@ export function PanelPrincipal({ onMobileBack, data }: Props) {
               <Briefcase className="w-10 h-10 text-[rgba(238,242,255,0.26)]" />
             </div>
             <div className="text-[rgba(238,242,255,0.52)] text-[14px]">暂无质押本金</div>
+          </div>
+        )}
+
+        {/* 锁仓订单倒计时：独立于灵活本金，有锁仓数据就显示（避免只显示在「有灵活本金」分支导致不显示） */}
+        {isConnected && data.lockedStakes && data.lockedStakes.length > 0 && (
+          <div className="max-w-[640px] mx-auto px-4 pb-6 pt-2">
+            <LockedStakesList stakes={data.lockedStakes} />
           </div>
         )}
       </div>

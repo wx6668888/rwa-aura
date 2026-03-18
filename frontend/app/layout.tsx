@@ -37,21 +37,8 @@ export const metadata: Metadata = {
     locale: 'zh_CN',
   },
   icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
+    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+    apple: '/icon.svg',
   },
   manifest: '/manifest.json',
 }
@@ -63,10 +50,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh" suppressHydrationWarning>
-      <head>
-        {/* 首页 Hero 动图预加载，减少首屏动图加载等待 */}
-        <link rel="preload" href="/动画/blockchain.lottie" as="fetch" />
-      </head>
+      <head />
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >

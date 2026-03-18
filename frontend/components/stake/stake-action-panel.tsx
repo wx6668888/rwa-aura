@@ -107,11 +107,21 @@ export function StakeActionPanel() {
   const yieldMultiplier = getYieldMultiplier()
   const baseDailyYield = 0.008 // 0.8% daily
   const dailyYieldRate = baseDailyYield * yieldMultiplier
-  const dailyYield = numAmount > 0 ? numAmount * dailyYieldRate : 0
   
-  // Calculate total yield for different periods (assuming RWA price = 0.85 USDT)
+  // Calculate daily yield in RWA based on stake mode
   const rwaPrice = 0.85
-  const dailyYieldRWA = dailyYield / rwaPrice
+  let dailyYieldRWA = 0
+  if (numAmount > 0) {
+    if (stakeMode === 'USDT') {
+      // USDT质押：计算USDT收益，然后转换为RWA
+      const dailyYieldUSDT = numAmount * dailyYieldRate
+      dailyYieldRWA = dailyYieldUSDT / rwaPrice
+    } else {
+      // RWA质押：直接计算RWA收益
+      dailyYieldRWA = numAmount * dailyYieldRate
+    }
+  }
+  
   const totalYield30Days = dailyYieldRWA * 30
   const totalYield90Days = dailyYieldRWA * 90
   const totalYield180Days = dailyYieldRWA * 180

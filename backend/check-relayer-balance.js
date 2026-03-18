@@ -1,21 +1,20 @@
 const { ethers } = require('ethers');
-const provider = new ethers.JsonRpcProvider('https://bsc-testnet-rpc.publicnode.com');
-const backendAddress = '0xa941F4806E0e3Ea7577aEC6c015d6E9D91584638';
+require('dotenv').config();
 
 (async () => {
-  try {
-    const balance = await provider.getBalance(backendAddress);
-    console.log('=== Relayer钱包状态 ===');
-    console.log('地址:', backendAddress);
-    console.log('BNB余额:', ethers.formatEther(balance), 'BNB');
-    console.log('');
-    if (parseFloat(ethers.formatEther(balance)) < 0.01) {
-      console.log('⚠️ 警告：BNB余额不足！需要至少0.01 BNB才能支付Gas费用');
-      console.log('请向该地址充值BNB');
-    } else {
-      console.log('✅ BNB余额充足');
-    }
-  } catch (err) {
-    console.error('查询失败:', err.message);
-  }
+  const provider = new ethers.JsonRpcProvider(process.env.BSC_TESTNET_RPC_URL);
+  const wallet = new ethers.Wallet(process.env.RELAYER_PRIVATE_KEY, provider);
+  
+  console.log('RELAYER地址:', wallet.address);
+  
+  const tokenABI = ['function balanceOf(address) view returns (uint256)'];
+  
+  const usdtContract = new ethers.Contract(process.env.USDT_TOKEN_ADDRESS, tokenABI, provider);
+  const rwaContract = new ethers.Contract(process.env.RWA_TOKEN_ADDRESS, tokenABI, provider);
+  
+  const usdtBalance = await usdtContract.balanceOf(wallet.address);
+  const rwaBalance = await rwaContract.balanceOf(wallet.address);
+  
+  console.log('USDT余额:', ethers.formatUnits(usdtBalance, 18));
+  console.log('RWA余额:', ethers.formatUnits(rwaBalance, 18));
 })();

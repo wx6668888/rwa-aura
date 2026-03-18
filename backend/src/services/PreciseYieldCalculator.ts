@@ -132,9 +132,9 @@ export class PreciseYieldCalculator {
       
       let yieldAmount: BigNumber;
       if (assetType === 'USDT') {
-        // USDT是6位小数，需要转换为18位
-        const amountIn18Decimals = amount.multipliedBy(1e12);
-        const rwaEquivalent = amountIn18Decimals.dividedBy(0.85);
+        // 注意：balance_snapshots 记录的 amount 已经是合约内部的 18 decimals（USDT 等值）。
+        // 这里不要再做 6 -> 18 的乘 1e12，避免把收益放大 1e12。
+        const rwaEquivalent = amount.dividedBy(0.85);
         yieldAmount = rwaEquivalent.multipliedBy(yieldRate).multipliedBy(duration).dividedBy(86400);
       } else {
         // RWA已经是18位小数
