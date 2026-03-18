@@ -49,17 +49,19 @@ async function main() {
   const balance = await ethers.provider.getBalance(deployer.address);
   const balanceBNB = ethers.formatEther(balance);
   console.log("账户余额:", balanceBNB, "BNB");
-  
-  // 检查余额（至少需要 0.15 BNB）
-  if (parseFloat(balanceBNB) < 0.15) {
-    throw new Error(`余额不足！至少需要 0.15 BNB（约 45 USDT），当前余额：${balanceBNB} BNB`);
-  }
+
+  // 余额检查（原脚本写死 0.15 BNB，但最小化启动 + 低峰部署在 0.013 BNB 也可能够用）
+  // 这里改为根据“预估 gas 费 + buffer”进行校验，失败时给出明确警告。
+  const minDeployBufferBNB = process.env.DEPLOY_BUFFER_BNB ? parseFloat(process.env.DEPLOY_BUFFER_BNB) : 0.002; // 预留一点失败/重试 gas
   
   console.log("");
 
   // 获取当前 Gas 价格
   const feeData = await ethers.provider.getFeeData();
-  const gasPrice = feeData.gasPrice || ethers.parseUnits("3", "gwei"); // 默认3 Gwei（低峰时段）
+  const gasPriceGweiOverride = process.env.DEPLOY_GAS_PRICE_GWEI ? parseFloat(process.env.DEPLOY_GAS_PRICE_GWEI) : null;
+  const gasPrice = gasPriceGweiOverride !== null
+    ? ethers.parseUnits(gasPriceGweiOverride.toString(), "gwei")
+    : (feeData.gasPrice || ethers.parseUnits("3", "gwei")); // 默认 3 Gwei（旧逻辑的兜底）
   console.log("当前 Gas 价格:", ethers.formatUnits(gasPrice, "gwei"), "Gwei");
   
   // 如果Gas价格过高，提示用户
@@ -69,6 +71,21 @@ async function main() {
     console.log("   当前价格:", gasPriceGwei, "Gwei");
     console.log("   预计成本会增加:", ((gasPriceGwei / 3) - 1) * 100, "%");
     console.log("");
+  }
+
+  // 预估最小启动部署成本：核心合约部署 + 初始化配置
+  // 这里按 35M gas 作为上限预估（deploy-standard 本身注释是 18M–25M）
+  const estimatedGasUsed = 35_000_000n;
+  const estimatedCostWei = gasPrice * estimatedGasUsed;
+  const minRequiredWei = estimatedCostWei + ethers.parseEther(minDeployBufferBNB.toString());
+  if (balance < minRequiredWei) {
+    const needBNB = ethers.formatEther(minRequiredWei);
+    console.log("");
+    console.log(`⚠️ 余额可能不足以完成“最小化启动部署”。`);
+    console.log(`   预估成本(上限): ${ethers.formatEther(estimatedCostWei)} BNB`);
+    console.log(`   建议最低余额: ${needBNB} BNB（含 buffer=${minDeployBufferBNB}）`);
+    console.log(`   当前余额: ${balanceBNB} BNB`);
+    console.log(`   建议：等待更低峰的 gas，或增加 BNB；否则部署交易可能因资金不足失败。`);
   }
   
   // 配置地址（从环境变量读取）

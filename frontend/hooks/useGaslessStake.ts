@@ -142,7 +142,7 @@ export function useGaslessStake() {
     referrer: string,
     lockPeriod: number
   ) => {
-    if (!address) throw new Error('Not connected');
+    if (!address || !chainId) throw new Error('Not connected');
     
     setIsLoading(true);
     try {
