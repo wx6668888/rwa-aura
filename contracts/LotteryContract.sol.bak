@@ -1,0 +1,531 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+
+/**
+ * @title LotteryContract
+ * @notice RWA 协议彩票系统 - 使用 Chainlink VRF 确保公平性
+ * @dev 支持周奖池和月奖池，使用 6 位数字彩票号码
+ */
+contract LotteryContract is Ownable, ReentrancyGuard, VRFConsumerBaseV2 {
+    
+    // ============ 类型定义 ============
+    
+    enum PoolType { Weekly, Monthly }
+    
+    struct Ticket {
+        address owner;           // 持有者地址
+        uint256 number;          // 6位票号 (100000-999999)
+        PoolType poolType;       // 奖池类型
+        uint256 round;           // 期数
+        uint256 purchaseTime;    // 购买时间
+        bool isWinner;           // 是否中奖
+        uint8 prizeLevel;        // 奖项等级 (1-4, 0=未中奖)
+        uint256 prizeAmount;     // 奖金金额
+        bool claimed;            // 是否已领取
+    }
+    
+    struct Draw {
+        uint256 winningNumber;   // 中奖号码
+        uint256 drawTime;        // 开奖时间
+        uint256 vrfRequestId;    // VRF 请求 ID
+        uint256 totalPrize;      // 总奖池金额
+        uint256[4] winnersCount; // 各等级中奖数量
+        uint256[4] prizePerWinner; // 各等级单注奖金
+        bool completed;          // 是否已完成
+    }
+    
+    struct VRFRequest {
+        PoolType poolType;
+        uint256 round;
+        uint256 timestamp;
+        bool fulfilled;
+    }
+    
+    // ============ 状态变量 ============
+    
+    // RWA 代币合约
+    IERC20 public immutable rwaToken;
+    
+    // Chainlink VRF 配置
+    VRFCoordinatorV2Interface public immutable vrfCoordinator;
+    bytes32 public immutable keyHash;
+    uint64 public subscriptionId;
+    uint32 public callbackGasLimit = 200000;
+    uint16 public constant REQUEST_CONFIRMATIONS = 3;
+    uint32 public constant NUM_WORDS = 1;
+    
+    // 彩票配置
+    uint256 public constant WEEKLY_TICKET_PRICE = 10 * 10**18;  // 10 RWA
+    uint256 public constant MONTHLY_TICKET_PRICE = 50 * 10**18; // 50 RWA
+    uint256 public constant MIN_TICKET_NUMBER = 100000;
+    uint256 public constant MAX_TICKET_NUMBER = 999999;
+    
+    // 奖金分配比例 (50%, 25%, 15%, 10%)
+    uint8[4] public prizePercentages = [50, 25, 15, 10];
+    
+    // 开奖时间配置
+    uint256 public weeklyDrawInterval = 7 days;
+    uint256 public monthlyDrawInterval = 30 days;
+    
+    // 当前期数
+    uint256 public weeklyRound = 1;
+    uint256 public monthlyRound = 1;
+    
+    // 下次开奖时间
+    uint256 public nextWeeklyDraw;
+    uint256 public nextMonthlyDraw;
+    
+    // 奖池金额
+    uint256 public weeklyPrizePool;
+    uint256 public monthlyPrizePool;
+    
+    // 存储结构
+    mapping(uint256 => Ticket) public tickets;           // ticketId => Ticket
+    mapping(uint256 => Draw) public weeklyDraws;         // round => Draw
+    mapping(uint256 => Draw) public monthlyDraws;        // round => Draw
+    mapping(uint256 => VRFRequest) public vrfRequests;   // requestId => VRFRequest
+    mapping(address => uint256[]) public userTickets;    // user => ticketIds
+    mapping(PoolType => mapping(uint256 => uint256[])) public roundTickets; // poolType => round => ticketIds
+    
+    uint256 public nextTicketId = 1;
+    uint256 private nonce = 0;
+    
+    // ============ 事件 ============
+    
+    event TicketsPurchased(
+        address indexed buyer,
+        uint256[] ticketIds,
+        uint256[] ticketNumbers,
+        PoolType poolType,
+        uint256 round,
+        uint256 totalCost
+    );
+    
+    event DrawRequested(
+        PoolType poolType,
+        uint256 round,
+        uint256 vrfRequestId,
+        uint256 timestamp
+    );
+    
+    event DrawCompleted(
+        PoolType poolType,
+        uint256 round,
+        uint256 winningNumber,
+        uint256 totalPrize,
+        uint256[4] winnersCount
+    );
+    
+    event PrizeClaimed(
+        address indexed winner,
+        uint256 ticketId,
+        uint256 amount,
+        uint8 prizeLevel
+    );
+    
+    // ============ 构造函数 ============
+    
+    constructor(
+        address _rwaToken,
+        address _vrfCoordinator,
+        bytes32 _keyHash,
+        uint64 _subscriptionId
+    ) VRFConsumerBaseV2(_vrfCoordinator) {
+        require(_rwaToken != address(0), "Invalid RWA token");
+        require(_vrfCoordinator != address(0), "Invalid VRF coordinator");
+        
+        rwaToken = IERC20(_rwaToken);
+        vrfCoordinator = VRFCoordinatorV2Interface(_vrfCoordinator);
+        keyHash = _keyHash;
+        subscriptionId = _subscriptionId;
+        
+        // 设置初始开奖时间（部署后7天和30天）
+        nextWeeklyDraw = block.timestamp + weeklyDrawInterval;
+        nextMonthlyDraw = block.timestamp + monthlyDrawInterval;
+    }
+    
+    // ============ 购买彩票 ============
+    
+    /**
+     * @notice 购买彩票
+     * @param quantity 购买数量 (1-100)
+     * @param poolType 奖池类型 (0=周奖池, 1=月奖池)
+     */
+    function buyTickets(uint256 quantity, PoolType poolType) 
+        external 
+        nonReentrant 
+        returns (uint256[] memory ticketIds) 
+    {
+        require(quantity > 0 && quantity <= 100, "Invalid quantity");
+        
+        // 计算总成本
+        uint256 ticketPrice = poolType == PoolType.Weekly 
+            ? WEEKLY_TICKET_PRICE 
+            : MONTHLY_TICKET_PRICE;
+        uint256 totalCost = quantity * ticketPrice;
+        
+        // 转账 RWA 代币
+        require(
+            rwaToken.transferFrom(msg.sender, address(this), totalCost),
+            "Transfer failed"
+        );
+        
+        // 累积奖池
+        if (poolType == PoolType.Weekly) {
+            weeklyPrizePool += totalCost;
+        } else {
+            monthlyPrizePool += totalCost;
+        }
+        
+        // 生成彩票
+        ticketIds = new uint256[](quantity);
+        uint256[] memory ticketNumbers = new uint256[](quantity);
+        uint256 currentRound = poolType == PoolType.Weekly ? weeklyRound : monthlyRound;
+        
+        for (uint256 i = 0; i < quantity; i++) {
+            uint256 ticketId = nextTicketId++;
+            uint256 ticketNumber = _generateTicketNumber();
+            
+            tickets[ticketId] = Ticket({
+                owner: msg.sender,
+                number: ticketNumber,
+                poolType: poolType,
+                round: currentRound,
+                purchaseTime: block.timestamp,
+                isWinner: false,
+                prizeLevel: 0,
+                prizeAmount: 0,
+                claimed: false
+            });
+            
+            userTickets[msg.sender].push(ticketId);
+            roundTickets[poolType][currentRound].push(ticketId);
+            
+            ticketIds[i] = ticketId;
+            ticketNumbers[i] = ticketNumber;
+        }
+        
+        emit TicketsPurchased(
+            msg.sender,
+            ticketIds,
+            ticketNumbers,
+            poolType,
+            currentRound,
+            totalCost
+        );
+        
+        return ticketIds;
+    }
+    
+    /**
+     * @dev 生成唯一的6位彩票号码
+     */
+    function _generateTicketNumber() private returns (uint256) {
+        nonce++;
+        uint256 random = uint256(
+            keccak256(
+                abi.encodePacked(
+                    block.timestamp,
+                    block.prevrandao,
+                    msg.sender,
+                    nonce
+                )
+            )
+        );
+        return (random % (MAX_TICKET_NUMBER - MIN_TICKET_NUMBER + 1)) + MIN_TICKET_NUMBER;
+    }
+    
+    // ============ 开奖流程 ============
+    
+    /**
+     * @notice 请求开奖（仅管理员）
+     * @param poolType 奖池类型
+     */
+    function requestDraw(PoolType poolType) external onlyOwner returns (uint256 requestId) {
+        uint256 nextDraw = poolType == PoolType.Weekly ? nextWeeklyDraw : nextMonthlyDraw;
+        require(block.timestamp >= nextDraw, "Too early to draw");
+        
+        uint256 currentRound = poolType == PoolType.Weekly ? weeklyRound : monthlyRound;
+        uint256[] memory roundTicketIds = roundTickets[poolType][currentRound];
+        require(roundTicketIds.length > 0, "No tickets sold");
+        
+        // 请求 Chainlink VRF 随机数
+        requestId = vrfCoordinator.requestRandomWords(
+            keyHash,
+            subscriptionId,
+            REQUEST_CONFIRMATIONS,
+            callbackGasLimit,
+            NUM_WORDS
+        );
+        
+        vrfRequests[requestId] = VRFRequest({
+            poolType: poolType,
+            round: currentRound,
+            timestamp: block.timestamp,
+            fulfilled: false
+        });
+        
+        emit DrawRequested(poolType, currentRound, requestId, block.timestamp);
+        
+        return requestId;
+    }
+    
+    /**
+     * @dev Chainlink VRF 回调函数
+     */
+    function fulfillRandomWords(
+        uint256 requestId,
+        uint256[] memory randomWords
+    ) internal override {
+        VRFRequest storage request = vrfRequests[requestId];
+        require(!request.fulfilled, "Already fulfilled");
+        
+        request.fulfilled = true;
+        
+        // 生成中奖号码
+        uint256 winningNumber = (randomWords[0] % (MAX_TICKET_NUMBER - MIN_TICKET_NUMBER + 1)) 
+            + MIN_TICKET_NUMBER;
+        
+        // 执行开奖
+        _executeDraw(request.poolType, request.round, winningNumber, requestId);
+    }
+    
+    /**
+     * @dev 执行开奖逻辑
+     */
+    function _executeDraw(
+        PoolType poolType,
+        uint256 round,
+        uint256 winningNumber,
+        uint256 vrfRequestId
+    ) private {
+        uint256 totalPrize = poolType == PoolType.Weekly ? weeklyPrizePool : monthlyPrizePool;
+        uint256[] memory roundTicketIds = roundTickets[poolType][round];
+        
+        // 统计各等级中奖数量
+        uint256[4] memory winnersCount;
+        
+        for (uint256 i = 0; i < roundTicketIds.length; i++) {
+            Ticket storage ticket = tickets[roundTicketIds[i]];
+            uint8 level = _getMatchLevel(ticket.number, winningNumber);
+            
+            if (level > 0) {
+                winnersCount[level - 1]++;
+                ticket.isWinner = true;
+                ticket.prizeLevel = level;
+            }
+        }
+        
+        // 计算各等级单注奖金
+        uint256[4] memory prizePerWinner;
+        for (uint8 i = 0; i < 4; i++) {
+            if (winnersCount[i] > 0) {
+                prizePerWinner[i] = (totalPrize * prizePercentages[i] / 100) / winnersCount[i];
+            }
+        }
+        
+        // 分配奖金到彩票
+        for (uint256 i = 0; i < roundTicketIds.length; i++) {
+            Ticket storage ticket = tickets[roundTicketIds[i]];
+            if (ticket.isWinner) {
+                ticket.prizeAmount = prizePerWinner[ticket.prizeLevel - 1];
+            }
+        }
+        
+        // 保存开奖记录
+        if (poolType == PoolType.Weekly) {
+            weeklyDraws[round] = Draw({
+                winningNumber: winningNumber,
+                drawTime: block.timestamp,
+                vrfRequestId: vrfRequestId,
+                totalPrize: totalPrize,
+                winnersCount: winnersCount,
+                prizePerWinner: prizePerWinner,
+                completed: true
+            });
+            
+            // 重置奖池并进入下一期
+            weeklyPrizePool = 0;
+            weeklyRound++;
+            nextWeeklyDraw = block.timestamp + weeklyDrawInterval;
+        } else {
+            monthlyDraws[round] = Draw({
+                winningNumber: winningNumber,
+                drawTime: block.timestamp,
+                vrfRequestId: vrfRequestId,
+                totalPrize: totalPrize,
+                winnersCount: winnersCount,
+                prizePerWinner: prizePerWinner,
+                completed: true
+            });
+            
+            // 重置奖池并进入下一期
+            monthlyPrizePool = 0;
+            monthlyRound++;
+            nextMonthlyDraw = block.timestamp + monthlyDrawInterval;
+        }
+        
+        emit DrawCompleted(poolType, round, winningNumber, totalPrize, winnersCount);
+    }
+    
+    /**
+     * @dev 计算匹配等级（从右往左匹配）
+     * @return 奖项等级 (1-4, 0=未中奖)
+     */
+    function _getMatchLevel(uint256 ticketNumber, uint256 winningNumber) 
+        private 
+        pure 
+        returns (uint8) 
+    {
+        uint8 matches = 0;
+        
+        for (uint8 i = 0; i < 6; i++) {
+            if (ticketNumber % 10 == winningNumber % 10) {
+                matches++;
+                ticketNumber /= 10;
+                winningNumber /= 10;
+            } else {
+                break;
+            }
+        }
+        
+        if (matches == 6) return 1; // 一等奖
+        if (matches == 5) return 2; // 二等奖
+        if (matches == 4) return 3; // 三等奖
+        if (matches == 3) return 4; // 四等奖
+        return 0; // 未中奖
+    }
+    
+    // ============ 领奖 ============
+    
+    /**
+     * @notice 领取奖金
+     * @param ticketId 彩票 ID
+     */
+    function claimPrize(uint256 ticketId) external nonReentrant {
+        Ticket storage ticket = tickets[ticketId];
+        
+        require(ticket.owner == msg.sender, "Not ticket owner");
+        require(ticket.isWinner, "Not a winning ticket");
+        require(!ticket.claimed, "Already claimed");
+        require(ticket.prizeAmount > 0, "No prize to claim");
+        
+        ticket.claimed = true;
+        
+        require(
+            rwaToken.transfer(msg.sender, ticket.prizeAmount),
+            "Transfer failed"
+        );
+        
+        emit PrizeClaimed(msg.sender, ticketId, ticket.prizeAmount, ticket.prizeLevel);
+    }
+    
+    /**
+     * @notice 批量领取奖金
+     * @param ticketIds 彩票 ID 数组
+     */
+    function claimMultiplePrizes(uint256[] calldata ticketIds) external nonReentrant {
+        uint256 totalPrize = 0;
+        
+        for (uint256 i = 0; i < ticketIds.length; i++) {
+            Ticket storage ticket = tickets[ticketIds[i]];
+            
+            require(ticket.owner == msg.sender, "Not ticket owner");
+            require(ticket.isWinner, "Not a winning ticket");
+            require(!ticket.claimed, "Already claimed");
+            
+            if (ticket.prizeAmount > 0) {
+                ticket.claimed = true;
+                totalPrize += ticket.prizeAmount;
+                
+                emit PrizeClaimed(msg.sender, ticketIds[i], ticket.prizeAmount, ticket.prizeLevel);
+            }
+        }
+        
+        require(totalPrize > 0, "No prizes to claim");
+        require(rwaToken.transfer(msg.sender, totalPrize), "Transfer failed");
+    }
+    
+    // ============ 查询函数 ============
+    
+    /**
+     * @notice 获取用户的所有彩票
+     */
+    function getUserTickets(address user) external view returns (uint256[] memory) {
+        return userTickets[user];
+    }
+    
+    /**
+     * @notice 获取某期的所有彩票
+     */
+    function getRoundTickets(PoolType poolType, uint256 round) 
+        external 
+        view 
+        returns (uint256[] memory) 
+    {
+        return roundTickets[poolType][round];
+    }
+    
+    /**
+     * @notice 获取当前奖池信息
+     */
+    function getCurrentPoolInfo(PoolType poolType) 
+        external 
+        view 
+        returns (
+            uint256 currentRound,
+            uint256 prizePool,
+            uint256 nextDrawTime,
+            uint256 ticketsSold,
+            uint256 ticketPrice
+        ) 
+    {
+        if (poolType == PoolType.Weekly) {
+            return (
+                weeklyRound,
+                weeklyPrizePool,
+                nextWeeklyDraw,
+                roundTickets[poolType][weeklyRound].length,
+                WEEKLY_TICKET_PRICE
+            );
+        } else {
+            return (
+                monthlyRound,
+                monthlyPrizePool,
+                nextMonthlyDraw,
+                roundTickets[poolType][monthlyRound].length,
+                MONTHLY_TICKET_PRICE
+            );
+        }
+    }
+    
+    // ============ 管理函数 ============
+    
+    /**
+     * @notice 更新 VRF 订阅 ID
+     */
+    function updateSubscriptionId(uint64 _subscriptionId) external onlyOwner {
+        subscriptionId = _subscriptionId;
+    }
+    
+    /**
+     * @notice 更新回调 Gas 限制
+     */
+    function updateCallbackGasLimit(uint32 _callbackGasLimit) external onlyOwner {
+        callbackGasLimit = _callbackGasLimit;
+    }
+    
+    /**
+     * @notice 紧急提取（仅在合约升级时使用）
+     */
+    function emergencyWithdraw() external onlyOwner {
+        uint256 balance = rwaToken.balanceOf(address(this));
+        require(rwaToken.transfer(owner(), balance), "Transfer failed");
+    }
+}

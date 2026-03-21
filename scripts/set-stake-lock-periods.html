@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设置质押锁仓期限</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0d0d14;
+            color: #f1f5f9;
+        }
+        .container {
+            background: #13131e;
+            border: 1px solid #00f5d420;
+            border-radius: 12px;
+            padding: 24px;
+        }
+        h1 {
+            color: #00f5d4;
+            margin-bottom: 20px;
+        }
+        .stake-item {
+            background: #0a0a0f;
+            border: 1px solid #ffffff0d;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .stake-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .stake-id {
+            font-family: 'Courier New', monospace;
+            color: #64748b;
+            font-size: 12px;
+        }
+        .stake-amount {
+            font-family: 'Courier New', monospace;
+            color: #f1f5f9;
+            font-weight: 600;
+        }
+        .lock-period {
+            color: #00f5d4;
+            font-weight: 600;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #00f5d4;
+            color: #05050a;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.2s;
+        }
+        button:hover {
+            background: #00d4b8;
+            transform: translateY(-1px);
+        }
+        button:disabled {
+            background: #64748b;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .success {
+            background: #10b98120;
+            border: 1px solid #10b98140;
+            color: #10b981;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 16px;
+            display: none;
+        }
+        .success.show {
+            display: block;
+        }
+        .info {
+            background: #64748b20;
+            border: 1px solid #64748b40;
+            color: #64748b;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 设置质押锁仓期限</h1>
+        
+        <div class="info">
+            <strong>说明：</strong>此工具将根据时间顺序为您的三笔质押设置锁仓期限：
+            <ul style="margin: 8px 0 0 20px; padding: 0;">
+                <li>第一笔（最早）→ flexible（灵活锁仓）</li>
+                <li>第二笔 → 30天锁仓</li>
+                <li>第三笔（最新）→ 90天锁仓</li>
+            </ul>
+        </div>
+
+        <div class="stake-item">
+            <div class="stake-info">
+                <div>
+                    <div class="stake-id">Stake ID: 0</div>
+                    <div class="stake-amount">1,000.00 USDT</div>
+                </div>
+                <div class="lock-period">flexible</div>
+            </div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+                时间: 2026/3/2 09:35:48
+            </div>
+        </div>
+
+        <div class="stake-item">
+            <div class="stake-info">
+                <div>
+                    <div class="stake-id">Stake ID: 1</div>
+                    <div class="stake-amount">10,000.00 USDT</div>
+                </div>
+                <div class="lock-period">30天</div>
+            </div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+                时间: 2026/3/2 09:36:58
+            </div>
+        </div>
+
+        <div class="stake-item">
+            <div class="stake-info">
+                <div>
+                    <div class="stake-id">Stake ID: 2</div>
+                    <div class="stake-amount">5,000.00 USDT</div>
+                </div>
+                <div class="lock-period">90天</div>
+            </div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+                时间: 2026/3/2 14:26:41
+            </div>
+        </div>
+
+        <button id="setButton" onclick="setLockPeriods()">设置锁仓期限</button>
+        
+        <div class="success" id="successMessage">
+            ✅ 锁仓期限设置成功！请刷新 Dashboard 页面查看效果。
+        </div>
+    </div>
+
+    <script>
+        const STAKING_ADDRESS = '0xFD471836031dc5108809D173A067e8486B9047A3';
+        
+        function setLockPeriods() {
+            try {
+                // 设置三笔质押的锁仓期限
+                localStorage.setItem(`stake_${STAKING_ADDRESS}_0_lockPeriod`, 'flexible');
+                localStorage.setItem(`stake_${STAKING_ADDRESS}_1_lockPeriod`, '30');
+                localStorage.setItem(`stake_${STAKING_ADDRESS}_2_lockPeriod`, '90');
+                
+                // 显示成功消息
+                const successMsg = document.getElementById('successMessage');
+                successMsg.classList.add('show');
+                
+                // 禁用按钮
+                const button = document.getElementById('setButton');
+                button.disabled = true;
+                button.textContent = '已设置';
+                
+                // 验证设置
+                const verify0 = localStorage.getItem(`stake_${STAKING_ADDRESS}_0_lockPeriod`);
+                const verify1 = localStorage.getItem(`stake_${STAKING_ADDRESS}_1_lockPeriod`);
+                const verify2 = localStorage.getItem(`stake_${STAKING_ADDRESS}_2_lockPeriod`);
+                
+                console.log('✅ 锁仓期限设置完成:');
+                console.log('  Stake 0:', verify0);
+                console.log('  Stake 1:', verify1);
+                console.log('  Stake 2:', verify2);
+                
+            } catch (error) {
+                alert('设置失败: ' + error.message);
+                console.error('设置失败:', error);
+            }
+        }
+        
+        // 检查是否已设置
+        window.onload = function() {
+            const stake0 = localStorage.getItem(`stake_${STAKING_ADDRESS}_0_lockPeriod`);
+            const stake1 = localStorage.getItem(`stake_${STAKING_ADDRESS}_1_lockPeriod`);
+            const stake2 = localStorage.getItem(`stake_${STAKING_ADDRESS}_2_lockPeriod`);
+            
+            if (stake0 && stake1 && stake2) {
+                const button = document.getElementById('setButton');
+                button.disabled = true;
+                button.textContent = '已设置';
+                
+                const successMsg = document.getElementById('successMessage');
+                successMsg.classList.add('show');
+            }
+        };
+    </script>
+</body>
+</html>

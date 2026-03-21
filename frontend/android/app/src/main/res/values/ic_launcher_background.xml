@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 与新启动图标的深色风格一致，避免 adaptive icon 在某些机型上闪白底 -->
+    <color name="ic_launcher_background">#03030a</color>
+</resources>

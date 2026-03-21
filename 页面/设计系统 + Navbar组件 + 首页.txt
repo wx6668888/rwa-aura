@@ -1,0 +1,372 @@
+Build the RWA Token Market page for the RWA protocol.
+Same design system. Default lang: zh.
+This is a data-rich price/market page.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILE: app/market/page.tsx
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Same Navbar. Add "行情" to nav links.
+Background: same orbs but dimmer (8% opacity).
+Add subtle scanline effect (same as governance page).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TOP PRICE HEADER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Full width, surface-1 bg, 
+border-bottom border-subtle, px-6 py-5.
+
+Left block:
+  Row 1 (flex items-center gap-3):
+    RWA token icon circle 36px 
+      (plasma-cyan bg, "R" white font-700) +
+    "RWA" Space Grotesk 700 20px text-primary +
+    "RWA Protocol Token" 12px text-secondary +
+    "BSC" pill surface-3 border-subtle 11px
+
+  Row 2 (mt-2, flex items-end gap-4):
+    Current price:
+      "$0.8524" 48px Space Grotesk 900 text-primary
+      JetBrains Mono
+    24h change pill (dynamic color):
+      UP: success bg 15%, success text
+        "▲ +5.24%" 16px JetBrains Mono font-700
+      DOWN: danger bg 15%, danger text
+        "▼ −2.31%" 16px JetBrains Mono font-700
+    "24小时" 11px text-disabled ml-1
+
+Right block (desktop only, flex gap-6):
+  Each stat (flex flex-col):
+    Value: 16px JetBrains Mono text-primary
+    Label: 11px text-secondary mt-0.5
+
+  "24H最高" / "$0.8901" success green
+  "24H最低" / "$0.8102" danger
+  "24H成交量" / "$1,245,000"
+  "市值" / "$8,524,000"
+
+  Live indicator:
+    green 6px dot pulse + 
+    "实时" 11px success green
+
+Mobile: stats wrap to 2×2 grid below price.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATA SOURCE SWITCHER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Below price header, right-aligned, px-6 py-3.
+
+Toggle pill group:
+  [PancakeSwap 实时] [模拟数据]
+  Active: plasma-cyan bg void-black text
+  Inactive: surface-2 bg text-secondary
+  Transition 200ms
+
+When "PancakeSwap 实时" active:
+  Small note: "数据来自 PancakeSwap V3 · 
+  RWA/USDT 交易对" 11px text-disabled
+
+When "模拟数据" active:
+  Small note: "展示用模拟数据，非真实价格" 
+  11px warning
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHART AREA (main content, mt-4)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Desktop: 70/30 split (chart left, stats right).
+Mobile: single column, chart first.
+
+LEFT 70% — CHART PANEL (ghost card p-4):
+
+Chart type switcher (top of panel, flex gap-2):
+  4 pill buttons:
+  [K线] [折线] [深度] [成交量]
+  Active: plasma-cyan bg void-black text 
+  Inactive: ghost pill
+
+Time range switcher (top right of panel, flex gap-1):
+  [15分] [1时] [4时] [1日] [1周]
+  Active: plasma-cyan text border-plasma-cyan
+  Inactive: text-secondary
+
+━━━ CHART 1: K线图 (Candlestick) ━━━
+Use lightweight-charts library 
+(TradingView's open source).
+Height: 400px desktop / 280px mobile.
+
+Chart config:
+  background: transparent
+  grid lines: #ffffff08
+  crosshair: #00f5d440
+  
+  Upward candles: 
+    body: #10b981 (success green)
+    wick: #10b981
+  Downward candles:
+    body: #f43f5e (danger)
+    wick: #f43f5e
+
+  Price scale (right):
+    text color: #64748b
+    border: transparent
+    JetBrains Mono font
+  
+  Time scale (bottom):
+    text color: #64748b
+    border: #ffffff0d
+
+  Watermark: "RWA/USDT" 
+    center, #ffffff05, large
+
+Generate 90 days of realistic mock OHLCV data.
+Starting price ~$0.50, trending up to ~$0.85
+with realistic volatility.
+
+Volume histogram below K-line (height 80px):
+  Up bars: #10b98160
+  Down bars: #f43f5e60
+
+━━━ CHART 2: 折线图 (Line) ━━━
+Same library, LineChart type.
+Line: plasma-cyan #00f5d4, lineWidth 2.
+Area fill: plasma-cyan gradient 
+  (20% at top → 0% at bottom).
+Same time range, same mock data (close prices).
+
+━━━ CHART 3: 深度图 (Depth) ━━━
+Custom SVG/Canvas depth chart.
+Height: 400px.
+
+X-axis: price range (current price center).
+Y-axis: cumulative order volume.
+
+Buy side (left of center):
+  Area fill: #10b98120
+  Line: #10b981
+  
+Sell side (right of center):
+  Area fill: #f43f5e20
+  Line: #f43f5e
+
+Center line: dashed plasma-cyan, 
+  label: current price.
+
+Mock data: realistic buy/sell walls,
+  gap between best bid/ask ~0.5%.
+
+Hover tooltip: 
+  price + cumulative volume at that point.
+
+━━━ CHART 4: 成交量 (Volume) ━━━
+Bar chart, height 300px.
+Same time range.
+Bars colored by candle direction:
+  Up: #10b98180
+  Down: #f43f5e80
+MA line overlay (7-period): 
+  void-purple dashed line.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RIGHT 30% — STATS PANEL
+(sticky top-24, ghost card, p-5, space-y-5)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Block 1 — TOKEN STATS:
+Label: "代币信息" 11px small-caps text-secondary
+
+Stat rows (space-y-3):
+Each: flex justify-between items-center,
+  border-bottom border-subtle pb-3 last:border-0.
+  Left: label 12px text-secondary
+  Right: value 13px JetBrains Mono text-primary
+
+"总供应量" / "10,000,000 RWA"
+"流通量" / "8,524,000 RWA"
+"流通市值" / "$8,524,000"
+"完全稀释市值" / "$10,000,000"
+"持币地址数" / "8,432"
+"合约地址" / "0xRWA...Token [📋]"
+  (copy icon, plasma-cyan on hover)
+
+Block 2 — 24H PRICE RANGE:
+Label: "24小时价格区间" 11px small-caps text-secondary
+
+Range bar (mt-3):
+  Current price marker on bar:
+  [━━━━━●━━━━━━━━━]
+  Left: "$0.8102" 11px danger JetBrains Mono
+  Right: "$0.8901" 11px success JetBrains Mono
+  Bar: 6px rounded-full surface-3 track,
+    gradient fill danger→success,
+    plasma-cyan dot marker at current position (63%)
+
+Block 3 — TRANSACTION TAX:
+Label: "交易税说明" 11px small-caps text-secondary
+
+Buy tax row (mt-3):
+  "买入税" text-secondary 12px
+  "0%" success green 14px JetBrains Mono font-700 right
+
+Sell tax breakdown:
+  "卖出税 (20%)" text-secondary 12px
+  
+  3 sub-rows (pl-4 mt-2 space-y-1.5):
+  Dot + label left / value right:
+    plasma-cyan dot + "国库储备" / "10%" 
+    danger dot + "代币销毁" / "5%"
+    void-purple dot + "流动性" / "5%"
+  
+  Visual bar (mt-2, h-2 rounded-full flex):
+    [████████████ 50%cyan][██████ 25%danger][██████ 25%purple]
+
+  Warning chip (mt-3):
+    warning bg 10%, warning border 20%,
+    rounded-lg p-3, flex gap-2:
+    AlertTriangle 12px warning +
+    "高频交易会因卖出税显著影响收益" 
+    11px warning
+
+Block 4 — LINKS:
+Label: "相关链接" 11px small-caps text-secondary
+
+Links (mt-3, space-y-2):
+Each: flex items-center gap-2, 
+  text-secondary 13px hover:plasma-cyan,
+  transition 150ms.
+
+  ExternalLink 12px icon +
+  "PancakeSwap 交易" →
+  "BSCScan 合约" →
+  "添加到钱包 (MetaMask)" →
+  "官方网站" →
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RECENT TRADES TABLE (below chart area, mt-6)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Ghost card wrapper.
+
+Header row:
+  Left: "最新成交" 13px small-caps text-secondary
+  Right: green dot pulse + "实时" 11px success
+
+Table (no outer border):
+  Columns (11px small-caps text-disabled):
+    时间 / 类型 / 价格 / 数量 / 总额
+
+  15 rows, auto-scrolling (new rows slide in top):
+  Each row py-3 px-5 border-bottom border-subtle.
+  Hover: surface-2 bg.
+
+  Type pill:
+    "买入" success bg 10% success text 11px
+    "卖出" danger bg 10% danger text 11px
+  
+  Price: JetBrains Mono 13px
+    buy: success green
+    sell: danger red
+  
+  Amount: JetBrains Mono 13px text-secondary
+  Total: JetBrains Mono 13px text-secondary
+
+  Mock 15 rows with realistic prices 
+  around $0.8524, alternating buy/sell,
+  random quantities 100–50,000 RWA.
+
+New row animation: slide-from-top 300ms fade-in.
+Auto-add new mock row every 3 seconds 
+when in "模拟数据" mode.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MOBILE LAYOUT ADJUSTMENTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Price header: stacks vertically, 
+  stats in 2×2 grid
+- Chart area: full width, 280px height
+- Time range: horizontal scroll
+- Stats panel: below chart, 
+  blocks in 2-col grid where possible
+- Recent trades: horizontal scroll,
+  show only 8 rows
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PANCAKESWAP INTEGRATION NOTE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When "PancakeSwap 实时" selected:
+Create hooks/useTokenPrice.ts with:
+
+  fetchPancakeSwapPrice():
+    GraphQL query to PancakeSwap V3 subgraph
+    endpoint: https://api.thegraph.com/subgraphs/
+    name/pancakeswap/exchange-v3-bsc
+    Query: token price, 24h volume, 
+    price change from pool data.
+    Refresh interval: 15 seconds.
+    Loading state: skeleton on all values.
+    Error state: 
+      "数据获取失败，显示缓存数据" 
+      warning chip, falls back to last known.
+
+  fetchOHLCV(timeframe):
+    Fetch candle data from PancakeSwap subgraph
+    poolDayDatas / poolHourDatas queries.
+    Map to lightweight-charts OHLCV format.
+
+All API calls: show subtle 
+"更新中..." spinner next to live indicator.
+
+
+
+
+[━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OUTPUT REQUIREMENTS (mandatory)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Next.js 14 App Router, TypeScript strict
+- Tailwind CSS only, zero other CSS files
+- Default language: Chinese (zh). 
+  LanguageSwitcher defaults to 中文.
+- Every display string via t('key') — 
+  zero hardcoded text anywhere
+- lib/i18n.ts: ALL keys used in this page,
+  Chinese (zh) as default values,
+  English (en) translations included,
+  skeleton keys for: es, ar, hi, fr, pt, ru, ja
+- useTranslation(locale) hook returns t()
+- LanguageSwitcher: globe icon + current lang,
+  9 options with flags, persists to localStorage,
+  Arabic sets document.dir="rtl" + full RTL layout
+- Numbers: JetBrains Mono font class always
+- Mobile-first, 44px min touch targets
+- Bottom padding 100px all pages
+- Export every component as separate file
+- Include all imports, zero missing dependencies
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DESIGN SYSTEM (use exactly, no deviations)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+void-black:     #05050a   page background
+surface-1:      #0d0d14   card bg
+surface-2:      #13131e   elevated
+surface-3:      #1a1a2e   hover
+border-subtle:  #ffffff0d  
+border-active:  #ffffff1a
+plasma-cyan:    #00f5d4   primary accent
+plasma-glow:    #00f5d440 glow color
+void-purple:    #8b5cf6   secondary
+gold-node:      #f59e0b   node levels
+danger:         #f43f5e
+warning:        #fb923c
+success:        #10b981
+text-primary:   #f1f5f9
+text-secondary: #64748b
+text-disabled:  #334155
+Font headings:  Space Grotesk 700-900
+Font body:      Inter 400-500
+Font numbers:   JetBrains Mono
+Cards: backdrop-blur-xl, border-subtle default,
+  border-active on hover, surface-1 background
+Buttons: plasma-cyan filled pill OR ghost pill,
+  sharp 0px OR full pill 9999px radius only
+Background: fixed radial gradient orbs
+  (cyan 600px top-right 12% opacity,
+   purple 800px bottom-left 10% opacity)
+  + grain texture overlay 4% opacity
+  + perspective grid lines #ffffff05
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━]

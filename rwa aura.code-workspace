@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "rwa-aura",
+			"path": "../../rwa-aura"
+		}
+	],
+	"settings": {}
+}

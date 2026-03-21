@@ -1,0 +1,18 @@
+<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0066ff;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 背景圆形 -->
+  <circle cx="256" cy="256" r="240" fill="url(#grad1)"/>
+  
+  <!-- RWA文字 -->
+  <text x="256" y="300" font-family="Arial, sans-serif" font-size="140" font-weight="bold" fill="white" text-anchor="middle">RWA</text>
+  
+  <!-- 装饰线条 -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="white" stroke-width="4" opacity="0.3"/>
+  <circle cx="256" cy="256" r="220" fill="none" stroke="white" stroke-width="2" opacity="0.2"/>
+</svg>

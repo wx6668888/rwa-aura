@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- 背景 -->
+  <rect width="1024" height="1024" rx="220" fill="#03030a"/>
+  <!-- 微光背景圆 -->
+  <circle cx="512" cy="512" r="660" fill="#00f5d4" opacity="0.04"/>
+  <!-- 上细线 -->
+  <rect x="186" y="374" width="652" height="10" rx="5" fill="#00f5d4" opacity="0.25"/>
+  <!-- RWA 文字 -->
+  <text x="512" y="620" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="320" font-weight="500" fill="#00f5d4" text-anchor="middle" letter-spacing="28">RWA</text>
+  <!-- 下细线 -->
+  <rect x="186" y="660" width="652" height="10" rx="5" fill="#00f5d4" opacity="0.25"/>
+</svg>

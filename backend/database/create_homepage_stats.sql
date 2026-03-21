@@ -1,0 +1,15 @@
+-- 首页统计数据表
+CREATE TABLE IF NOT EXISTS homepage_stats (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  tvl DECIMAL(20,2) NOT NULL DEFAULT 5000000,
+  users INT NOT NULL DEFAULT 1000,
+  price DECIMAL(10,4) NOT NULL DEFAULT 0.85,
+  last_daily_update DATE NOT NULL,
+  last_user_update TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 插入初始数据
+INSERT INTO homepage_stats (tvl, users, price, last_daily_update, last_user_update)
+VALUES (5000000, 1000, 0.85, CURDATE(), NOW())
+ON DUPLICATE KEY UPDATE id=id;
