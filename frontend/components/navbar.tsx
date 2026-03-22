@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { 
   Menu, 
@@ -29,7 +30,8 @@ import {
   FileCheck,
   Megaphone,
   Send,
-  Github
+  Github,
+  Share2,
 } from 'lucide-react'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useLocale } from '@/components/locale-provider'
@@ -109,8 +111,10 @@ const navGroups: NavGroup[] = [
     key: 'network',
     label: 'nav.group.network',
     icon: Network,
-    items: [{ key: 'nav.nodes', href: '/nodes' }],
-    standalone: true,
+    items: [
+      { key: 'nav.nodes', href: '/nodes', icon: Network },
+      { key: 'nav.referralNetworkPage', href: '/node/network', icon: Share2 },
+    ],
   },
   {
     key: 'governance',
@@ -310,6 +314,8 @@ export function Navbar() {
     }, 200)
   }
 
+  const isSwapPage = pathname === '/swap'
+
   const headerBg = isScrolled 
     ? 'bg-[#05050a]/95 backdrop-blur-xl border-b border-[#ffffff0d]' 
     : 'bg-transparent border-b border-transparent'
@@ -321,6 +327,14 @@ export function Navbar() {
           {/* Left: Logo + Language Switcher（桌面端单行不换行） */}
           <div className="flex items-center gap-3 shrink-0 min-w-0">
             <Link href="/" className="flex items-center gap-2 font-[family-name:var(--font-space-grotesk)] shrink-0">
+              <Image
+                src="/app-icon-48.webp"
+                alt="RWA Protocol"
+                width={32}
+                height={32}
+                className="h-8 w-8 shrink-0 rounded-lg object-contain"
+                unoptimized
+              />
               <span className="text-lg font-bold tracking-tight text-[#00f5d4]">RWA</span>
             </Link>
             <span className="h-4 w-px bg-[#ffffff1a] shrink-0" />
@@ -590,7 +604,7 @@ export function Navbar() {
                           <button
                             onClick={openChainModal}
                             type="button"
-                            className="hidden items-center gap-2 rounded-full border border-[#ffffff0d] bg-[#0d0d1499] px-3 py-2 text-sm font-medium text-[#f1f5f9] backdrop-blur-xl transition-all hover:border-[#00f5d4]/30 md:flex whitespace-nowrap shrink-0 max-w-[140px] truncate"
+                            className={`${isSwapPage ? 'flex' : 'hidden md:flex'} items-center gap-2 rounded-full border border-[#ffffff0d] bg-[#0d0d1499] px-2.5 py-2 text-sm font-medium text-[#f1f5f9] backdrop-blur-xl transition-all hover:border-[#00f5d4]/30 whitespace-nowrap shrink-0 max-w-[120px] sm:max-w-[140px] truncate`}
                             title={chain.name ?? undefined}
                           >
                             {chain.hasIcon && (

@@ -36,10 +36,21 @@ export const metadata: Metadata = {
     title: 'RWA Protocol - Tokenize Real World Assets on BSC',
     description: 'Tokenize real world assets on BSC. 50/50 asset model. 0.8% daily static yield.',
     locale: 'zh_CN',
+    images: [{ url: '/app-icon-256.webp', width: 256, height: 256, alt: 'RWA Protocol' }],
+  },
+  twitter: {
+    card: 'summary',
+    title: 'RWA Protocol - Tokenize Real World Assets on BSC',
+    description: 'Tokenize real world assets on BSC. 50/50 asset model. 0.8% daily static yield.',
+    images: ['/app-icon-256.webp'],
   },
   icons: {
-    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
-    apple: '/icon.svg',
+    icon: [
+      { url: '/app-icon-256.webp', type: 'image/webp', sizes: '256x256' },
+      { url: '/app-icon.png', type: 'image/png', sizes: '512x512' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+    apple: [{ url: '/app-icon-256.webp', sizes: '256x256', type: 'image/webp' }],
   },
   manifest: '/manifest.json',
 }
@@ -140,7 +151,7 @@ export default function RootLayout({
             {children}
           </Web3Provider>
         </LocaleProvider>
-        <Analytics />
+        {process.env.VERCEL ? <Analytics /> : null}
       </body>
     </html>
   )
