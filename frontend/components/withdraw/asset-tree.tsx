@@ -138,8 +138,16 @@ export function AssetTree({ activePanel, onPanelSwitch, data }: Props) {
               
               {/* Content */}
               <div className="flex-1 min-w-0 text-left">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-[13px] font-[600] text-[#eef2ff] truncate">{item.name}</span>
+                <div className="flex items-baseline gap-2 mb-0.5">
+                  <span 
+                    className="text-[20px] font-[700] font-mono transition-all duration-300" 
+                    style={{ 
+                      color: item.color,
+                      textShadow: isActive ? `0 0 10px ${item.color}60` : 'none'
+                    }}
+                  >
+                    {isConnected ? item.amount : '--'}
+                  </span>
                   {percentage !== null && (
                     <span 
                       className="text-[10px] font-mono px-1.5 py-0.5 rounded"
@@ -152,31 +160,8 @@ export function AssetTree({ activePanel, onPanelSwitch, data }: Props) {
                     </span>
                   )}
                 </div>
+                <div className="text-[13px] font-[600] text-[#eef2ff] mb-0.5">{item.name}</div>
                 <div className="text-[10px] text-[rgba(238,242,255,0.45)] leading-tight">{item.sub}</div>
-              </div>
-              
-              {/* Amount */}
-              <div className="text-right flex-shrink-0">
-                <div 
-                  className="text-[13px] font-[600] transition-all duration-300" 
-                  style={{ 
-                    fontFamily: 'var(--font-jetbrains-mono)',
-                    color: '#e2e8f0',
-                    textShadow: isActive ? `0 0 10px rgba(0,245,212,0.4)` : 'none'
-                  }}
-                >
-                  {isConnected ? item.amount : '--'}
-                </div>
-                {item.id !== 'quick' && (
-                  <div className="text-[10px] mt-0.5 text-[#22c55e]">
-                    {item.status}
-                  </div>
-                )}
-                {item.id === 'quick' && (
-                  <div className="text-[10px] mt-0.5 text-[#fbbf24]">
-                    {item.status}
-                  </div>
-                )}
               </div>
             </button>
           )
