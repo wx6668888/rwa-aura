@@ -17,31 +17,41 @@ export function SecurityTransparencyCard() {
               链上可追溯，资金可验证，透明可审计。
             </p>
 
-            {/* 手机起即左右分栏：左三行文案，右动图，垂直居中对齐 */}
-            <div className="mt-5 grid grid-cols-[minmax(0,1fr)_min(104px,30vw)] items-center gap-3 sm:grid-cols-[minmax(0,1fr)_min(132px,34vw)] sm:gap-6 lg:grid-cols-[minmax(0,1fr)_168px] lg:gap-8">
-              <ul className="list-none space-y-1.5 text-left text-[13px] leading-snug text-[#c7d3e1] sm:space-y-2 sm:text-sm">
-                <li className="flex gap-2">
-                  <span className="shrink-0 text-[#00f5d4]/80" aria-hidden>
-                    ·
-                  </span>
-                  <span>链上可核验</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="shrink-0 text-[#00f5d4]/80" aria-hidden>
-                    ·
-                  </span>
-                  <span>指标持续监控</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="shrink-0 text-[#00f5d4]/80" aria-hidden>
-                    ·
-                  </span>
-                  <span>配置可回滚</span>
-                </li>
-              </ul>
+            <div className="mt-5 grid grid-cols-1 gap-5 sm:mt-6 sm:grid-cols-[minmax(0,1fr)_min(200px,38vw)] sm:items-stretch sm:gap-x-8 sm:gap-y-0 lg:grid-cols-[minmax(0,1fr)_min(240px,34vw)] lg:gap-x-12">
+              <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
+                <ul className="list-none space-y-1.5 text-left text-[13px] leading-snug text-[#c7d3e1] sm:space-y-2 sm:text-sm">
+                  <li className="flex gap-2">
+                    <span className="shrink-0 text-[#00f5d4]/80" aria-hidden>
+                      ·
+                    </span>
+                    <span>链上可核验</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="shrink-0 text-[#00f5d4]/80" aria-hidden>
+                      ·
+                    </span>
+                    <span>指标持续监控</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="shrink-0 text-[#00f5d4]/80" aria-hidden>
+                      ·
+                    </span>
+                    <span>配置可回滚</span>
+                  </li>
+                </ul>
 
-              <div className="flex h-full min-h-[100px] items-center justify-center lg:min-h-[132px] lg:justify-end">
-                <div className="h-[96px] w-[96px] sm:h-[118px] sm:w-[118px] lg:h-[152px] lg:w-[152px]">
+                <div className="flex justify-start">
+                  <Link
+                    href="/security"
+                    className="inline-flex rounded-full border border-[#2d3a4f] bg-[#121a27] px-5 py-2.5 text-sm font-semibold text-[#d9e7f7] transition-colors hover:bg-[#182235]"
+                  >
+                    查看链上数据
+                  </Link>
+                </div>
+              </div>
+
+              <div className="flex min-h-[150px] w-full min-w-0 justify-center sm:h-full sm:min-h-0 sm:justify-end">
+                <div className="h-full w-[min(100%,11rem)] min-h-[150px] sm:h-full sm:min-h-0 sm:w-full sm:max-w-[min(20rem,100%)]">
                   <DotLottieAnimation
                     src="/shouyes.lottie"
                     className="h-full w-full"
@@ -51,15 +61,6 @@ export function SecurityTransparencyCard() {
                   />
                 </div>
               </div>
-            </div>
-
-            <div className="mt-6 sm:mt-7">
-              <Link
-                href="/security"
-                className="inline-flex rounded-full border border-[#2d3a4f] bg-[#121a27] px-5 py-2.5 text-sm font-semibold text-[#d9e7f7] transition-colors hover:bg-[#182235]"
-              >
-                查看链上数据
-              </Link>
             </div>
           </div>
         </div>

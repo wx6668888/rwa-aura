@@ -20,7 +20,7 @@ export default function SecurityPage() {
       <Navbar />
       
       <main className="relative">
-        <div className="relative z-10 mx-auto max-w-7xl px-4 pb-[100px] pt-24 sm:px-6 lg:px-8">
+        <div className="relative z-10 mx-auto max-w-7xl px-4 pb-[100px] pt-below-navbar-safe sm:px-6 lg:px-8">
           <SecurityHeader />
           <AuditReports />
           <ContractAddresses />

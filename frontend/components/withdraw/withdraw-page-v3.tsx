@@ -292,7 +292,7 @@ export function WithdrawPageV3() {
       </div>
 
       {/* 手机内容：预览同款 Hero + 卡片；进入详情后同一路由与 Panel */}
-      <div className="relative z-10 mx-auto max-w-[1600px] px-4 pb-12 pt-24 lg:hidden">
+      <div className="relative z-10 mx-auto max-w-[1600px] px-4 pb-12 pt-below-navbar-safe lg:hidden">
         <div className="mb-12 text-center">
           <h1
             className="hero-mobile-amount mb-3 bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-5xl font-bold tabular-nums text-transparent sm:text-7xl"

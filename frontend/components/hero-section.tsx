@@ -5,7 +5,7 @@ import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
 import { useHomepageStats } from '@/hooks/useHomepageStats'
-import { formatUsdAmount } from '@/lib/stats-display'
+import { formatUsdFull } from '@/lib/stats-display'
 import { RotatingLabels } from '@/components/rotating-labels'
 import Link from 'next/link'
 
@@ -55,7 +55,7 @@ export function HeroSection() {
   }, [])
 
   const mobileScrollCoverOpacity = Math.min(0.94, Math.max(0, scrollY) / MOBILE_SCROLL_COVER_RANGE)
-  const tvlText = formatUsdAmount(stats.tvlUsdt)
+  const tvlText = formatUsdFull(stats.tvlUsdt)
   const lead = t('hero.lead').trim()
   const marqueeA = t('hero.marqueeA')
   const marqueeB = t('hero.marqueeB')
@@ -113,7 +113,7 @@ export function HeroSection() {
       />
 
       {/* 文案贴视口左下：不用 mx-auto 居中栏，避免宽屏上整块落在中间/偏右 */}
-      <div className="relative z-10 flex w-full flex-1 flex-col items-start justify-end px-4 max-lg:-translate-y-[2.75rem] max-lg:pt-[4.75rem] max-lg:pb-[calc(7.25rem+env(safe-area-inset-bottom,0px))] sm:px-6 lg:translate-y-0 lg:px-10 lg:pb-16 lg:pt-28">
+      <div className="relative z-10 flex w-full flex-1 flex-col items-start justify-end px-4 max-lg:-translate-y-[2.75rem] max-lg:pt-[calc(4.75rem+var(--app-safe-top))] max-lg:pb-[calc(7.25rem+env(safe-area-inset-bottom,0px))] sm:px-6 lg:translate-y-0 lg:px-10 lg:pb-16 lg:pt-28">
         <div
           dir="ltr"
           className="max-w-[min(100%,36rem)] text-left sm:max-w-xl"
@@ -147,8 +147,8 @@ export function HeroSection() {
               </span>
               <span className="text-[12px] font-medium text-[#9fb0c9] sm:text-sm">{t('hero.pillDailyLabel')}</span>
             </div>
-            <div className="flex flex-col items-start gap-1">
-              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[clamp(1.35rem,5vw,1.75rem)] font-semibold leading-none tabular-nums text-white sm:text-3xl">
+            <div className="min-w-0 flex flex-col items-start gap-1">
+              <span className="max-w-full break-words font-[family-name:var(--font-jetbrains-mono)] text-[clamp(1.05rem,4.2vw,1.65rem)] font-semibold leading-tight tabular-nums text-white sm:text-2xl">
                 {tvlText}
               </span>
               <span className="text-[12px] font-medium text-[#9fb0c9] sm:text-sm">{t('hero.pillTvlLabel')}</span>

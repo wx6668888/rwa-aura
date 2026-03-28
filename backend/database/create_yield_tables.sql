@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS yield_settlements (
   total_yield DECIMAL(36,18) NOT NULL,
   calculation_details JSON NULL,
   tx_hash VARCHAR(66) NULL,
-  INDEX idx_user_time (user_address, settlement_time),
+  UNIQUE KEY uq_yield_user_asset_time (user_address, asset_type, settlement_time),
   INDEX idx_settlement_time (settlement_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

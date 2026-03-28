@@ -19,7 +19,7 @@ export default function CalculatorPage() {
         
         <Navbar />
         
-        <main className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24">
+        <main className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 pt-below-navbar-safe pb-24">
           <CalculatorHeader />
           
           {/* Main Layout: 55/45 split on desktop */}

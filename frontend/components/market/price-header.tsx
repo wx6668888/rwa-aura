@@ -17,7 +17,7 @@ export function PriceHeader() {
 
   if (!mounted) {
     return (
-      <div className="border-b border-[#ffffff0d] bg-[#0d0d14] px-6 py-5 mt-16">
+      <div className="mt-[var(--navbar-stack)] border-b border-[#ffffff0d] bg-[#0d0d14] px-6 py-5">
         <div className="mx-auto max-w-7xl">
           <div className="h-24 animate-pulse bg-[#13131e] rounded" />
         </div>
@@ -35,7 +35,7 @@ export function PriceHeader() {
   const isPositive = changeNum >= 0
 
   return (
-    <div className="border-b border-[#ffffff0d] bg-[#0d0d14] px-6 py-5 mt-16">
+    <div className="mt-[var(--navbar-stack)] border-b border-[#ffffff0d] bg-[#0d0d14] px-6 py-5">
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           {/* Left block */}

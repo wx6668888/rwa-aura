@@ -134,7 +134,7 @@ export function HelpPageClient() {
   const popularQuestions = ['q1', 'q4', 'q8', 'q5', 'q14']
 
   return (
-    <div className="relative pt-12 pb-16 px-4 sm:px-6 lg:px-8">
+    <div className="relative px-4 pb-16 pt-below-navbar-safe sm:px-6 lg:px-8">
       {/* Page Header */}
       <div className="text-center max-w-2xl mx-auto mb-8">
         <div className="text-[11px] uppercase tracking-widest text-text-secondary mb-3">

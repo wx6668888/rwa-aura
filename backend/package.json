@@ -5,9 +5,15 @@
     "start": "ts-node src/services/meta-relayer.ts",
     "server": "ts-node src/index.ts",
     "monitor": "ts-node src/services/event-monitor-full.ts",
-    "settlement": "ts-node src/services/daily-settlement.ts",
+    "settlement": "node -e \"console.error('Use: npx ts-node scripts/run-daily-settlement-once.ts'); process.exit(1)\"",
     "sync-stats": "ts-node src/scripts/sync-user-stats.ts",
-    "verify-bsc-addresses": "ts-node --transpile-only src/scripts/verify-bsc-address-alignment.ts"
+    "verify-bsc-addresses": "ts-node --transpile-only src/scripts/verify-bsc-address-alignment.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:ci": "tsc -p tsconfig.ci.json --noEmit",
+    "test:settlement-invariants": "ts-node --transpile-only scripts/test-daily-settlement-invariants.ts",
+    "test": "npm run typecheck && npm run typecheck:ci && npm run test:settlement-invariants",
+    "dedupe:yield-settlements": "ts-node --transpile-only scripts/dedupe-yield-settlements.ts",
+    "migrate:yield-settlements-unique": "ts-node --transpile-only scripts/apply-yield-settlements-unique-migration.ts"
   },
   "dependencies": {
     "@types/better-sqlite3": "^7.6.13",

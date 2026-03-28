@@ -43,7 +43,10 @@
   --text-primary: #f1f5f9;
   --text-secondary: #64748b;
   --text-disabled: #334155;
-  --app-safe-top: 0px;
+  /* iOS Safari / 刘海屏：浏览器与 PWA 均需；与 layout viewportFit=cover 配合 */
+  --app-safe-top: env(safe-area-inset-top, 0px);
+  /* 固定顶栏总高度：导航行 h-16 + 顶部安全区 */
+  --navbar-stack: calc(4rem + var(--app-safe-top));
 
   --background: var(--void-black);
   --foreground: var(--text-primary);
@@ -67,10 +70,11 @@
   --radius: 0.625rem;
 }
 
+/* 独立 App（PWA）：部分 WebKit 下 env(safe-area-inset-top) 会为 0，需与 env 取较大值，避免顶栏与状态栏重叠 */
 @supports (-webkit-touch-callout: none) {
   @media (display-mode: standalone) {
     :root {
-      --app-safe-top: max(env(safe-area-inset-top, 0px), 8px);
+      --app-safe-top: max(env(safe-area-inset-top, 0px), 44px);
     }
   }
 }
@@ -124,9 +128,20 @@
   * {
     @apply border-border-subtle outline-ring/50;
   }
+  html {
+    background-color: var(--void-black);
+  }
   body {
     @apply bg-void-black text-text-primary;
-    padding-top: var(--app-safe-top);
+    /* 安全区由固定 Navbar 自撑，避免与顶栏叠加重复留白 */
+    padding-top: 0;
+  }
+}
+
+/* 固定 Navbar 下方主内容常用顶距：原 6rem(≈pt-24) + 安全区 */
+@layer utilities {
+  .pt-below-navbar-safe {
+    padding-top: calc(6rem + var(--app-safe-top));
   }
 }
 

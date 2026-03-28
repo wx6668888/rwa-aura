@@ -118,7 +118,7 @@ export function MyNetworkPageClient() {
   const chartMonthly = ov?.teamChartMonthly12 ?? []
 
   return (
-    <div className="relative mx-auto min-h-screen max-w-[520px] pb-24 pt-[72px] font-[family-name:var(--font-space-grotesk)] text-[#f1f5f9]">
+    <div className="relative mx-auto min-h-screen max-w-[520px] pb-24 pt-[calc(72px+var(--app-safe-top))] font-[family-name:var(--font-space-grotesk)] text-[#f1f5f9]">
       <NetworkRefreshRow
         lastRefreshMs={lastRefreshMs}
         lastLabel={nt('lastUpdated')}

@@ -63,7 +63,7 @@ export default function GuideXPage() {
       <BackgroundEffects />
       <Navbar />
 
-      <main className="mx-auto max-w-5xl px-4 pb-[90px] pt-24 lg:px-8">
+      <main className="mx-auto max-w-5xl px-4 pb-[90px] pt-below-navbar-safe lg:px-8">
         <section className="relative overflow-hidden rounded-3xl border border-[#00f5d420] bg-gradient-to-br from-[#0d0d14] to-[#13131e] p-6 sm:p-8 shadow-[0_0_40px_rgba(0,245,212,0.08)]">
           <div
             className="pointer-events-none absolute inset-0"

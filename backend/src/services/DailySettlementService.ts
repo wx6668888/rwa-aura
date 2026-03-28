@@ -1,10 +1,18 @@
 import { query } from '../config/database.config';
 import logger from '../utils/logger';
 import { ethers } from 'ethers';
+import type { ResultSetHeader } from 'mysql2';
+import { normalizeSettlementUserAddress } from '../utils/settlementAddress';
 import { PreciseYieldCalculator } from './PreciseYieldCalculator';
 import { discoverStakerAddressesFromChain } from './on-chain/StakerAddressDiscovery';
 import { OnChainYieldCalculator } from './on-chain/OnChainYieldCalculator';
 import { findBlockAtOrBefore } from './on-chain/chainSettlementUtils';
+import { acquireDailySettlementLock } from './settlementDistributedLock';
+import { isMysqlDuplicateKey } from '../utils/mysqlErrors';
+
+export { normalizeSettlementUserAddress } from '../utils/settlementAddress';
+
+const YIELD_PENDING_TX = 'PENDING';
 
 export type DailySettlementDataSource = 'chain' | 'db';
 
@@ -47,44 +55,53 @@ export class DailySettlementService {
    * 用于补发历史某日；不传则与定时任务相同，取当前时刻下「最近一次已过去的北京 8 点」。
    */
   async runDailySettlement(options?: { toTime?: number }): Promise<void> {
-    const now = Math.floor(Date.now() / 1000);
-    // 结算窗口：toTime = 当前「已过去的」北京时间当日 08:00（= 同日 UTC 00:00），与「UTC 0 点即北京 8 点」日界一致
-    const toTime =
-      options?.toTime !== undefined && Number.isFinite(options.toTime)
-        ? Math.floor(options.toTime)
-        : this.getLastCompletedShanghai8AM(now);
-    if (options?.toTime !== undefined) {
-      this.assertToTimeIsShanghai8amBoundary(toTime);
+    const lock = await acquireDailySettlementLock();
+    if (!lock) {
+      logger.warn('[DailySettlement] 未获取分布式锁，整批跳过（避免多实例重复发）');
+      return;
     }
-    const fromTime = toTime - 86400;
-    logger.info(
-      `Starting daily settlement [toTime=北京8点/UTC0点日界]: ${new Date(fromTime * 1000).toISOString()} → ${new Date(toTime * 1000).toISOString()}`
-    );
 
-    const blockAtFrom =
-      this.dataSource === 'chain'
-        ? await findBlockAtOrBefore(this.provider, fromTime)
-        : undefined;
-
-    const users = await this.getActiveUsers(blockAtFrom);
-
-    logger.info(
-      `Daily settlement dataSource=${this.dataSource}, users=${users.length}` +
-        (blockAtFrom !== undefined ? `, blockAtFrom=${blockAtFrom}` : '')
-    );
-
-    let successCount = 0;
-
-    for (const user of users) {
-      try {
-        await this.settleUserYield(user.address, user.asset_type, fromTime, toTime, blockAtFrom);
-        successCount++;
-      } catch (error) {
-        logger.error(`Failed to settle ${user.address} (${user.asset_type}):`, error);
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      const toTime =
+        options?.toTime !== undefined && Number.isFinite(options.toTime)
+          ? Math.floor(options.toTime)
+          : this.getLastCompletedShanghai8AM(now);
+      if (options?.toTime !== undefined) {
+        this.assertToTimeIsShanghai8amBoundary(toTime);
       }
-    }
+      const fromTime = toTime - 86400;
+      logger.info(
+        `Starting daily settlement dataSource=${this.dataSource} [toTime=北京8点/UTC0点日界]: ${new Date(fromTime * 1000).toISOString()} → ${new Date(toTime * 1000).toISOString()}`
+      );
 
-    logger.info(`✅ Daily settlement completed: ${successCount}/${users.length} users`);
+      const blockAtFrom =
+        this.dataSource === 'chain'
+          ? await findBlockAtOrBefore(this.provider, fromTime)
+          : undefined;
+
+      const users = await this.getActiveUsers(blockAtFrom);
+
+      logger.info(
+        `Daily settlement dataSource=${this.dataSource}, users=${users.length}` +
+          (blockAtFrom !== undefined ? `, blockAtFrom=${blockAtFrom}` : '')
+      );
+
+      let successCount = 0;
+
+      for (const user of users) {
+        try {
+          await this.settleUserYield(user.address, user.asset_type, fromTime, toTime, blockAtFrom);
+          successCount++;
+        } catch (error) {
+          logger.error(`Failed to settle ${user.address} (${user.asset_type}):`, error);
+        }
+      }
+
+      logger.info(`✅ Daily settlement completed: ${successCount}/${users.length} users`);
+    } finally {
+      await lock.release();
+    }
   }
 
   private async settleUserYield(
@@ -94,30 +111,48 @@ export class DailySettlementService {
     toTime: number,
     blockAtFrom?: number
   ): Promise<void> {
-    // 检查是否已结算（防重复）
-    const existing = await query<Array<{ id: number }>>(`
-      SELECT id FROM yield_settlements 
-      WHERE user_address = ? AND asset_type = ? AND settlement_time = ?
-    `, [userAddress, assetType, toTime]);
-    
-    if (existing.length > 0) {
-      logger.info(`Already settled for ${userAddress} (${assetType}) at ${toTime}`);
-      return;
+    const addr = normalizeSettlementUserAddress(userAddress);
+
+    // 先占位写入（唯一键存在时立即失败），再发链上，避免：链上已成功但 DB 未写入导致下一周期再次 updateUserRewards
+    try {
+      await query(
+        `INSERT INTO yield_settlements (user_address, asset_type, settlement_time, from_time, to_time, total_yield, calculation_details, tx_hash)
+         VALUES (?, ?, ?, ?, ?, '0', NULL, ?)`,
+        [addr, assetType, toTime, fromTime, toTime, YIELD_PENDING_TX]
+      );
+    } catch (e) {
+      if (isMysqlDuplicateKey(e)) {
+        logger.info(`Already settled (unique) for ${addr} (${assetType}) at ${toTime}`);
+        return;
+      }
+      throw e;
     }
+
+    const calcAddress = (() => {
+      try {
+        return ethers.getAddress(addr);
+      } catch {
+        return addr;
+      }
+    })();
 
     const { totalYield, details } =
       this.dataSource === 'chain'
         ? await this.onChainCalculator.calculateYield(
-            userAddress,
+            calcAddress,
             assetType,
             fromTime,
             toTime,
             this.provider,
             blockAtFrom
           )
-        : await this.calculator.calculateYield(userAddress, assetType, fromTime, toTime);
+        : await this.calculator.calculateYield(addr, assetType, fromTime, toTime);
     if (totalYield === '0') {
-      logger.info(`No yield for ${userAddress} (${assetType})`);
+      logger.info(`No yield for ${addr} (${assetType})`);
+      await query(
+        `DELETE FROM yield_settlements WHERE user_address = ? AND asset_type = ? AND settlement_time = ? AND tx_hash = ?`,
+        [addr, assetType, toTime, YIELD_PENDING_TX]
+      );
       return;
     }
 
@@ -131,28 +166,44 @@ export class DailySettlementService {
     // 合约 updateUserRewards 的分支逻辑是：usdtAmount==0 => RWA staking reward；usdtAmount!=0 => USDT staking reward。
     // 所以 assetType='USDT' 必须传 usdtAmount != 0，assetType='RWA' 必须传 usdtAmount == 0。
     const yieldTokenStr = ethers.formatEther(yieldWei);
-    logger.info(`Updating contract: ${userAddress} ${assetType} yield=${yieldTokenStr}`);
+    logger.info(`Updating contract: ${addr} ${assetType} yield=${yieldTokenStr}`);
 
-    let tx;
-    if (assetType === 'USDT') {
-      // 合约内动态奖励：USDT 分支需要 usdtAmount != 0
-      // 1 RWA = 0.85 USDT => usdtAmount = rwAmount * 85 / 100
-      const rwAmount = yieldWei; // RWA 等值，用于写入 user.rwaPending
-      const usdtAmount = (yieldWei * 85n) / 100n; // 用于触发合约 USDT 分支与做 cap 校验
-      tx = await this.stakingContract.updateUserRewards(userAddress, rwAmount, usdtAmount, stakeId);
-    } else {
-      tx = await this.stakingContract.updateUserRewards(userAddress, yieldWei, 0, stakeId);
+    try {
+      let tx;
+      if (assetType === 'USDT') {
+        const rwAmount = yieldWei;
+        const usdtAmount = (yieldWei * 85n) / 100n;
+        tx = await this.stakingContract.updateUserRewards(calcAddress, rwAmount, usdtAmount, stakeId);
+      } else {
+        tx = await this.stakingContract.updateUserRewards(calcAddress, yieldWei, 0, stakeId);
+      }
+      await tx.wait();
+      logger.info(`✅ Contract updated: ${tx.hash}`);
+
+      const totalYieldForDB = ethers.formatEther(yieldWei);
+      const upd = await query<ResultSetHeader>(
+        `UPDATE yield_settlements SET total_yield = ?, calculation_details = ?, tx_hash = ?
+         WHERE user_address = ? AND asset_type = ? AND settlement_time = ? AND tx_hash = ?`,
+        [totalYieldForDB, JSON.stringify(details), tx.hash, addr, assetType, toTime, YIELD_PENDING_TX]
+      );
+      const affected = typeof upd === 'object' && upd !== null && 'affectedRows' in upd ? (upd as ResultSetHeader).affectedRows : 0;
+      if (affected !== 1) {
+        logger.error(
+          `[CRITICAL] 链上已发日结但 yield_settlements 更新行数=${affected}，请人工对账: ${addr} ${assetType} toTime=${toTime} tx=${tx.hash}`
+        );
+      }
+
+      await query(
+        `INSERT INTO rewards (user_address, reward_type, token_type, amount, timestamp) VALUES (?, 'daily_yield', 'RWA', ?, NOW())`,
+        [addr, totalYield]
+      );
+    } catch (err) {
+      await query(
+        `DELETE FROM yield_settlements WHERE user_address = ? AND asset_type = ? AND settlement_time = ? AND tx_hash = ?`,
+        [addr, assetType, toTime, YIELD_PENDING_TX]
+      );
+      throw err;
     }
-    await tx.wait();
-    logger.info(`✅ Contract updated: ${tx.hash}`);
-
-    // yield_settlements.total_yield 定义为 DECIMAL(36,18)，需要写入“带小数”的金额
-    // 不能直接写入 wei 整数，否则会被当作 0 小数位的大整数导致 Out of range。
-    const totalYieldForDB = ethers.formatEther(yieldWei);
-    await query(`INSERT INTO yield_settlements (user_address, asset_type, settlement_time, from_time, to_time, total_yield, calculation_details, tx_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [userAddress, assetType, toTime, fromTime, toTime, totalYieldForDB, JSON.stringify(details), tx.hash]);
-    await query(`INSERT INTO rewards (user_address, reward_type, token_type, amount, timestamp) VALUES (?, 'daily_yield', 'RWA', ?, NOW())`,
-      [userAddress, totalYield]);
   }
 
   private async getActiveUsers(
@@ -163,11 +214,21 @@ export class DailySettlementService {
       const usdtUsers = await query<Array<{ address: string }>>(
         `SELECT DISTINCT user_address as address FROM balance_snapshots WHERE asset_type = 'USDT'`
       );
-      users.push(...usdtUsers.map((u) => ({ address: u.address, asset_type: 'USDT' as const })));
+      users.push(
+        ...usdtUsers.map((u) => ({
+          address: normalizeSettlementUserAddress(u.address),
+          asset_type: 'USDT' as const,
+        }))
+      );
       const rwaUsers = await query<Array<{ address: string }>>(
         `SELECT DISTINCT user_address as address FROM balance_snapshots WHERE asset_type = 'RWA'`
       );
-      users.push(...rwaUsers.map((u) => ({ address: u.address, asset_type: 'RWA' as const })));
+      users.push(
+        ...rwaUsers.map((u) => ({
+          address: normalizeSettlementUserAddress(u.address),
+          asset_type: 'RWA' as const,
+        }))
+      );
       return users;
     }
 

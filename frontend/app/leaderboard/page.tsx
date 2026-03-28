@@ -61,7 +61,7 @@ export default function LeaderboardPage() {
       <Navbar />
       <div className="relative min-h-screen">
         <BackgroundEffects />
-        <div className="relative z-20 mx-auto max-w-5xl px-4 pb-24 pt-28 sm:pt-32">
+        <div className="relative z-20 mx-auto max-w-5xl px-4 pb-24 pt-[calc(7rem+var(--app-safe-top))] sm:pt-[calc(8rem+var(--app-safe-top))]">
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="mb-2 flex items-center gap-2 text-[#00f5d4]">

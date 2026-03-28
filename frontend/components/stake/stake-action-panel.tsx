@@ -23,7 +23,11 @@ function getExplorerTxUrl(chainId: number | undefined, hash: string): string {
   return `https://bscscan.com/tx/${hash}`
 }
 
-export function StakeActionPanel() {
+type StakeActionPanelProps = {
+  stakeMode: 'USDT' | 'RWA'
+}
+
+export function StakeActionPanel({ stakeMode }: StakeActionPanelProps) {
   const router = useRouter()
   const { locale } = useLocale()
   const { t } = useTranslation(locale)
@@ -37,9 +41,6 @@ export function StakeActionPanel() {
   const { refetch: refetchStakes } = useUserStakes()
   const { gaslessStake, gaslessStakeRWA } = useGaslessStake()
 
-  // Staking mode: 'USDT' or 'RWA' (default to 'RWA' as main recommended entry).
-  // RWA minimum (100 USDT equivalent) is enforced here only; contract does not enforce minimum for stakeRWA.
-  const [stakeMode, setStakeMode] = useState<'USDT' | 'RWA'>('RWA')
   const [amount, setAmount] = useState('')
   const [referral, setReferral] = useState('')
   
@@ -78,6 +79,7 @@ export function StakeActionPanel() {
     }, 500)
     return () => clearTimeout(timer)
   }, [isConnected, address, refetchStakeInfo])
+
   const [lockPeriod, setLockPeriod] = useState<'flexible' | '30' | '90' | '180' | '365'>('flexible')
   const [status, setStatus] = useState<StakeStatus>('idle')
   const [showAllocation, setShowAllocation] = useState(false)
@@ -85,6 +87,18 @@ export function StakeActionPanel() {
   const [pendingIngestTxHash, setPendingIngestTxHash] = useState<string | null>(null)
   const ingestRetryCountRef = useRef(0)
   const [errorMessage, setErrorMessage] = useState('')
+  const prevStakeModeRef = useRef(stakeMode)
+
+  // 仅在外层切换 USDT/RWA 时清空金额与交易状态（首屏不触发）
+  useEffect(() => {
+    if (prevStakeModeRef.current === stakeMode) return
+    prevStakeModeRef.current = stakeMode
+    setAmount('')
+    setStatus('idle')
+    setShowAllocation(false)
+    setErrorMessage('')
+    setTxHash('')
+  }, [stakeMode])
 
   const numAmount = parseFloat(amount) || 0
   
@@ -497,38 +511,6 @@ export function StakeActionPanel() {
 
   return (
     <div className="flex flex-col">
-      {/* Staking Mode Selector */}
-      <div className="mb-4 flex gap-2 rounded-lg border p-1" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-        <button
-          onClick={() => {
-            setStakeMode('RWA')
-            setAmount('')
-            setStatus('idle')
-          }}
-          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all ${
-            stakeMode === 'RWA'
-              ? 'bg-[#00f5d4] text-[#05050a] shadow-[0_0_20px_rgba(0,245,212,0.35),0_0_8px_rgba(0,245,212,0.2)]'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          {t('stake.stakeModeRWA')}
-        </button>
-        <button
-          onClick={() => {
-            setStakeMode('USDT')
-            setAmount('')
-            setStatus('idle')
-          }}
-          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-            stakeMode === 'USDT'
-              ? 'bg-[#00f5d4] text-[#05050a]'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          {t('stake.stakeModeUSDT')}
-        </button>
-      </div>
-      
       {/* Wallet Connection Warning */}
       {!isConnected && (
         <div
@@ -617,14 +599,33 @@ export function StakeActionPanel() {
 
       {/* Amount Input */}
       <div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <span className="text-xs text-[#64748b]">{t('stake.amountLabel')}</span>
-          <span className="font-mono text-xs text-[#64748b]">
-            {t('stake.balance')}: {balance} {stakeMode === 'USDT' ? 'USDT' : 'RWA'}
-          </span>
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="truncate font-mono text-xs text-[#64748b]">
+              {t('stake.balance')}: {balance} {stakeMode === 'USDT' ? 'USDT' : 'RWA'}
+            </span>
+            <button
+              type="button"
+              onClick={async () => {
+                if (stakeMode === 'USDT') {
+                  await refetchBalance()
+                  await refetchAllowance()
+                } else {
+                  await refetchRWABalance()
+                  await refetchRWAAllowance()
+                }
+                await refetchStakeInfo()
+              }}
+              disabled={!isConnected}
+              className="shrink-0 text-xs font-semibold text-[#00f5d4] hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {t('stake.balanceRefresh')}
+            </button>
+          </div>
         </div>
 
-        <div className="mt-2 flex h-[72px] items-center gap-2 overflow-hidden rounded-xl border border-[#ffffff1a] bg-[#0d0d14] px-3 sm:gap-4 sm:px-5">
+        <div className="mt-2 flex h-[68px] items-center gap-2 overflow-hidden rounded-2xl border border-[#2d2d33] bg-[#27272c] px-3 sm:gap-4 sm:px-4">
           <input
             type="number"
             value={amount}
@@ -673,83 +674,79 @@ export function StakeActionPanel() {
             {t('stake.lockPeriod')}
           </span>
         </div>
-        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
-          {(['flexible', '30', '90', '180', '365'] as const).map((period) => (
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          {(['flexible', '30', '90', '180'] as const).map((period) => (
             <button
               key={period}
               type="button"
               onClick={() => setLockPeriod(period)}
               disabled={!isConnected}
-              className={`rounded-xl border px-3 py-2.5 text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+              className={`rounded-xl border px-3 py-2.5 text-xs font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
                 lockPeriod === period
-                  ? 'border-[#00f5d4] bg-[#00f5d410] text-[#00f5d4]'
-                  : 'border-[#ffffff0d] bg-[#0d0d14] text-[#64748b] hover:border-[#ffffff1a]'
+                  ? 'border-[#00f5d4] bg-[#00f5d412] text-[#00f5d4]'
+                  : 'border-[#2d2d33] bg-[#27272c] text-[#94a3b8] hover:border-[#ffffff1a]'
               }`}
             >
               {period === 'flexible' && t('stake.lockPeriodFlexible')}
               {period === '30' && t('stake.lockPeriod30')}
               {period === '90' && t('stake.lockPeriod90')}
               {period === '180' && t('stake.lockPeriod180')}
-              {period === '365' && t('stake.lockPeriod365')}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => setLockPeriod('365')}
+            disabled={!isConnected}
+            className={`col-span-2 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
+              lockPeriod === '365'
+                ? 'border-[#00f5d4] bg-[#00f5d412] text-[#00f5d4]'
+                : 'border-[#2d2d33] bg-[#27272c] text-[#94a3b8] hover:border-[#ffffff1a]'
+            }`}
+          >
+            {t('stake.lockPeriod365')}
+          </button>
         </div>
       </div>
 
       {/* Allocation Preview */}
       <div
         className={`overflow-hidden transition-all duration-300 ease-out ${
-          showAllocation ? 'mt-4 max-h-[700px] opacity-100' : 'max-h-0 opacity-0'
+          showAllocation ? 'mt-4 max-h-[560px] opacity-100' : 'max-h-0 opacity-0'
         }`}
       >
-        <div className="rounded-xl border border-[#ffffff0d] bg-[#0d0d14] p-5 overflow-y-auto">
+        <div className="overflow-y-auto rounded-xl border border-[#ffffff0d] bg-[#0d0d14] p-4">
           <p className="text-[11px] uppercase tracking-widest text-[#64748b]" style={{ fontVariant: 'small-caps' }}>
             {t('stake.allocation')}
           </p>
 
-          <div className="mt-3 flex flex-col gap-3">
-            {/* Treasury row */}
-            <div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-[#64748b]">{t('stake.treasuryLine')}</span>
-                </div>
-                <span className="font-[family-name:var(--font-jetbrains-mono)] text-sm text-[#64748b]">{halfAmount}</span>
-              </div>
-              <div className="mt-1.5 h-[3px] overflow-hidden rounded-full bg-[#1a1a2e]">
-                <div className="h-full w-1/2 rounded-full bg-[#64748b]" />
-              </div>
-              {/* stRWA Info */}
-              <div className="mt-2 rounded-lg border border-[#00f5d420] bg-[#00f5d410] p-2">
-                <p className="text-xs font-semibold text-[#00f5d4]">{t('stake.stRWAInfo')}</p>
-                <p className="mt-1 text-[11px] leading-relaxed text-[#64748b]">{t('stake.stRWADesc')}</p>
-              </div>
+          {/* 单列：两行占比 + 一条双色进度条 + 一句说明 */}
+          <div className="mt-3 space-y-2.5">
+            <div className="flex items-center justify-between gap-3 text-[13px]">
+              <span className="min-w-0 text-[#94a3b8]">{t('stake.allocationRowTreasury')}</span>
+              <span className="shrink-0 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-[#94a3b8]">
+                {halfAmount}
+              </span>
             </div>
-
-            {/* Pool row */}
-            <div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-[#f1f5f9]">{t('stake.poolLine')}</span>
-                </div>
-                <span className="font-[family-name:var(--font-jetbrains-mono)] text-sm text-[#00f5d4]">{halfAmount}</span>
-              </div>
-              <div className="mt-1.5 h-[3px] overflow-hidden rounded-full bg-[#1a1a2e]">
-                <div
-                  className="h-full rounded-full bg-[#00f5d4] transition-all duration-500 ease-out"
-                  style={{
-                    width: showAllocation ? '50%' : '0%',
-                    boxShadow: '0 0 8px rgba(0,245,212,0.25)',
-                  }}
-                />
-              </div>
+            <div className="flex items-center justify-between gap-3 text-[13px]">
+              <span className="min-w-0 text-[#e2e8f0]">{t('stake.allocationRowPool')}</span>
+              <span className="shrink-0 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-[#00f5d4]">
+                {halfAmount}
+              </span>
             </div>
-
-            {/* Investment Shares Info */}
-            <div className="mt-3 rounded-lg border border-[#f59e0b20] bg-[#f59e0b10] p-3">
-              <p className="text-xs font-semibold text-[#f59e0b]">{t('stake.investmentShares')}</p>
-              <p className="mt-1.5 text-[11px] leading-relaxed text-[#64748b]">{t('stake.investmentSharesDesc')}</p>
+            <div className="flex h-2 w-full overflow-hidden rounded-full bg-[#1a1a2e]">
+              <div
+                className="h-full bg-[#64748b] transition-all duration-500 ease-out"
+                style={{ width: showAllocation ? '50%' : '0%' }}
+              />
+              <div
+                className="h-full bg-[#00f5d4] transition-all duration-500 ease-out"
+                style={{
+                  width: showAllocation ? '50%' : '0%',
+                  boxShadow: '0 0 10px rgba(0,245,212,0.2)',
+                }}
+              />
             </div>
+            <p className="text-[11px] leading-snug text-[#64748b]">{t('stake.allocationNote')}</p>
           </div>
 
           {/* Daily Yield & Total Yield Display */}
@@ -811,8 +808,8 @@ export function StakeActionPanel() {
         </div>
       </div>
 
-      {/* Referral Input - 只在首次质押时显示 */}
-      {!hasReferrer && (
+      {/* 推荐人：仅在用户已输入质押金额（>0）且未绑定推荐人时显示 */}
+      {!hasReferrer && numAmount > 0 && (
         <div className="mt-6">
           <div className="flex items-center gap-2">
             <span className="text-[11px] uppercase tracking-wider text-[#64748b]" style={{ fontVariant: 'small-caps' }}>
@@ -856,23 +853,6 @@ export function StakeActionPanel() {
           >
             <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0 text-[#f43f5e]" />
             <p className="text-xs text-[#f43f5e]">{t('stake.referralWarning')}</p>
-          </div>
-        </div>
-      )}
-      
-      {/* 如果已有推荐人，显示提示 */}
-      {hasReferrer && (
-        <div className="mt-6 rounded-xl border border-[#00f5d420] bg-[#00f5d405] p-4">
-          <div className="flex items-start gap-3">
-            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#00f5d4]" />
-            <div className="flex-1">
-              <p className="text-xs font-medium text-[#00f5d4]">
-                {t('stake.referrerBound') || 'Your referral has been bound. You can stake without entering a referral address.'}
-              </p>
-              <p className="mt-1.5 text-xs font-mono text-[#64748b] break-all">
-                {t('stake.referrerAddress') || 'Referrer'}: {displayReferrer}
-              </p>
-            </div>
           </div>
         </div>
       )}
@@ -973,6 +953,21 @@ export function StakeActionPanel() {
             )}
             {status === 'staking' ? t('stake.staking') : t('stake.stakeNow')}
           </button>
+        </div>
+      )}
+
+      {/* 已绑定推荐人提示：置于表单最下方（Pancake 式布局） */}
+      {hasReferrer && (
+        <div className="mt-6 rounded-xl border border-[#00f5d438] bg-[#00f5d408] p-4">
+          <div className="flex items-start gap-3">
+            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#00f5d4]" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-[#00f5d4]">{t('stake.referrerBound')}</p>
+              <p className="mt-1.5 break-all font-mono text-[11px] text-[#94a3b8]">
+                {t('stake.referrerAddress')}: {displayReferrer}
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </div>

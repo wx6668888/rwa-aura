@@ -28,7 +28,7 @@ export function WithdrawPageClient() {
 
   return (
     <>
-      <main className="mx-auto max-w-[600px] px-4 pb-[100px] pt-24">
+      <main className="mx-auto max-w-[600px] px-4 pb-[100px] pt-below-navbar-safe">
         {/* Page header */}
         <div className="mb-6">
           <h1 className="font-[family-name:var(--font-space-grotesk)] text-[28px] font-bold leading-tight text-[#f1f5f9] tracking-tight sm:text-[32px]">

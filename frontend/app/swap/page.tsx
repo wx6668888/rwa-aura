@@ -28,7 +28,7 @@ export default function SwapPage() {
       <Navbar />
       <SwapTradeToolbar tab={tab} onTabChange={setTab} />
 
-      <main className="relative z-10 mx-auto max-w-lg px-4 pb-24 pt-[9.75rem] sm:pt-[10.5rem]">
+      <main className="relative z-10 mx-auto max-w-lg px-4 pb-24 pt-[calc(9.75rem+var(--app-safe-top))] sm:pt-[calc(10.5rem+var(--app-safe-top))]">
         <UnifiedSwapCard tab={tab} />
         {tab === 'dex' && (
           <p className="mt-5 pr-1 text-right text-[10px] leading-snug text-text-secondary/70">

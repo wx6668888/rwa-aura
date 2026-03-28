@@ -21,7 +21,7 @@ export default function AnnouncementsPage() {
       <BackgroundEffects />
       <Navbar />
 
-      <main className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24">
+      <main className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 pt-below-navbar-safe pb-24">
         {/* Header */}
         <AnnouncementHeader />
 

@@ -98,7 +98,7 @@ describe("安全测试", function () {
 
     await expect(
       stakingContract.connect(attacker1).stake(tooSmall, ethers.ZeroAddress, 0)
-    ).to.be.revertedWith("Minimum stake: 100 USDT");
+    ).to.be.revertedWithCustomError(stakingContract, "Staking_R");
   });
 
   it("should keep a single immutable referrer and ignore self-referral", async function () {
@@ -124,7 +124,7 @@ describe("安全测试", function () {
 
     await expect(
       stakingContract.connect(user1).updateUserRewards(attacker1.address, 0, ethers.parseUnits("100", 18), 1)
-    ).to.be.revertedWith("Only backend can call");
+    ).to.be.revertedWithCustomError(stakingContract, "Staking_R");
 
     await expect(
       stakingContract.connect(backend).updateUserRewards(attacker1.address, 0, ethers.parseUnits("501", 18), 2)
@@ -155,7 +155,7 @@ describe("安全测试", function () {
 
     await expect(
       stakingContract.connect(backend).updateUserRewards(user1.address, 0, ethers.parseUnits("50", 18), 10)
-    ).to.be.revertedWith("Stake already processed");
+    ).to.be.revertedWithCustomError(stakingContract, "Staking_R");
   });
 
   it("should track emergency pause state for registered contracts", async function () {

@@ -12,7 +12,7 @@ export function NodesPageClient() {
   const { t } = useTranslation(locale)
 
   return (
-    <main className="relative mx-auto max-w-4xl px-4 pb-[100px] pt-24 lg:px-8">
+    <main className="relative mx-auto max-w-4xl px-4 pb-[100px] pt-below-navbar-safe lg:px-8">
       {/* Page Header */}
       <div className="pb-6">
         <h1 className="mt-1 font-[family-name:var(--font-space-grotesk)] text-3xl font-bold text-[#f1f5f9]">

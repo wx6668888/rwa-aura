@@ -23,20 +23,20 @@ export function NetworkRefreshRow({ lastRefreshMs, lastLabel, refreshLabel, loca
 
   return (
     <div
-      className="flex items-center justify-between border-b border-[#00f5d40f] px-5 py-1.5"
+      className="flex items-center justify-between gap-3 border-b border-[#00f5d40f] px-5 py-1.5"
       style={{ background: 'rgba(0,245,212,0.03)' }}
     >
       <button
         type="button"
         onClick={onRefresh}
-        className="inline-flex items-center gap-1.5 rounded-md border border-[#00f5d424] bg-[#00f5d412] px-2.5 py-1.5 text-[11px] font-semibold text-[#00f5d4] transition-colors hover:bg-[#00f5d41c]"
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-[#00f5d424] bg-[#00f5d412] px-2.5 py-1.5 text-[11px] font-semibold text-[#00f5d4] transition-colors hover:bg-[#00f5d41c]"
       >
         <RefreshCw className={`h-3.5 w-3.5 ${spinning ? 'animate-spin' : ''}`} />
         {refreshLabel}
       </button>
-      <span className="text-[9px] font-medium tracking-wide text-[#475569]">
-        {lastLabel}{' '}
-        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-normal text-[#00f5d4]/90">
+      <span className="min-w-0 flex-1 text-right text-[9px] font-medium leading-snug tracking-wide text-[#475569]">
+        {lastLabel}
+        <span className="ml-1 inline font-[family-name:var(--font-jetbrains-mono)] font-normal text-[#00f5d4]/90">
           {ago}
         </span>
       </span>

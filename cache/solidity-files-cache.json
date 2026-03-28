@@ -964,8 +964,8 @@
       ]
     },
     "/www/wwwroot/rwaprotocol.dpdns.org/contracts/StakingContract.sol": {
-      "lastModificationDate": 1774188681889,
-      "contentHash": "185e328cf03326778331b7758c0ea8a3",
+      "lastModificationDate": 1774704278502,
+      "contentHash": "6fcee5e16cfd2daa5605699213818fd1",
       "sourceName": "contracts/StakingContract.sol",
       "solcConfig": {
         "version": "0.8.24",

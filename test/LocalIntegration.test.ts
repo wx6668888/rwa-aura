@@ -3,6 +3,7 @@ import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { RWAToken, StRWA, StakingContract, TestUSDT } from "../typechain-types";
+import { mintStRwaViaStakingContract } from "./helpers/stakingStrwa";
 
 describe("本地集成测试", function () {
   let rwaToken: RWAToken;
@@ -81,6 +82,14 @@ describe("本地集成测试", function () {
       0
     );
 
+    await mintStRwaViaStakingContract(
+      stRwaToken,
+      await stakingContract.getAddress(),
+      user1.address,
+      ethers.parseEther("10000")
+    );
+    await time.increase(24 * 60 * 60 + 1);
+
     const balanceBefore = await rwaToken.balanceOf(user1.address);
     await stakingContract.connect(user1)["withdraw(uint256,bool)"](ethers.parseEther("100"), false);
     const balanceAfter = await rwaToken.balanceOf(user1.address);
@@ -99,6 +108,12 @@ describe("本地集成测试", function () {
 
   it("should allow locked USDT emergency exit by elapsed days", async function () {
     await stakingContract.connect(user1).stake(STAKE_AMOUNT, ethers.ZeroAddress, 30);
+    await mintStRwaViaStakingContract(
+      stRwaToken,
+      await stakingContract.getAddress(),
+      user1.address,
+      ethers.parseEther("10000")
+    );
     await time.increase(6 * 24 * 60 * 60);
 
     const usdtBefore = await testUSDT.balanceOf(user1.address);

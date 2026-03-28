@@ -37,7 +37,7 @@ export default function AnalyticsPage() {
 
       <div className="relative z-20">
         {/* Page Header */}
-        <div className="pt-24 sm:pt-28 pb-4 sm:pb-6 px-4 sm:px-6">
+        <div className="px-4 pb-4 pt-[calc(6rem+var(--app-safe-top))] sm:px-6 sm:pb-6 sm:pt-[calc(7rem+var(--app-safe-top))]">
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col items-center text-center">
               <BarChart2 className="w-9 h-9 sm:w-11 sm:h-11 text-[#00f5d4] mx-auto" />

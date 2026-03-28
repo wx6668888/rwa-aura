@@ -278,6 +278,16 @@ contract StakingContract is Ownable, Pausable, ReentrancyGuard, MetaStakingExten
         uint256 globalDeltaTotalStaked,
         uint256 globalDeltaTotalStakedRWA
     );
+
+    /// @notice Owner 扣减 RWA 质押路径 pending（纠错多发日结等），不超过当前 rwaPending
+    event AdminClawbackRwaStakePending(address indexed user, uint256 amount, uint256 timestamp);
+    /// @notice Owner 扣减 USDT 质押路径下的 rwaPending / usdtRewards（18 位内部精度）
+    event AdminClawbackUsdtStakingRewards(
+        address indexed user,
+        uint256 rwaPendingRemoved,
+        uint256 usdtRewardsRemoved,
+        uint256 timestamp
+    );
     
     /**
      * @dev Constructor
@@ -1885,6 +1895,40 @@ contract StakingContract is Ownable, Pausable, ReentrancyGuard, MetaStakingExten
             globalDeltaTotalStaked,
             globalDeltaTotalStakedRWA
         );
+    }
+
+    /// @notice 扣减 rwaStakes[user].rwaPending（RWA 质押日结路径），仅 owner；不转移代币，仅修正记账
+    function adminClawbackRwaStakePending(address user, uint256 amount) external onlyOwner {
+        if (!(amount > 0)) revert Staking_R();
+        RWAStakeInfo storage rwaStake = rwaStakes[user];
+        if (!(rwaStake.rwaPending >= amount)) revert Staking_R();
+        unchecked {
+            rwaStake.rwaPending -= amount;
+        }
+        emit AdminClawbackRwaStakePending(user, amount, block.timestamp);
+    }
+
+    /// @notice 扣减 users[user] 下 USDT 质押累计的 rwaPending / 动态 usdtRewards（18 位内部精度）
+    function adminClawbackUsdtStakingRewards(
+        address user,
+        uint256 rwaPendingToRemove,
+        uint256 usdtRewardsToRemove
+    ) external onlyOwner {
+        UserInfo storage userInfo = users[user];
+        if (rwaPendingToRemove > 0) {
+            if (!(userInfo.rwaPending >= rwaPendingToRemove)) revert Staking_R();
+            unchecked {
+                userInfo.rwaPending -= rwaPendingToRemove;
+            }
+        }
+        if (usdtRewardsToRemove > 0) {
+            if (!(userInfo.usdtRewards >= usdtRewardsToRemove)) revert Staking_R();
+            unchecked {
+                userInfo.usdtRewards -= usdtRewardsToRemove;
+            }
+        }
+        if (!(rwaPendingToRemove > 0 || usdtRewardsToRemove > 0)) revert Staking_R();
+        emit AdminClawbackUsdtStakingRewards(user, rwaPendingToRemove, usdtRewardsToRemove, block.timestamp);
     }
 
     /// @notice 迁移结束后若链上 totalStaked / totalStakedRWA 与老合约总览不一致，可一次性校准（慎用）

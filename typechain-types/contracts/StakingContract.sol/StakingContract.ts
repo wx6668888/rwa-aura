@@ -164,6 +164,8 @@ export interface StakingContractInterface extends Interface {
       | "TREASURY_FEE_RATE"
       | "WITHDRAWAL_COOLDOWN"
       | "WITHDRAWAL_FEE_RATE"
+      | "adminClawbackRwaStakePending"
+      | "adminClawbackUsdtStakingRewards"
       | "backendAddress"
       | "buybackAddress"
       | "calculateWeightedAverageHoldingPeriod"
@@ -249,6 +251,8 @@ export interface StakingContractInterface extends Interface {
 
   getEvent(
     nameOrSignatureOrTopic:
+      | "AdminClawbackRwaStakePending"
+      | "AdminClawbackUsdtStakingRewards"
       | "BackendAddressUpdated"
       | "BuybackAddressUpdated"
       | "CapCheckFailed"
@@ -322,6 +326,14 @@ export interface StakingContractInterface extends Interface {
   encodeFunctionData(
     functionFragment: "WITHDRAWAL_FEE_RATE",
     values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "adminClawbackRwaStakePending",
+    values: [AddressLike, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "adminClawbackUsdtStakingRewards",
+    values: [AddressLike, BigNumberish, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "backendAddress",
@@ -716,6 +728,14 @@ export interface StakingContractInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "adminClawbackRwaStakePending",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "adminClawbackUsdtStakingRewards",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "backendAddress",
     data: BytesLike
   ): Result;
@@ -997,6 +1017,49 @@ export interface StakingContractInterface extends Interface {
     functionFragment: "withdrawUSDTPrincipal",
     data: BytesLike
   ): Result;
+}
+
+export namespace AdminClawbackRwaStakePendingEvent {
+  export type InputTuple = [
+    user: AddressLike,
+    amount: BigNumberish,
+    timestamp: BigNumberish
+  ];
+  export type OutputTuple = [user: string, amount: bigint, timestamp: bigint];
+  export interface OutputObject {
+    user: string;
+    amount: bigint;
+    timestamp: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace AdminClawbackUsdtStakingRewardsEvent {
+  export type InputTuple = [
+    user: AddressLike,
+    rwaPendingRemoved: BigNumberish,
+    usdtRewardsRemoved: BigNumberish,
+    timestamp: BigNumberish
+  ];
+  export type OutputTuple = [
+    user: string,
+    rwaPendingRemoved: bigint,
+    usdtRewardsRemoved: bigint,
+    timestamp: bigint
+  ];
+  export interface OutputObject {
+    user: string;
+    rwaPendingRemoved: bigint;
+    usdtRewardsRemoved: bigint;
+    timestamp: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
 }
 
 export namespace BackendAddressUpdatedEvent {
@@ -1606,6 +1669,22 @@ export interface StakingContract extends BaseContract {
 
   WITHDRAWAL_FEE_RATE: TypedContractMethod<[], [bigint], "view">;
 
+  adminClawbackRwaStakePending: TypedContractMethod<
+    [user: AddressLike, amount: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
+  adminClawbackUsdtStakingRewards: TypedContractMethod<
+    [
+      user: AddressLike,
+      rwaPendingToRemove: BigNumberish,
+      usdtRewardsToRemove: BigNumberish
+    ],
+    [void],
+    "nonpayable"
+  >;
+
   backendAddress: TypedContractMethod<[], [string], "view">;
 
   buybackAddress: TypedContractMethod<[], [string], "view">;
@@ -2184,6 +2263,24 @@ export interface StakingContract extends BaseContract {
     nameOrSignature: "WITHDRAWAL_FEE_RATE"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
+    nameOrSignature: "adminClawbackRwaStakePending"
+  ): TypedContractMethod<
+    [user: AddressLike, amount: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "adminClawbackUsdtStakingRewards"
+  ): TypedContractMethod<
+    [
+      user: AddressLike,
+      rwaPendingToRemove: BigNumberish,
+      usdtRewardsToRemove: BigNumberish
+    ],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
     nameOrSignature: "backendAddress"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
@@ -2726,6 +2823,20 @@ export interface StakingContract extends BaseContract {
   ): TypedContractMethod<[lockIndex: BigNumberish], [void], "nonpayable">;
 
   getEvent(
+    key: "AdminClawbackRwaStakePending"
+  ): TypedContractEvent<
+    AdminClawbackRwaStakePendingEvent.InputTuple,
+    AdminClawbackRwaStakePendingEvent.OutputTuple,
+    AdminClawbackRwaStakePendingEvent.OutputObject
+  >;
+  getEvent(
+    key: "AdminClawbackUsdtStakingRewards"
+  ): TypedContractEvent<
+    AdminClawbackUsdtStakingRewardsEvent.InputTuple,
+    AdminClawbackUsdtStakingRewardsEvent.OutputTuple,
+    AdminClawbackUsdtStakingRewardsEvent.OutputObject
+  >;
+  getEvent(
     key: "BackendAddressUpdated"
   ): TypedContractEvent<
     BackendAddressUpdatedEvent.InputTuple,
@@ -2923,6 +3034,28 @@ export interface StakingContract extends BaseContract {
   >;
 
   filters: {
+    "AdminClawbackRwaStakePending(address,uint256,uint256)": TypedContractEvent<
+      AdminClawbackRwaStakePendingEvent.InputTuple,
+      AdminClawbackRwaStakePendingEvent.OutputTuple,
+      AdminClawbackRwaStakePendingEvent.OutputObject
+    >;
+    AdminClawbackRwaStakePending: TypedContractEvent<
+      AdminClawbackRwaStakePendingEvent.InputTuple,
+      AdminClawbackRwaStakePendingEvent.OutputTuple,
+      AdminClawbackRwaStakePendingEvent.OutputObject
+    >;
+
+    "AdminClawbackUsdtStakingRewards(address,uint256,uint256,uint256)": TypedContractEvent<
+      AdminClawbackUsdtStakingRewardsEvent.InputTuple,
+      AdminClawbackUsdtStakingRewardsEvent.OutputTuple,
+      AdminClawbackUsdtStakingRewardsEvent.OutputObject
+    >;
+    AdminClawbackUsdtStakingRewards: TypedContractEvent<
+      AdminClawbackUsdtStakingRewardsEvent.InputTuple,
+      AdminClawbackUsdtStakingRewardsEvent.OutputTuple,
+      AdminClawbackUsdtStakingRewardsEvent.OutputObject
+    >;
+
     "BackendAddressUpdated(address,address)": TypedContractEvent<
       BackendAddressUpdatedEvent.InputTuple,
       BackendAddressUpdatedEvent.OutputTuple,

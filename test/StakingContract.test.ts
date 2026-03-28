@@ -3,6 +3,7 @@ import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { StRWA, StakingContract, RWAToken } from "../typechain-types";
+import { mintStRwaViaStakingContract } from "./helpers/stakingStrwa";
 
 describe("StakingContract", function () {
     let stakingContract: StakingContract;
@@ -90,6 +91,8 @@ describe("StakingContract", function () {
         it("applies the new 8% fee split on immediate withdrawals", async function () {
             const withdrawAmount = ethers.parseUnits("100", INTERNAL_DECIMALS);
 
+            await time.increase(24 * 60 * 60 + 1);
+
             const userBefore = await rwaToken.balanceOf(user1.address);
             const treasuryBefore = await rwaToken.balanceOf(treasury.address);
             const deadBefore = await rwaToken.balanceOf(DEAD_ADDRESS);
@@ -111,13 +114,17 @@ describe("StakingContract", function () {
         it("uses the new minimum withdrawal amount of 100 RWA", async function () {
             const belowMinimum = ethers.parseUnits("99", INTERNAL_DECIMALS);
 
+            await time.increase(24 * 60 * 60 + 1);
+
             await expect(
                 stakingContract.connect(user1)["withdraw(uint256,bool)"](belowMinimum, false)
-            ).to.be.revertedWith("Below minimum withdrawal amount");
+            ).to.be.revertedWithCustomError(stakingContract, "Staking_R");
         });
 
         it("keeps the 24 hour cooldown for reward withdrawals", async function () {
             const withdrawAmount = ethers.parseUnits("100", INTERNAL_DECIMALS);
+
+            await time.increase(24 * 60 * 60 + 1);
 
             await stakingContract.connect(user1)["withdraw(uint256,bool)"](withdrawAmount, false);
 
@@ -174,6 +181,15 @@ describe("StakingContract", function () {
             await stakingContract.setStRWAToken(await stRwaToken.getAddress());
 
             await stakeAndAddRewards(0, 0n);
+
+            await mintStRwaViaStakingContract(
+                stRwaToken,
+                await stakingContract.getAddress(),
+                user1.address,
+                ethers.parseEther("10000")
+            );
+            await time.increase(24 * 60 * 60 + 1);
+
             const balanceBefore = await stRwaToken.balanceOf(user1.address);
             const lockedBefore = await stRwaToken.getLockedBalance(user1.address);
 

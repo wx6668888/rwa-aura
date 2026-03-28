@@ -140,7 +140,7 @@ export function EmergencyPageClient() {
   return (
     <main className="min-h-screen bg-[#05050a] pb-[100px] font-sans">
       {/* Full-width red alert banner */}
-      <div className="w-full bg-[#dc2626] px-4 py-4 text-center mt-16">
+      <div className="mt-[var(--navbar-stack)] w-full bg-[#dc2626] px-4 py-4 text-center">
         <div className="mx-auto flex max-w-[580px] items-center justify-center gap-2">
           <AlertTriangle className="h-5 w-5 shrink-0 text-white" />
           <h1 className="text-base font-bold text-white">

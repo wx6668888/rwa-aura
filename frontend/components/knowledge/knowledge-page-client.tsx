@@ -123,7 +123,7 @@ export function KnowledgePageClient() {
       : t(getCategoryById(categoryFilter)?.nameKey ?? 'knowledge.cat.all')
 
   return (
-    <div className="relative z-10 min-h-screen pt-20 pb-24">
+    <div className="relative z-10 min-h-screen pb-24 pt-below-navbar-safe">
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
         {/* Drawer trigger: current category + ChevronDown */}
         <button

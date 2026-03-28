@@ -9,7 +9,10 @@ export function LiveIndicatorBar() {
   const { t } = useTranslation(locale)
 
   return (
-    <div className="sticky top-16 z-40 flex h-11 items-center justify-between border-b border-[#ffffff0d] bg-[#0d0d14] px-6">
+    <div
+      className="sticky z-40 flex h-11 items-center justify-between border-b border-[#ffffff0d] bg-[#0d0d14] px-6"
+      style={{ top: 'var(--navbar-stack)' }}
+    >
       <div className="flex items-center gap-3">
         {/* green pulse dot */}
         <span className="relative flex h-2 w-2 shrink-0">

@@ -26,7 +26,10 @@ export function WalletBar() {
   }
 
   return (
-    <div className="w-full border-b border-[#00f5d420] bg-[#0d0d14] px-4 sm:px-6 mt-16" style={{ minHeight: 48 }}>
+    <div
+      className="mt-[var(--navbar-stack)] w-full border-b border-[#00f5d420] bg-[#0d0d14] px-4 sm:px-6"
+      style={{ minHeight: 48 }}
+    >
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between py-2">
         {/* Left: address + network */}
         <div className="flex items-center gap-2 sm:gap-3">

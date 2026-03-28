@@ -41,7 +41,8 @@ export function AndroidWalletConnectHint() {
     <div
       role="status"
       // 不要盖住授权弹窗里的钱包图标：只允许关闭按钮可点击，其余区域不拦截点击事件。
-      className="fixed left-0 right-0 top-16 z-[95] pointer-events-none border-b border-[#00f5d4]/25 bg-[#0a0a12]/95 px-4 py-2.5 text-center text-sm text-[#e2e8f0] backdrop-blur-md"
+      className="pointer-events-none fixed left-0 right-0 z-[95] border-b border-[#00f5d4]/25 bg-[#0a0a12]/95 px-4 py-2.5 text-center text-sm text-[#e2e8f0] backdrop-blur-md"
+      style={{ top: 'var(--navbar-stack)' }}
     >
       <div className="mx-auto flex max-w-3xl items-start justify-center gap-3">
         <p className="flex-1 text-left leading-snug">{t('nav.androidWalletConnectHint')}</p>

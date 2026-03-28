@@ -11,7 +11,7 @@ export function GovernancePageClient() {
   return (
     <>
       <LiveIndicatorBar />
-      <main className="relative mx-auto max-w-5xl px-4 pb-24 pt-24 lg:px-8">
+      <main className="relative mx-auto max-w-5xl px-4 pb-24 pt-below-navbar-safe lg:px-8">
         <ProtocolParams />
         <TreasuryPool />
         <DAOVoting />

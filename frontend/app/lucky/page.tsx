@@ -64,7 +64,7 @@ export default function LuckyPage() {
       <BackgroundEffects />
       <Navbar />
 
-      <main className="relative z-10 container mx-auto px-4 pb-24 pt-24 sm:px-6 lg:px-8">
+      <main className="relative z-10 container mx-auto px-4 pb-24 pt-below-navbar-safe sm:px-6 lg:px-8">
         <LuckyHeader />
         <PoolSwitcher activePool={activePool} onPoolChange={setActivePool} />
 

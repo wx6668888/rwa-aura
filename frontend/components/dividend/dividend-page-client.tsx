@@ -91,7 +91,7 @@ export function DividendPageClient() {
   }
 
   return (
-    <main className="relative mx-auto max-w-4xl px-4 pb-[100px] pt-24 lg:px-8">
+    <main className="relative mx-auto max-w-4xl px-4 pb-[100px] pt-below-navbar-safe lg:px-8">
       <div className="pb-6">
         <p
           className="text-[11px] uppercase tracking-widest text-[#10b981]"

@@ -29,7 +29,7 @@ export function HeroSection() {
   const tvlUsdtText = formatUsdAmount(homepageStats.tvlUsdt)
 
   return (
-    <section className="relative px-4 pt-24 pb-12 lg:px-8">
+    <section className="relative px-4 pb-12 pt-below-navbar-safe lg:px-8">
       <div className="mx-auto max-w-7xl">
         {/* Desktop: 55/45 左文右图；Mobile: 单列，动图在第一块 */}
         <div className="grid gap-12 lg:grid-cols-[55fr_45fr] lg:gap-16">
@@ -119,7 +119,7 @@ export function HeroSection() {
             <div className="h-[280px] w-full flex-shrink-0 lg:hidden pointer-events-none" aria-hidden="true" />
             {/* 移动端固定顶部的动图，随滚动渐变透明 */}
             <div
-              className="fixed top-0 left-0 right-0 z-10 pt-24 flex justify-center pointer-events-none lg:hidden"
+              className="pointer-events-none fixed left-0 right-0 top-0 z-10 flex justify-center pt-below-navbar-safe lg:hidden"
               style={{ opacity: fadeOpacity }}
               aria-hidden="true"
             >

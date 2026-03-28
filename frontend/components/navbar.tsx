@@ -344,10 +344,17 @@ export function Navbar() {
   return (
     <>
       <header
-        className={`fixed left-0 right-0 z-[100] h-16 transition-opacity duration-300 ${isHidden ? 'pointer-events-none opacity-0' : 'opacity-100'} ${headerBg}`}
-        style={{ top: 'var(--app-safe-top, 0px)' }}
+        className={`fixed left-0 right-0 top-0 z-[100] flex w-full min-w-0 flex-col transition-opacity duration-300 ${isHidden ? 'pointer-events-none opacity-0' : 'opacity-100'}`}
       >
-        <nav className="mx-auto flex h-full max-w-7xl items-center justify-between px-4 lg:px-8">
+        {/* 文档流占位（勿用 absolute）：把导航行推到安全区之下；全宽底色与页面一致 */}
+        <div
+          aria-hidden
+          className="pointer-events-none w-full min-w-0 shrink-0 bg-[#05050a]"
+          style={{ height: 'var(--app-safe-top)' }}
+        />
+        {/* 背景/描边必须全宽；勿把 headerBg 写在 max-w-7xl 的 nav 上，否则会出现两侧「空出一条」的窄条观感 */}
+        <div className={`w-full min-w-0 shrink-0 ${headerBg}`}>
+          <nav className="relative z-10 mx-auto flex h-16 w-full min-w-0 max-w-7xl items-center justify-between px-4 lg:px-8">
           {/* Left: Logo + Language Switcher（桌面端单行不换行） */}
           <div className="flex items-center gap-3 shrink-0 min-w-0">
             <Link href="/" className="flex items-center gap-2 font-[family-name:var(--font-space-grotesk)] shrink-0">
@@ -687,6 +694,7 @@ export function Navbar() {
             </button>
           </div>
         </nav>
+        </div>
       </header>
 
       {/* Mobile Drawer */}
@@ -697,11 +705,11 @@ export function Navbar() {
             className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md lg:hidden"
             onClick={() => setMobileOpen(false)}
           />
-          {/* Drawer */}
+          {/* Drawer：顶栏避开刘海/状态栏，避免菜单标题贴顶 */}
           <div 
-            className="fixed inset-y-0 end-0 z-[100] w-80 bg-[#334155]/60 backdrop-blur-3xl border-s border-[#64748b]/30 lg:hidden flex flex-col shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+            className="fixed inset-y-0 end-0 z-[110] flex w-[min(100vw-3rem,20rem)] flex-col border-s border-[#64748b]/30 bg-[#334155]/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-3xl lg:hidden pt-[var(--app-safe-top)]"
           >
-            <div className="flex items-center justify-between p-6 border-b border-[#64748b]/50">
+            <div className="flex shrink-0 items-center justify-between border-b border-[#64748b]/50 p-6">
               <span className="text-lg font-bold text-[#00f5d4] font-[family-name:var(--font-space-grotesk)]">{t('nav.menu')}</span>
               <button
                 type="button"
@@ -725,7 +733,7 @@ export function Navbar() {
               ))}
             </div>
             {/* Social Links Footer */}
-            <div className="p-4 border-t border-[#64748b]/30 flex items-center justify-end gap-3">
+            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-[#64748b]/30 p-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))]">
               <a
                 href="https://t.me/+nDdRxLhC6zkzNjhl"
                 target="_blank"

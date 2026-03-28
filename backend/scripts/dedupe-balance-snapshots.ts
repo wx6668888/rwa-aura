@@ -1,25 +1,40 @@
 /**
- * 去重 balance_snapshots（只删除完全相同的重复行）
+ * 去重 balance_snapshots
  *
- * 去重键（完全匹配）：
- * - user_address, asset_type, balance_type, amount, timestamp, event_type, lock_end_time, tx_hash
- *
- * 保留规则：
- * - 对每个去重键，保留 id 最小的那一行，其余全部删除
+ * 1) 有 tx_hash 的行：每个 (LOWER(user_address), asset_type, event_type, balance_type, tx_hash) 只保留 id 最小的一条
+ *    —— 与 BalanceSnapshotService 质押/提现防重键一致（提现侧 balance_type 恒为 flexible，不影响唯一性）
+ * 2) tx_hash 为空或空串（多为 mature 或历史脏数据）：按整行业务字段去重，保留 id 最小
+ *    —— (LOWER(user_address), asset_type, balance_type, amount, timestamp, event_type, lock_end_time) NULL-safe
  *
  * 用法：
  *   cd backend && npx ts-node scripts/dedupe-balance-snapshots.ts
+ *   npx ts-node scripts/dedupe-balance-snapshots.ts --dry-run
+ *   npx ts-node scripts/dedupe-balance-snapshots.ts --user=0xabc...
+ *
+ * 去重后若需防再次重复插入，可执行 database/migrations/20260328_balance_snapshots_unique.sql（须先跑本脚本）
  */
 import dotenv from 'dotenv';
 import path from 'path';
 import mysql from 'mysql2/promise';
+import type { ResultSetHeader } from 'mysql2';
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
-const USER_TO_VERIFY = '0x06f0e0a0d72dd56fb75ab4f9b1146d8c7bda0ebe'.toLowerCase();
-const TX_TO_VERIFY = '0xc63210b55825169d978e403f04b2ecc82e9d67868b0e609dab04d47eda2f3ff9';
+function parseArgs() {
+  const dryRun = process.argv.includes('--dry-run');
+  let userFilter: string | null = null;
+  for (const a of process.argv) {
+    if (a.startsWith('--user=')) {
+      userFilter = a.slice('--user='.length).trim().toLowerCase();
+      if (!userFilter.startsWith('0x')) userFilter = `0x${userFilter}`;
+    }
+  }
+  return { dryRun, userFilter };
+}
 
 async function main() {
+  const { dryRun, userFilter } = parseArgs();
+
   const conn = await mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '3306', 10),
@@ -28,67 +43,102 @@ async function main() {
     database: process.env.DB_NAME || 'rwa_protocol',
   });
 
+  const userJoinFilter = userFilter
+    ? 'AND LOWER(bs1.user_address) = ? AND LOWER(bs2.user_address) = ?'
+    : '';
+  const userParamsDup = userFilter ? [userFilter, userFilter] : [];
+
   const q = async <T,>(sql: string, params?: unknown[]): Promise<T> => {
     const [rows] = await conn.query(sql, params as any);
     return rows as T;
   };
 
-  console.log('--- 验证清理前 ---');
-  const [before] = await q<
-    any[]
-  >(
-    `SELECT COUNT(*) as c
-     FROM balance_snapshots
-     WHERE LOWER(user_address)=?
-       AND asset_type='RWA'
-       AND balance_type='locked_30'
-       AND tx_hash=?
-       AND timestamp=(SELECT timestamp FROM balance_snapshots WHERE LOWER(user_address)=? AND asset_type='RWA' AND balance_type='locked_30' AND tx_hash=? ORDER BY id DESC LIMIT 1)
-    `,
-    [USER_TO_VERIFY, TX_TO_VERIFY, USER_TO_VERIFY, TX_TO_VERIFY]
+  // ---------- 统计将要删除的行数 ----------
+  const countWithTxSql = `
+    SELECT COALESCE(SUM(cnt - 1), 0) AS to_delete FROM (
+      SELECT COUNT(*) AS cnt
+      FROM balance_snapshots
+      WHERE tx_hash IS NOT NULL AND TRIM(tx_hash) != ''
+      ${userFilter ? 'AND LOWER(user_address) = ?' : ''}
+      GROUP BY LOWER(user_address), asset_type, event_type, balance_type, tx_hash
+      HAVING cnt > 1
+    ) t
+  `;
+  const countNullTxSql = `
+    SELECT COALESCE(SUM(cnt - 1), 0) AS to_delete FROM (
+      SELECT COUNT(*) AS cnt
+      FROM balance_snapshots
+      WHERE tx_hash IS NULL OR TRIM(IFNULL(tx_hash,'')) = ''
+      ${userFilter ? 'AND LOWER(user_address) = ?' : ''}
+      GROUP BY LOWER(user_address), asset_type, balance_type, amount, timestamp, event_type, lock_end_time
+      HAVING cnt > 1
+    ) t
+  `;
+
+  const [withTxRow] = await q<Array<{ to_delete: string | number }>>(
+    countWithTxSql,
+    userFilter ? [userFilter] : []
+  );
+  const [nullTxRow] = await q<Array<{ to_delete: string | number }>>(
+    countNullTxSql,
+    userFilter ? [userFilter] : []
   );
 
-  console.log(`locked_30 同 tx_hash 行数(预清理) = ${before?.c ?? 0}`);
+  const nWithTx = Number(withTxRow?.to_delete ?? 0);
+  const nNullTx = Number(nullTxRow?.to_delete ?? 0);
 
-  console.log('--- 开始全表去重 ---');
+  console.log(
+    `[dedupe-balance-snapshots] ${dryRun ? 'DRY-RUN' : 'LIVE'}${userFilter ? ` user=${userFilter}` : ' (全库)'}`
+  );
+  console.log(`  待删（有 tx_hash 分组）: ${nWithTx}`);
+  console.log(`  待删（无 tx_hash 整行分组）: ${nNullTx}`);
+  console.log(`  合计: ${nWithTx + nNullTx}`);
 
-  // 删除规则：删掉每组重复中的“较大 id”，以保证保留最小 id
-  // 使用 `<=>` 做 NULL-safe 等值比较
-  const deleteSql = `
+  if (dryRun) {
+    await conn.end();
+    console.log('✅ dry-run 结束，未执行 DELETE');
+    return;
+  }
+
+  // ---------- DELETE：有 tx_hash ----------
+  const deleteWithTx = `
     DELETE bs1
     FROM balance_snapshots bs1
-    JOIN balance_snapshots bs2
-      ON bs1.user_address = bs2.user_address
+    INNER JOIN balance_snapshots bs2
+      ON LOWER(bs1.user_address) = LOWER(bs2.user_address)
+     AND bs1.asset_type = bs2.asset_type
+     AND bs1.event_type = bs2.event_type
+     AND bs1.balance_type = bs2.balance_type
+     AND bs1.tx_hash = bs2.tx_hash
+     AND bs1.tx_hash IS NOT NULL
+     AND TRIM(bs1.tx_hash) != ''
+     AND bs1.id > bs2.id
+     ${userJoinFilter}
+  `;
+  const [r1] = await conn.query(deleteWithTx, userParamsDup);
+  const affected1 = (r1 as ResultSetHeader)?.affectedRows ?? 0;
+  console.log(`  DELETE（有 tx_hash）affectedRows: ${affected1}`);
+
+  // ---------- DELETE：无 tx_hash，整行匹配 ----------
+  const deleteNullTx = `
+    DELETE bs1
+    FROM balance_snapshots bs1
+    INNER JOIN balance_snapshots bs2
+      ON LOWER(bs1.user_address) = LOWER(bs2.user_address)
      AND bs1.asset_type = bs2.asset_type
      AND bs1.balance_type = bs2.balance_type
      AND bs1.amount = bs2.amount
      AND bs1.timestamp = bs2.timestamp
      AND bs1.event_type = bs2.event_type
      AND bs1.lock_end_time <=> bs2.lock_end_time
-     AND bs1.tx_hash <=> bs2.tx_hash
+     AND (bs1.tx_hash IS NULL OR TRIM(IFNULL(bs1.tx_hash,'')) = '')
+     AND (bs2.tx_hash IS NULL OR TRIM(IFNULL(bs2.tx_hash,'')) = '')
      AND bs1.id > bs2.id
+     ${userJoinFilter}
   `;
-
-  const [result] = await conn.query<any>(deleteSql);
-  // mysql2 delete join 的返回结构在不同版本表现略有不同
-  console.log('delete result:', result?.affectedRows ?? result?.['affectedRows'] ?? result);
-
-  console.log('--- 验证清理后 ---');
-  const [after] = await q<
-    any[]
-  >(
-    `SELECT COUNT(*) as c
-     FROM balance_snapshots
-     WHERE LOWER(user_address)=?
-       AND asset_type='RWA'
-       AND balance_type='locked_30'
-       AND tx_hash=?
-       AND timestamp=(SELECT timestamp FROM balance_snapshots WHERE LOWER(user_address)=? AND asset_type='RWA' AND balance_type='locked_30' AND tx_hash=? ORDER BY id DESC LIMIT 1)
-    `,
-    [USER_TO_VERIFY, TX_TO_VERIFY, USER_TO_VERIFY, TX_TO_VERIFY]
-  );
-
-  console.log(`locked_30 同 tx_hash 行数(清理后) = ${after?.c ?? 0}`);
+  const [r2] = await conn.query(deleteNullTx, userParamsDup);
+  const affected2 = (r2 as ResultSetHeader)?.affectedRows ?? 0;
+  console.log(`  DELETE（无 tx_hash）affectedRows: ${affected2}`);
 
   await conn.end();
   console.log('✅ balance_snapshots 去重完成');
@@ -98,4 +148,3 @@ main().catch((e) => {
   console.error('❌ 去重失败:', e);
   process.exit(1);
 });
-

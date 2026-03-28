@@ -1,31 +1,65 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
 import { StakeActionPanel } from '@/components/stake/stake-action-panel'
-import { StakeInfoPanelContent } from '@/components/stake/stake-info-panel'
 import { StakeMobileAccordion } from '@/components/stake/stake-mobile-accordion'
 import { FileText } from 'lucide-react'
 
+/** Pancake 式质押页：模式卡片在大盘外 + 主表单卡片 + 底部池子信息 */
 export function StakePageClient() {
   const { locale } = useLocale()
   const { t } = useTranslation(locale)
+  const [stakeMode, setStakeMode] = useState<'USDT' | 'RWA'>('RWA')
 
   return (
-    <main className="mx-auto max-w-7xl px-4 pb-[100px] pt-24 lg:px-8">
-      {/* Page Header */}
-      <div className="pb-4">
-        <h1 className="font-[family-name:var(--font-space-grotesk)] text-3xl font-bold text-[#f1f5f9]">
-          {t('stake.title')}
-        </h1>
+    <main className="mx-auto max-w-[min(100%,432px)] px-3 pb-[calc(100px+env(safe-area-inset-bottom,0px))] pt-below-navbar-safe sm:px-4">
+      {/* 居中、紧凑的分段选择器（无标题文案） */}
+      <section
+        aria-label={locale.startsWith('zh') ? '质押类型' : 'Staking type'}
+        className="mb-4 flex justify-center px-1"
+      >
+        <div className="inline-flex items-center gap-1 rounded-full border border-[#ffffff0a] bg-[#121216] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <button
+            type="button"
+            onClick={() => setStakeMode('USDT')}
+            className={`min-w-[7.25rem] rounded-full px-4 py-2 text-center text-[13px] font-semibold tracking-tight transition-all duration-200 sm:min-w-[7.75rem] sm:px-5 ${
+              stakeMode === 'USDT'
+                ? 'bg-[#00f5d4] text-[#05050a] shadow-[0_0_20px_rgba(0,245,212,0.35)]'
+                : 'text-[#94a3b8] hover:bg-[#ffffff06] hover:text-[#e2e8f0]'
+            }`}
+          >
+            {t('stake.stakeModeUSDT')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setStakeMode('RWA')}
+            className={`min-w-[7.25rem] rounded-full px-4 py-2 text-center text-[13px] font-semibold tracking-tight transition-all duration-200 sm:min-w-[7.75rem] sm:px-5 ${
+              stakeMode === 'RWA'
+                ? 'bg-[#00f5d4] text-[#05050a] shadow-[0_0_20px_rgba(0,245,212,0.35)]'
+                : 'text-[#94a3b8] hover:bg-[#ffffff06] hover:text-[#e2e8f0]'
+            }`}
+          >
+            {t('stake.stakeModeRWA')}
+          </button>
+        </div>
+      </section>
+
+      {/* 主卡片：仅表单（不再包含 USDT/RWA 切换） */}
+      <div className="rounded-[20px] border border-[#00f5d4]/28 bg-[#1c1c22] p-3 shadow-[0_8px_32px_rgba(0,0,0,0.45)] sm:p-4">
+        <StakeActionPanel stakeMode={stakeMode} />
       </div>
 
-      {/* RWA 质押引导：购买 RWA 再质押，卖出税更低 */}
-      <div className="mt-4 rounded-xl border border-[#00f5d4]/25 bg-[#00f5d4]/05 px-4 py-3">
-        <p className="text-[13px] leading-relaxed text-[#e2e8f0]">
-          {t('stake.rwaGuideBanner')}
-        </p>
+      {/* 池子信息（真实数据见 StakeInfoPanelContent + useAnalyticsStats） */}
+      <div className="mt-4">
+        <StakeMobileAccordion />
+      </div>
+
+      {/* 引导说明：置于页面最下方 */}
+      <div className="mt-5 rounded-2xl border border-[#ffffff0d] bg-[#13131e]/90 px-4 py-3">
+        <p className="text-[13px] leading-relaxed text-[#cbd5e1]">{t('stake.rwaGuideBanner')}</p>
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
           <Link
             href="/swap"
@@ -41,23 +75,6 @@ export function StakePageClient() {
             {t('stake.rwaGuideLink')}
           </Link>
         </div>
-      </div>
-
-      {/* Desktop: 60/40 asymmetric grid | Mobile: single column */}
-      <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[3fr_2fr]">
-
-        {/* LEFT 60% — Action Panel + mobile accordion */}
-        <div>
-          <StakeActionPanel />
-          <StakeMobileAccordion />
-        </div>
-
-        {/* RIGHT 40% — Sticky info card (desktop only) */}
-        <aside className="hidden lg:block">
-          <div className="sticky top-24 rounded-2xl border border-[#00f5d420] bg-gradient-to-br from-[#0d0d14] to-[#13131e] p-6 backdrop-blur-xl shadow-[0_0_20px_rgba(0,245,212,0.05)]">
-            <StakeInfoPanelContent />
-          </div>
-        </aside>
       </div>
     </main>
   )

@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import type { RetentionRow } from '@/hooks/useRetentionLeaderboard'
 import { getNodeLevelConfig } from '@/lib/node-levels'
+import { useLocale } from '@/components/locale-provider'
+import { useTranslation } from '@/lib/i18n'
 
 type Props = {
   rows: RetentionRow[]
@@ -21,6 +23,8 @@ type Props = {
 const PAGE = 15
 
 export function RankingTab({ rows, myAddress, myRank, myRetained, loading, labels }: Props) {
+  const { locale } = useLocale()
+  const { t } = useTranslation(locale)
   const [n, setN] = useState(PAGE)
   const slice = rows.slice(0, n)
   const me = (myAddress || '').toLowerCase()
@@ -63,7 +67,7 @@ export function RankingTab({ rows, myAddress, myRank, myRetained, loading, label
                 )}
               </p>
               <p className="text-[10px] text-[#475569]">
-                {cfg?.code ?? 'L1'} · {row.directReferrals} dir.
+                {t('networkDoc.rankSubline', { code: cfg?.code ?? 'L1', n: row.directReferrals })}
               </p>
             </div>
             <div className="text-end">

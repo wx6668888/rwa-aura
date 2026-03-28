@@ -10,6 +10,7 @@ import {
   TreasuryContract,
   TestUSDT
 } from "../typechain-types";
+import { mintStRwaViaStakingContract } from "./helpers/stakingStrwa";
 
 describe("完整集成测试 - 端到端流程", function () {
   let rwaToken: RWAToken;
@@ -107,7 +108,7 @@ describe("完整集成测试 - 端到端流程", function () {
     await stakingContract.connect(user1).stake(ethers.parseUnits("5000", 6), ethers.ZeroAddress, 0);
 
     const baseStRwaBalance = await stRwaToken.balanceOf(user1.address);
-    expect(baseStRwaBalance).to.equal(ethers.parseUnits("2500", 18));
+    expect(baseStRwaBalance).to.equal(0n);
 
     await stakingContract.connect(backend).updateUserRewards(
       user1.address,
@@ -115,6 +116,14 @@ describe("完整集成测试 - 端到端流程", function () {
       ethers.parseUnits("50", 18),
       0
     );
+
+    await mintStRwaViaStakingContract(
+      stRwaToken,
+      await stakingContract.getAddress(),
+      user1.address,
+      ethers.parseEther("10000")
+    );
+    await time.increase(24 * 60 * 60 + 1);
 
     await stakingContract.connect(user1)["withdraw(uint256,bool)"](ethers.parseEther("100"), true);
 
@@ -133,6 +142,13 @@ describe("完整集成测试 - 端到端流程", function () {
 
   it("should complete swap flow using current AMM pricing", async function () {
     await stakingContract.connect(user1).stake(ethers.parseUnits("5000", 6), ethers.ZeroAddress, 0);
+
+    await mintStRwaViaStakingContract(
+      stRwaToken,
+      await stakingContract.getAddress(),
+      user1.address,
+      ethers.parseEther("10000")
+    );
 
     const stRwaAmount = ethers.parseEther("100");
     const [expectedRwaOut] = await swapContract.getSwapRate(stRwaAmount, true);

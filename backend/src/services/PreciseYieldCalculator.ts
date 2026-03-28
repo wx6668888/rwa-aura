@@ -1,6 +1,7 @@
 import { query } from '../config/database.config';
 import logger from '../utils/logger';
 import BigNumber from 'bignumber.js';
+import { normalizeSettlementUserAddress } from '../utils/settlementAddress';
 
 interface BalanceSnapshot {
   timestamp: number;
@@ -23,9 +24,10 @@ export class PreciseYieldCalculator {
   private readonly LOCK_BONUS = { 0: 0, 30: 0.3, 90: 0.6, 180: 1.0, 365: 1.5 };
 
   async calculateYield(userAddress: string, assetType: 'USDT' | 'RWA', fromTime: number, toTime: number): Promise<{ totalYield: string; details: any[] }> {
-    logger.info(`Calculating yield for ${userAddress} (${assetType}) from ${fromTime} to ${toTime}`);
-    
-    const allSnapshots = await this.getAllSnapshots(userAddress, assetType, toTime);
+    const addr = normalizeSettlementUserAddress(userAddress);
+    logger.info(`Calculating yield for ${addr} (${assetType}) from ${fromTime} to ${toTime}`);
+
+    const allSnapshots = await this.getAllSnapshots(addr, assetType, toTime);
     if (allSnapshots.length === 0) return { totalYield: '0', details: [] };
 
     // 计算fromTime之前的余额（不包括fromTime时刻的快照）
@@ -59,12 +61,12 @@ export class PreciseYieldCalculator {
     return { totalYield: totalYield.toFixed(0), details };
   }
 
-  private async getAllSnapshots(userAddress: string, assetType: 'USDT' | 'RWA', toTime: number): Promise<BalanceSnapshot[]> {
+  private async getAllSnapshots(normalizedUserAddress: string, assetType: 'USDT' | 'RWA', toTime: number): Promise<BalanceSnapshot[]> {
     return await query<BalanceSnapshot[]>(
       `SELECT timestamp, balance_type, amount, lock_end_time, event_type FROM balance_snapshots
-       WHERE user_address = ? AND asset_type = ? AND timestamp <= ?
-       ORDER BY timestamp ASC`,
-      [userAddress, assetType, toTime]
+       WHERE LOWER(TRIM(user_address)) = ? AND asset_type = ? AND timestamp <= ?
+       ORDER BY timestamp ASC, id ASC`,
+      [normalizedUserAddress, assetType, toTime]
     );
   }
 
@@ -164,15 +166,16 @@ export class PreciseYieldCalculator {
   }
 
   async getLastSettlementTime(userAddress: string, assetType: 'USDT' | 'RWA'): Promise<number> {
+    const addr = normalizeSettlementUserAddress(userAddress);
     const result = await query<Array<{ settlement_time: number }>>(
-      `SELECT settlement_time FROM yield_settlements WHERE user_address = ? AND asset_type = ? ORDER BY settlement_time DESC LIMIT 1`,
-      [userAddress, assetType]
+      `SELECT settlement_time FROM yield_settlements WHERE LOWER(TRIM(user_address)) = ? AND asset_type = ? ORDER BY settlement_time DESC LIMIT 1`,
+      [addr, assetType]
     );
     if (result.length > 0) return result[0].settlement_time;
 
     const firstStake = await query<Array<{ timestamp: number }>>(
-      `SELECT timestamp FROM balance_snapshots WHERE user_address = ? AND asset_type = ? AND event_type = 'stake' ORDER BY timestamp ASC LIMIT 1`,
-      [userAddress, assetType]
+      `SELECT timestamp FROM balance_snapshots WHERE LOWER(TRIM(user_address)) = ? AND asset_type = ? AND event_type = 'stake' ORDER BY timestamp ASC LIMIT 1`,
+      [addr, assetType]
     );
     return firstStake.length > 0 ? firstStake[0].timestamp : 0;
   }

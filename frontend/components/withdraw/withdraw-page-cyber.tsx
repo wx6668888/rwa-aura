@@ -123,7 +123,7 @@ export function WithdrawPageCyber() {
       <div className="fixed bottom-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
 
       {/* Content */}
-      <div className="relative z-10 pt-24 pb-12 px-4 max-w-[1600px] mx-auto">
+      <div className="relative z-10 pt-below-navbar-safe pb-12 px-4 max-w-[1600px] mx-auto">
         
         {/* Hero Section */}
         <div className="text-center mb-12">

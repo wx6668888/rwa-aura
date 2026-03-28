@@ -26,7 +26,10 @@ export function SwapTradeToolbar({ tab, onTabChange }: Props) {
   ]
 
   return (
-    <div className="fixed top-16 left-0 right-0 z-[95] border-b border-[#ffffff0d] bg-[#05050a]/92 backdrop-blur-xl">
+    <div
+      className="fixed left-0 right-0 z-[95] border-b border-[#ffffff0d] bg-[#05050a]/92 backdrop-blur-xl"
+      style={{ top: 'var(--navbar-stack)' }}
+    >
       <div className="mx-auto flex max-w-lg items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-4">
         {/* Pancake 式：深色槽 + 选中项为内部高亮胶囊 */}
         <div className="min-w-0 flex flex-1 justify-center sm:justify-start">
