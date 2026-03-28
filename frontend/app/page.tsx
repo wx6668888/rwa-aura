@@ -5,7 +5,7 @@ import { StatsBar } from '@/components/stats-bar'
 import { HomeLatestStakes } from '@/components/home-latest-stakes'
 import { FeaturesSection } from '@/components/features-section'
 import { HowItWorksSection } from '@/components/how-it-works-section'
-import { SecurityTransparencyCard } from '@/components/security-transparency-card'
+import { HomeTrustCardsCarousel } from '@/components/home-trust-cards-carousel'
 import { HomeTrustedBy } from '@/components/home-trusted-by'
 import { FooterSection } from '@/components/footer-section'
 
@@ -19,7 +19,7 @@ export default function HomePage() {
       <HomeLatestStakes />
       <FeaturesSection />
       <HowItWorksSection />
-      <SecurityTransparencyCard />
+      <HomeTrustCardsCarousel />
       <HomeTrustedBy />
       <FooterSection />
     </div>

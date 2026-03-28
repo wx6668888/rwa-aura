@@ -10,6 +10,7 @@
 7. [Nginx反向代理](#nginx反向代理)
 8. [域名和SSL配置](#域名和ssl配置)
 9. [常见问题排查](#常见问题排查)
+10. [服务器 Git SSH（非默认密钥名）](#git-ssh-nondefault-key)
 
 ---
 
@@ -47,12 +48,69 @@ git clone https://github.com/wx6668888/rwa-aura.git rwa-protocol
 cd rwa-protocol
 ```
 
+使用 **SSH 地址** 克隆时（`git@github.com:wx6668888/rwa-aura.git`），必须在**当前这台服务器**上配置好 GitHub 公钥；与你在个人电脑上是否已配置 SSH **无关**（密钥按机器、按用户隔离）。
+
 ### 方式2：手动上传
 
 1. 在本地压缩项目为 `rwa-protocol.zip`
 2. 通过宝塔面板 → 文件 → 上传
 3. 上传到 `/www/wwwroot/`
 4. 解压文件
+
+---
+
+<a id="git-ssh-nondefault-key"></a>
+
+## 服务器 Git SSH（非默认密钥名）
+
+在服务器上用 `git pull` / `git push` 连接 `git@github.com` 时，若出现 **`Permission denied (publickey)`**，除了检查公钥是否已添加到 GitHub，还要确认 **OpenSSH 是否在用正确的私钥文件**。
+
+### 为何需要 `~/.ssh/config`
+
+OpenSSH 默认只会自动尝试固定文件名的私钥，例如：
+
+- `~/.ssh/id_rsa`
+- `~/.ssh/id_ecdsa`
+- `~/.ssh/id_ed25519`
+
+若你把私钥存成**其它名字**（例如 `id_ed25519_github`、`github_deploy`），**不会**被自动使用，Git 仍会报公钥认证失败。此时必须在 **`~/.ssh/config`** 里为 `github.com` 指定 `IdentityFile`。
+
+### 配置示例（部署用户如 `ubuntu` / `www`）
+
+1. 保证私钥权限正确（仅所有者可读）：
+
+```bash
+chmod 600 ~/.ssh/id_ed25519_github
+```
+
+2. 新建或编辑 `~/.ssh/config`（权限须为 `600`）：
+
+```bash
+nano ~/.ssh/config
+chmod 600 ~/.ssh/config
+```
+
+示例内容（按你的实际私钥路径修改）：
+
+```
+Host github.com
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/id_ed25519_github
+  IdentitiesOnly yes
+```
+
+`IdentitiesOnly yes` 可避免 ssh 向 GitHub 依次尝试多把密钥导致混乱或超限。
+
+3. 验证：
+
+```bash
+ssh -T git@github.com
+```
+
+成功时会出现类似：`Hi <用户名>! You've successfully authenticated...`（退出码可能为 1，属正常现象）。
+
+4. 再在项目目录执行 `git pull` / `git push` 即可。
 
 ---
 
@@ -300,6 +358,27 @@ location / {
 }
 ```
 
+### 1.5 强烈建议：`/_next/static/` 由 Nginx 读磁盘（避免「整站无 CSS」）
+
+Next.js 生产进程在**启动时**会扫描 `.next/static` 生成可服务的文件清单。若 **`npm run build` 之后未重启 `rwa-frontend`**，或 CDN **缓存了某次错误的 404**，浏览器请求的带 hash 的 **大体积 CSS**（如 `/_next/static/chunks/*.css`）可能返回 **404**，页面会像完全没有样式（仅默认 HTML 排版）。
+
+**推荐做法**：在 `server { ... }` 里、且优先级高于 `location /` 的位置增加（路径改成你的实际 `frontend` 目录）：
+
+```nginx
+location ^~ /_next/static/ {
+    alias /www/wwwroot/rwa-protocol/frontend/.next/static/;
+    access_log off;
+    expires 365d;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+}
+```
+
+这样静态文件**只要磁盘上存在即可访问**，不依赖 Node 进程内的清单。改完后执行 `nginx -t` 与重载 Nginx。
+
+若使用 **Cloudflare**，部署后若仍异常，可对 `/_next/static/chunks/` 相关 URL 执行 **缓存清理**，或临时开启「开发模式」验证。
+
+项目根目录下的 `nginx.conf`（`rwa.lat` 示例）已按上述方式维护，可作对照。
+
 ### 2. 配置后端API（子域名）
 
 在宝塔面板 → 网站 → 添加站点：
@@ -413,6 +492,27 @@ swapon /swapfile
 echo '/swapfile none swap sw 0 0' >> /etc/fstab
 ```
 
+### 6. Git：`Permission denied (publickey)`
+
+**常见原因**：
+
+- 在**服务器**上未配置 SSH 密钥，或公钥未添加到 GitHub 账户。
+- 私钥使用了**非默认文件名**（如 `id_ed25519_github`），但未编写 **`~/.ssh/config`**，导致 `git` 连接 GitHub 时根本没有用到该私钥。
+
+**处理**：按文档 [「服务器 Git SSH（非默认密钥名）」](#git-ssh-nondefault-key) 一节配置 `IdentityFile` 后，再执行 `ssh -T git@github.com` 验证。
+
+### 7. 大量页面突然没有样式（像纯 HTML）
+
+**现象**：`/market`、`/withdraw`、`/analytics` 等排版错乱、无深色主题与 Tailwind 效果。
+
+**常见原因**：
+
+1. **主 CSS chunk 404**：在浏览器开发者工具 → **网络** 中查看 `/_next/static/chunks/*.css` 是否红色失败。
+2. **构建后未重启前端**：每次 `npm run build` 后必须 **`pm2 restart rwa-frontend`**（本项目 `deploy-frontend.sh` 已包含）。
+3. **CDN 缓存了旧的 HTML 或误缓存 404**：对静态资源执行刷新（见上一节 **1.5**）。
+
+**处理**：确认磁盘上存在对应文件（`frontend/.next/static/chunks/`），重启 PM2；**长期**请为 `/_next/static/` 配置 **Nginx `alias` 直连磁盘**（见 **Nginx → 1.5**）。
+
 ---
 
 ## 部署后检查清单
@@ -448,7 +548,7 @@ pm2 restart rwa-frontend
 pm2 stop rwa-backend
 pm2 stop rwa-frontend
 
-# 更新代码
+# 更新代码（SSH 非默认密钥名须配置 ~/.ssh/config，见 BAOTA_DEPLOY.md「服务器 Git SSH」节）
 cd /www/wwwroot/rwa-protocol
 git pull
 cd frontend && npm run build
