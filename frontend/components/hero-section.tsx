@@ -3,146 +3,161 @@
 import { useState, useEffect } from 'react'
 import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
-import { DotLottieAnimation } from '@/components/lottie-animation'
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
+import { useHomepageStats } from '@/hooks/useHomepageStats'
+import { formatUsdAmount } from '@/lib/stats-display'
 import { RotatingLabels } from '@/components/rotating-labels'
 import Link from 'next/link'
 
-const FADE_SCROLL_RANGE = 280
-const HERO_LOTTIE_SRC = '/动画/blockchain.lottie'
+/** 地球视频：全端统一 planet.mp4（不用 planet_compressed / planet-mobile 等压缩转码，避免偏暗） */
+const HERO_PLANET_MP4 = '/videos/planet.mp4'
+const MOBILE_MAX_WIDTH = '(max-width: 1023px)'
+/** 手机端地球随滚动上移（视差），不再用透明度淡出（避免像被渐变「盖住」） */
+const MOBILE_PARALLAX = 0.32
+
+/** 主标题 display（左下大标题） */
+const heroDisplay =
+  'font-[family-name:var(--font-space-grotesk)] text-[clamp(2rem,6.5vw,3.75rem)] font-bold leading-[0.92] tracking-[-0.03em]'
 
 export function HeroSection() {
   const { locale } = useLocale()
   const { t } = useTranslation(locale)
+  const reducedMotion = usePrefersReducedMotion()
+  const stats = useHomepageStats()
   const [scrollY, setScrollY] = useState(0)
 
   useEffect(() => {
-    const onScroll = () => setScrollY(typeof window !== 'undefined' ? window.scrollY : 0)
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia(MOBILE_MAX_WIDTH)
+    const tick = () => {
+      if (!mq.matches) {
+        setScrollY(0)
+        return
+      }
+      setScrollY(window.scrollY)
+    }
+    tick()
+    window.addEventListener('scroll', tick, { passive: true })
+    mq.addEventListener('change', tick)
+    return () => {
+      window.removeEventListener('scroll', tick)
+      mq.removeEventListener('change', tick)
+    }
   }, [])
 
-  const fadeOpacity = Math.max(0, 1 - scrollY / FADE_SCROLL_RANGE)
+  const mobileParallaxY = scrollY * MOBILE_PARALLAX
+  const tvlText = formatUsdAmount(stats.tvlUsdt)
+  const lead = t('hero.lead').trim()
+  const statsNote = t('hero.statsNote').trim()
 
   return (
-    <section className="relative mx-auto flex max-w-7xl flex-col items-center gap-8 px-4 pt-28 pb-16 lg:flex-row lg:items-center lg:gap-16 lg:px-8 lg:pt-32 lg:pb-24">
-      {/* Mobile: 占位，保持布局 */}
-      <div className="relative flex w-full justify-center lg:hidden h-[300px] flex-shrink-0" aria-hidden="true">
-        <div className="flex h-[300px] w-full items-center justify-center pointer-events-none" />
+    <section className="relative flex flex-col overflow-x-hidden max-lg:min-h-[100dvh] max-lg:overflow-hidden lg:min-h-[min(76vh,620px)]">
+      <div className="pointer-events-none absolute inset-0">
+        {reducedMotion ? (
+          <div
+            className="h-full w-full bg-[#050a14]"
+            style={{
+              backgroundImage:
+                'radial-gradient(ellipse 85% 65% at 50% 38%, rgba(0,90,100,0.5), transparent 58%)',
+            }}
+            aria-hidden
+          />
+        ) : (
+          <>
+            <div
+              className="absolute inset-0 will-change-transform lg:hidden"
+              style={{ transform: `translate3d(0, ${-mobileParallaxY}px, 0)` }}
+              aria-hidden
+            >
+              <video
+                className="h-full w-full object-cover object-[50%_42%] opacity-100 [filter:brightness(1.14)_contrast(1.06)_saturate(1.05)]"
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="auto"
+              >
+                <source src={HERO_PLANET_MP4} type="video/mp4" />
+              </video>
+            </div>
+            <div className="absolute inset-0 hidden lg:block" aria-hidden>
+              <video
+                className="h-full w-full object-cover object-[50%_45%] opacity-[0.96]"
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="auto"
+              >
+                <source src={HERO_PLANET_MP4} type="video/mp4" />
+              </video>
+            </div>
+          </>
+        )}
       </div>
+      {/* 手机端遮罩更轻，避免地球发灰；桌面保持略深以托住文案 */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/22 via-black/10 to-[#05070d]/78 lg:from-black/36 lg:via-black/20 lg:to-[#05070d]/88" />
 
-      {/* Mobile: 固定顶部的动图，随滚动渐变透明 */}
-      <div
-        className="fixed top-0 left-0 right-0 z-10 pt-28 flex justify-center pointer-events-none lg:hidden"
-        style={{ opacity: fadeOpacity }}
-        aria-hidden="true"
-      >
-        <div className="flex h-[300px] w-full max-w-7xl px-4 items-center justify-center">
-          <div className="h-[260px] w-full max-w-[320px]">
-            <DotLottieAnimation
-              src={HERO_LOTTIE_SRC}
-              className="h-full w-full"
-              autoplay={true}
-              loop={true}
-              speed={1}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Left 60% - Content Block（手机端透明背景，上滑时透过可见渐淡的动图） */}
-      <div className="flex-[3] space-y-6 order-2 lg:order-1 relative z-20 -mt-8 lg:mt-0">
-          {/* Overline */}
-          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-text-secondary">
-            {t('hero.overline').split('·').map((part, i, arr) => (
-              <span key={i}>
-                {part.trim()}
-                {i < arr.length - 1 && (
-                  <span className="mx-2 inline-block h-1 w-1 rounded-full bg-plasma-cyan align-middle" />
-                )}
-              </span>
-            ))}
+      {/* 文案贴视口左下：不用 mx-auto 居中栏，避免宽屏上整块落在中间/偏右 */}
+      <div className="relative z-10 flex w-full flex-1 flex-col items-start justify-end px-4 pb-14 pt-28 sm:px-6 lg:px-10 lg:pb-16 lg:pt-28">
+        <div
+          dir="ltr"
+          className="max-w-[min(100%,36rem)] text-left sm:max-w-xl"
+        >
+          <p className="text-[13px] font-semibold uppercase tracking-[0.22em] text-[#9ca8b8] sm:text-sm sm:tracking-[0.26em]">
+            {t('hero.kicker')}
           </p>
 
-          {/* "真实" + 滚动标签 */}
-          <div className="flex items-baseline gap-2">
-            <span className="font-[family-name:var(--font-space-grotesk)] text-[40px] font-black leading-none text-plasma-cyan lg:text-[72px]">
-              {t('hero.real')}
+          <h1 className="mt-4 flex flex-wrap items-baseline justify-start gap-x-[0.35em] gap-y-1 text-left sm:mt-5">
+            <span className={`${heroDisplay} text-plasma-cyan`}>{t('hero.real')}</span>
+            <span className="inline-flex min-h-[1em] max-w-full items-baseline justify-start text-left text-white">
+              <RotatingLabels variant="hero" />
             </span>
-            <div className="flex items-center">
-              <RotatingLabels />
-            </div>
-          </div>
-
-          {/* H1 with animated gradient - removed "真实" text */}
-          <h1 className="font-[family-name:var(--font-space-grotesk)] text-[40px] font-black leading-[1.1] text-text-primary lg:text-[72px]">
-            {(() => {
-              const titleStart = t('hero.titleLine1Start')
-              // 检查是否是各种语言的"真实"、"Real"等
-              const realWords = ['真实', 'Real', '실제', '実', 'Réels', 'Reais', 'Réels', 'Реальные', 'Реальная', 'أصول', 'عوائد', 'वास्तविक', 'Actifs', 'Ativos']
-              if (!realWords.includes(titleStart) && titleStart.trim() !== '') {
-                return (
-                  <span className="bg-gradient-to-r from-plasma-cyan via-[#00d4ff] to-plasma-cyan bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient">
-                    {titleStart}
-                  </span>
-                )
-              }
-              return null
-            })()}
-            {t('hero.titleLine1End')}
           </h1>
 
-          {/* Subtitle */}
-          <p className="max-w-md text-base leading-relaxed text-text-secondary lg:text-lg">
-            {t('hero.subtitle')}
-          </p>
+          {lead ? (
+            <p className="mt-4 text-[15px] leading-[1.65] text-[#9fb0c9] sm:mt-5 sm:text-[17px] sm:leading-relaxed">
+              {lead}
+            </p>
+          ) : null}
 
-          {/* Button Row */}
-          <div className="flex flex-wrap items-center gap-4 pt-2">
+          {/* 单行细字：0.8% + 标签 | TVL + 标签 */}
+          <div className="mt-6 flex flex-col items-start gap-1 sm:mt-7">
+            <div className="flex max-w-full flex-row flex-wrap items-baseline justify-start gap-x-1.5 gap-y-0.5 text-[11px] font-extralight leading-tight text-[#9fb0c9] sm:gap-x-2 sm:text-xs">
+              <span className="font-light tabular-nums text-white/90">0.8%</span>
+              <span className="font-extralight opacity-85">{t('hero.pillDailyLabel')}</span>
+              <span className="px-0.5 font-light text-white/20" aria-hidden>
+                |
+              </span>
+              <span className="font-light tabular-nums text-white/90">{tvlText}</span>
+              <span className="font-extralight opacity-85">{t('hero.pillTvlLabel')}</span>
+            </div>
+            {statsNote ? (
+              <p className="max-w-sm text-left text-[10px] font-extralight leading-snug text-[#5c6b7c] sm:text-[11px]">
+                {statsNote}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="mt-7 flex justify-start sm:mt-8">
             <Link
               href="/stake"
-              className="rounded-full bg-plasma-cyan px-8 py-3 font-[family-name:var(--font-space-grotesk)] text-base font-semibold text-void-black transition-all hover:scale-[1.02] hover:brightness-110 shadow-[0_0_20px_rgba(0,245,212,0.3)]"
+              className="inline-flex rounded-full bg-plasma-cyan px-7 py-2.5 text-[15px] font-semibold text-void-black transition-transform duration-200 hover:scale-[1.02] hover:brightness-110 sm:px-8 sm:py-3 sm:text-base"
             >
-              {t('hero.cta1')} {'\u2192'}
-            </Link>
-            <Link
-              href="/about"
-              className="rounded-full border border-border-active px-8 py-3 text-base font-medium text-text-primary transition-colors hover:bg-surface-2"
-            >
-              {t('hero.cta2')}
+              {t('hero.cta1')}
             </Link>
           </div>
 
-          {/* Trust Signals */}
-          <div className="flex flex-wrap items-center gap-4 pt-2 text-[12px] font-medium uppercase tracking-[0.15em] text-text-secondary">
-            <span className="flex items-center gap-1.5">
-              <span>{'🔒'}</span>
-              <span>{t('hero.trust1')}</span>
+          <div className="mt-6 flex flex-wrap items-center justify-start gap-x-2 gap-y-1 text-[12px] font-normal tracking-wide text-[#8b9cb4] sm:mt-7 sm:text-[13px]">
+            <span>{t('hero.trustChip1')}</span>
+            <span className="text-white/25" aria-hidden>
+              ·
             </span>
-            <span className="h-1 w-1 rounded-full bg-plasma-cyan" />
-            <span className="flex items-center gap-1.5">
-              <span>{'⛓'}</span>
-              <span>{t('hero.trust2')}</span>
+            <span>{t('hero.trustChip2')}</span>
+            <span className="text-white/25" aria-hidden>
+              ·
             </span>
-            <span className="h-1 w-1 rounded-full bg-plasma-cyan" />
-            <span className="flex items-center gap-1.5">
-              <span>{'👁️'}</span>
-              <span>{t('hero.trust3')}</span>
-            </span>
-          </div>
-        </div>
-
-      {/* Right 40% - Animation Block (desktop only) */}
-      <div className="relative flex-[2] hidden lg:flex order-1 lg:order-2">
-        <div className="flex h-[500px] w-full items-center justify-center">
-          <div className="h-[380px] w-full max-w-[480px]">
-            <DotLottieAnimation
-              src={HERO_LOTTIE_SRC}
-              className="h-full w-full"
-              autoplay={true}
-              loop={true}
-              speed={1}
-            />
+            <span>{t('hero.trustChip3')}</span>
           </div>
         </div>
       </div>

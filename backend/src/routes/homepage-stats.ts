@@ -63,4 +63,59 @@ router.get('/stats/homepage', async (req, res) => {
   }
 });
 
+/** 首页「最近质押」：按 stake_events 入库时间倒序 */
+router.get('/stats/homepage/recent-stakes', async (req, res) => {
+  try {
+    const pool = getPool();
+    const limit = Math.min(Math.max(parseInt(String(req.query.limit || '5'), 10) || 5, 1), 20);
+    const [priceRows]: any = await pool.query('SELECT price FROM homepage_stats WHERE id = 1');
+    const price = priceRows?.length ? Number(priceRows[0].price || 0.85) : 0.85;
+
+    const [rows]: any = await pool.query(
+      `SELECT LOWER(TRIM(user_address)) AS user_address,
+              TRIM(event_type) AS event_type,
+              TRIM(CAST(amount AS CHAR)) AS amount,
+              CAST(timestamp AS CHAR) AS ts,
+              tx_hash
+       FROM stake_events
+       ORDER BY IF(
+         CAST(timestamp AS UNSIGNED) > 1000000000000,
+         CAST(timestamp AS UNSIGNED),
+         CAST(timestamp AS UNSIGNED) * 1000
+       ) DESC
+       LIMIT ?`,
+      [limit]
+    );
+
+    const list = (rows as any[]).map((r) => {
+      const et = String(r.event_type || '');
+      const u = et.toUpperCase();
+      const asset: 'USDT' | 'RWA' = u.includes('RWA') ? 'RWA' : 'USDT';
+      let amountToken = 0;
+      try {
+        amountToken = Number(ethers.formatUnits(BigInt(String(r.amount || '0')), 18));
+      } catch {
+        amountToken = 0;
+      }
+      let tsMs = Number(r.ts ?? 0);
+      if (Number.isFinite(tsMs) && tsMs > 0 && tsMs < 1e12) tsMs *= 1000;
+
+      return {
+        userAddress: String(r.user_address || ''),
+        eventType: et,
+        asset,
+        amountToken,
+        amountUsdtApprox: asset === 'RWA' ? amountToken * price : amountToken,
+        timestampMs: tsMs || 0,
+        txHash: r.tx_hash ? String(r.tx_hash) : null,
+      };
+    });
+
+    res.json({ success: true, data: { rows: list, price } });
+  } catch (error) {
+    console.error('Recent stakes error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch recent stakes' });
+  }
+});
+
 export default router;
