@@ -17,9 +17,30 @@ export function useLocale() {
   return useContext(LocaleContext)
 }
 
+function normalizeSystemLocale(input: string | null | undefined): Locale {
+  const raw = String(input || '').toLowerCase()
+  if (!raw) return 'zh'
+  if (raw.startsWith('zh')) return 'zh'
+  if (raw.startsWith('en')) return 'en'
+  if (raw.startsWith('ko')) return 'ko'
+  if (raw.startsWith('es')) return 'es'
+  if (raw.startsWith('ar')) return 'ar'
+  if (raw.startsWith('hi')) return 'hi'
+  if (raw.startsWith('fr')) return 'fr'
+  if (raw.startsWith('pt')) return 'pt'
+  if (raw.startsWith('ru')) return 'ru'
+  if (raw.startsWith('ja')) return 'ja'
+  return 'en'
+}
+
+function detectSystemLocale(): Locale {
+  if (typeof navigator === 'undefined') return 'zh'
+  const preferred = navigator.languages?.[0] || navigator.language || ''
+  return normalizeSystemLocale(preferred)
+}
+
 export function LocaleProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('zh')
-  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     let stored: Locale | null = null
@@ -28,14 +49,13 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     } catch {
       stored = null
     }
-    if (stored) {
-      setLocaleState(stored)
-      applyLocaleEffects(stored)
-    }
-    setMounted(true)
+    const initialLocale = stored || detectSystemLocale()
+    setLocaleState(initialLocale)
+    applyLocaleEffects(initialLocale)
   }, [])
 
   function applyLocaleEffects(loc: Locale) {
+    if (typeof document === 'undefined') return
     if (loc === 'ar') {
       document.dir = 'rtl'
       document.documentElement.lang = 'ar'
@@ -55,10 +75,8 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     applyLocaleEffects(loc)
   }
 
-  if (!mounted) {
-    return <>{children}</>
-  }
-
+  // 必须始终挂载 Provider：此前在 mounted 前不包 Provider，Web3Provider/RainbowKit 与子页面
+  // 只能拿到默认 context，部分环境下会导致客户端异常（/about、/governance 等）。
   return (
     <LocaleContext.Provider value={{ locale, setLocale }}>
       {children}

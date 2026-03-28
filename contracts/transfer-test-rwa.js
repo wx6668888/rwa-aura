@@ -1,9 +1,10 @@
 const { ethers } = require('ethers');
+const { getDeployPrivateKey } = require('./load-deploy-key');
 
 async function transferToTest() {
   const RPC_URL = 'https://bsc-dataseed.binance.org/';
-  const PRIVATE_KEY = '0x72de45eab3e0f215109b5beb29a62188d7784542aab9b72eeb4f82a8b8c69200';
-  const RWA_TOKEN = '0x0B4f2Ca412466fDBf7B0691Ca6F5b51A197f4812';
+  const PRIVATE_KEY = getDeployPrivateKey();
+  const RWA_TOKEN = '0x9EF16931f3628f48dE1A2FfCF6f7fdf34A5240A6';
   const TEST_ADDRESS = '0x77ee3f51F9e0C5C99DB8EF9451Eee1a382f7A340';
   
   const provider = new ethers.JsonRpcProvider(RPC_URL);

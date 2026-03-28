@@ -1,0 +1,77 @@
+{
+  "meta": {
+    "legacyStaking": "0x8FA4A4BE954a80c940623DDa1ed6e3D50FC25175",
+    "user": "0x5132fd5FD935551EE6692A1850c296fac6626881",
+    "legacyStakesCounter": "0"
+  },
+  "readable": {
+    "userInfo": {
+      "totalStaked": "0",
+      "rwaPending": "0",
+      "usdtRewards": "0",
+      "lastWithdrawTime": "0",
+      "referrer": "0x8927e74e0fCaED1D4C87116C805464800651f222",
+      "firstStakeTime": "0",
+      "nodeLevel": 0,
+      "isActive": false
+    },
+    "rwaInfo": {
+      "totalStakedRWA": "2412810000000000000000",
+      "rwaPending": "0",
+      "lastWithdrawTime": "0",
+      "referrer": "0x8927e74e0fCaED1D4C87116C805464800651f222",
+      "firstStakeTime": "1774053784",
+      "nodeLevel": 1,
+      "isActive": true
+    },
+    "usdtLocksCount": 0,
+    "rwaLocksCount": 1,
+    "stakeHistoryCount": 1
+  },
+  "migrationImportUserBundleArgs": {
+    "user": "0x5132fd5FD935551EE6692A1850c296fac6626881",
+    "uInfo": [
+      "0",
+      "0",
+      "0",
+      "0",
+      "0x8927e74e0fCaED1D4C87116C805464800651f222",
+      "0",
+      0,
+      false
+    ],
+    "rInfo": [
+      "2412810000000000000000",
+      "0",
+      "0",
+      "0x8927e74e0fCaED1D4C87116C805464800651f222",
+      "1774053784",
+      1,
+      true
+    ],
+    "usdtLocks": [],
+    "rwaLocks": [
+      {
+        "stakeId": "19",
+        "totalAmount": "2412810000000000000000",
+        "principalAmount": "1206405000000000000000",
+        "lockStartTime": "1774053784",
+        "lockEndTime": "1776645784",
+        "isWithdrawn": false,
+        "lockPeriod": "30"
+      }
+    ],
+    "usdtFlexPrincipal_": "0",
+    "usdtFlexTotal_": "0",
+    "rwaFlexPrincipal_": "0",
+    "rwaFlexTotal_": "0",
+    "hist": [
+      [
+        "2412810000000000000000",
+        "1774053784"
+      ]
+    ],
+    "globalDeltaTotalStaked": "0",
+    "globalDeltaTotalStakedRWA": "2412810000000000000000"
+  }
+}

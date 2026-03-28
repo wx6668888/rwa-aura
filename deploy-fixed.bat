@@ -4,9 +4,11 @@ echo BSC Mainnet Deployment
 echo ========================================
 echo.
 
-echo Setting environment variables...
-set "DEPLOY_PRIVATE_KEY=72de45eab3e0f215109b5beb29a62188d7784542aab9b72eeb4f82a8b8c69200"
-set "BACKEND_ADDRESS=0x08Ea66321c4dd47468c3aDc55d06c5De7129A292"
+if not exist .env.deploy if not exist .env (
+  echo [错误] 未找到 .env 或 .env.deploy（需含 DEPLOY_PRIVATE_KEY 或 PRIVATE_KEY）
+  pause
+  exit /b 1
+)
 
 echo Step 1: Compiling contracts...
 call npx hardhat compile

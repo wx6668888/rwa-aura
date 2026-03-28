@@ -53,7 +53,8 @@ function JsonLottiePlayer({
 
   useEffect(() => {
     let cancelled = false
-    fetch(src)
+    const url = typeof src === 'string' ? encodeURI(src) : src
+    fetch(url)
       .then((res) => res.json())
       .then((json) => {
         if (!cancelled) setData(json)

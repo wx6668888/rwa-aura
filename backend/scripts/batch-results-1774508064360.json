@@ -1,0 +1,72 @@
+[
+  {
+    "index": 1,
+    "address": "0xfddD5A53b67e630046E19Ee5da2165fb1e6d6193",
+    "rwa": 6262,
+    "transferTx": "0xf98f6738d8a33601658733f0fba540cbd1b0ca22f69e3e8e6bdf0cd9a60def11",
+    "stakeTx": "0x4d513404eef5cdf656ee5eb6c49982c06ae07de7a341744d451ee046808d86bd"
+  },
+  {
+    "index": 2,
+    "address": "0xDD0E6ba87c0d1AECff15B2eF3D0D7fC125115E7C",
+    "rwa": 860,
+    "transferTx": "0x124db305c06eca7f28b5bfc012e10f3dace2c6229306c0dffc2c1d6006a916b9",
+    "stakeTx": "0x88e3bd70c82934e04d718141e4e09775d0e26ebfd1790789c7931cc2b3f12005"
+  },
+  {
+    "index": 3,
+    "address": "0xDA0162B245E1e3728A48b044614AcD8Aa4345152",
+    "rwa": 3640,
+    "transferTx": "FAILED",
+    "stakeTx": "FAILED"
+  },
+  {
+    "index": 4,
+    "address": "0xe31881AC7da5ad7be127D868A54f18AC4236A520",
+    "rwa": 6575,
+    "transferTx": "FAILED",
+    "stakeTx": "FAILED"
+  },
+  {
+    "index": 5,
+    "address": "0x9a3EA124808165b702c222E881b0AacBaF1aEcFF",
+    "rwa": 302,
+    "transferTx": "FAILED",
+    "stakeTx": "FAILED"
+  },
+  {
+    "index": 6,
+    "address": "0xe2611ca40dCfD72Eff2F9696b2EFE1aD46dA1c07",
+    "rwa": 7914,
+    "transferTx": "FAILED",
+    "stakeTx": "FAILED"
+  },
+  {
+    "index": 7,
+    "address": "0x1F1403e39f3887AA9A4B3C5022C98c22EC8C0564",
+    "rwa": 2292,
+    "transferTx": "FAILED",
+    "stakeTx": "FAILED"
+  },
+  {
+    "index": 8,
+    "address": "0x0c8C4787E61EA86f6D98792CE6677C039d3224a4",
+    "rwa": 4766,
+    "transferTx": "0x5b67d306fb768c81c40ff505a2dbed62f3e2ec4488270d3df59e4c55f7b20ad6",
+    "stakeTx": "0xc98151d62296cf78a5b2a0fa1d7ef2ad61861bbdb4c1992caaec28b709e0a52f"
+  },
+  {
+    "index": 9,
+    "address": "0x9228D700A8E5a577897BEA1D435dc452484A83BB",
+    "rwa": 6006,
+    "transferTx": "0xe621f4a002f04725549ffced84a0bf87e83c06df77a95e309b23d00a1af2d541",
+    "stakeTx": "0xd5189bf8f68372523c99b85b04b1bfbb6e0da328d4bcd60fe75f080e3cae14de"
+  },
+  {
+    "index": 10,
+    "address": "0x692a31143Ec6b7Cba37Fe0B8Ff1a999868552b33",
+    "rwa": 1894,
+    "transferTx": "0x1b014dc6309c52915b83ff7c38981e949dc78553d74a34907bef26a2b6ca6130",
+    "stakeTx": "0x95241a0735d4daf274c189710b989a9caea1da9f4b36857a00b4f5667d28cea2"
+  }
+]

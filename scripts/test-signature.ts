@@ -1,12 +1,19 @@
 import { ethers } from 'hardhat';
 
 async function main() {
-  const STAKING_ADDRESS = '0x6140e7fAfcC48a6635d981202A7A9931C672772B';
-  const USER_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
-  const USER_PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
-  
-  const provider = new ethers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545');
-  const user = new ethers.Wallet(USER_PRIVATE_KEY, provider);
+  const STAKING_ADDRESS = '0x1E297055ffAA3BDD2a2eD96bD86A1B89d9245f99';
+
+  const pkRaw = (process.env.TEST_PRIVATE_KEY || process.env.PRIVATE_KEY || '').trim();
+  if (!pkRaw) {
+    throw new Error('请设置环境变量 TEST_PRIVATE_KEY 或 PRIVATE_KEY');
+  }
+  const pk = pkRaw.startsWith('0x') ? pkRaw : `0x${pkRaw}`;
+
+  const provider = new ethers.JsonRpcProvider(
+    process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org/'
+  );
+  const user = new ethers.Wallet(pk, provider);
+  const USER_ADDRESS = user.address;
   
   const stakingAbi = require('../artifacts/contracts/StakingContract.sol/StakingContract.json').abi;
   const staking = new ethers.Contract(STAKING_ADDRESS, stakingAbi, provider);
@@ -25,7 +32,7 @@ async function main() {
   const domain = {
     name: 'RWAStaking',
     version: '1',
-    chainId: 97,
+    chainId: 56,
     verifyingContract: STAKING_ADDRESS,
   };
   

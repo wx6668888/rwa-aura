@@ -1,0 +1,142 @@
+[
+  {
+    "index": 1,
+    "address": "0x7cCAdf3eC8A702a12a615E92E15955a891350783",
+    "rwa": 2344,
+    "transferTx": "0x19a6d049e6c0cd3ec219e18d575da59fb136b75d152b591f8d321a2486a23a3c",
+    "stakeTx": "0x8543355decd19106f1850d5544226f58a627451de036142e86e167a9f2a7eab8"
+  },
+  {
+    "index": 2,
+    "address": "0x0d07382dF5F5C0839ab041141Ff95e4E9EFB05F0",
+    "rwa": 5135,
+    "transferTx": "0x3086702a5ee0deefa9918c62ed1b1723cb8736775fd4dc40a02cfbebf71b8ae2",
+    "stakeTx": "0xa05aae2e069d2ee8ba09ecf9e64d9c1e1d537d8ce4cea1770864c0119eb88f02"
+  },
+  {
+    "index": 3,
+    "address": "0x1bEE2610091b49216bcd89D392aeb071a068eE79",
+    "rwa": 4388,
+    "transferTx": "0xf15b41879e5d02d2cd423e2972ae663ad0f37937a6fe50bffd88a41215372580",
+    "stakeTx": "0xf3a1c9f90472999ca1c340bcd6b42de335edc9f6297dcb421f0868313479414c"
+  },
+  {
+    "index": 4,
+    "address": "0xA8f25015Ec4441D8673aeAac8edFefCFFb210f8f",
+    "rwa": 6243,
+    "transferTx": "0x6369bd79c62b876e88f8aa07c2d97b7f34e99e0b0d47be9168d2ebb5c36ea767",
+    "stakeTx": "0xf61a493e5fe9fa7ac7b45f3710f695c69e04efe0be68cb3f7ef5a36f02d28dba"
+  },
+  {
+    "index": 5,
+    "address": "0x9dCA15cBbB018f0E6c4c9D7d37c372A47361351C",
+    "rwa": 3503,
+    "transferTx": "0xdfc0c76736f0cbe2bc2674a62cbde2341bac3d4d5b7bdf4ee0441bf44fd46bb9",
+    "stakeTx": "0xc61b48be2ec1d602d3b71e16549051af5cf913a9e2e1b580bbdadab4dcf71d6d"
+  },
+  {
+    "index": 6,
+    "address": "0xD9F4f98f939Bd768b875Aa006275848C7e371d4a",
+    "rwa": 701,
+    "transferTx": "0x361556b863a9c51d12489d4299b66acbc578df62a55b022d9762c53012865c1d",
+    "stakeTx": "0xf96f55c232a52ec3a16ebbf8d53298af6617694e1d5faba646829a6949bd228f"
+  },
+  {
+    "index": 7,
+    "address": "0x2e67B8ADc679c270A969B24A6EBf2C05dB0D3b2C",
+    "rwa": 4559,
+    "transferTx": "0x1d65a848e30f393896dff60fbcebb09b404365cb3bded218de1adab0995ad497",
+    "stakeTx": "0x00f139451f12362d28d4abe962bac22dc04e109305a1c3b777840764a05c8933"
+  },
+  {
+    "index": 8,
+    "address": "0xAC82286A48aA50588393f6ed09159950F33fc6D9",
+    "rwa": 3250,
+    "transferTx": "0x34a396b64fccf0bb397495213ec973c26411cff184d619155b11e0e4123aa8ca",
+    "stakeTx": "0x3a8abe85ee38793559a00960758e683f0a266c9e37da700161469e57ed42ce68"
+  },
+  {
+    "index": 9,
+    "address": "0x613131a9268fE0335B7af7cBB569E54fbE14E015",
+    "rwa": 325,
+    "transferTx": "0x1d643d9aa4db409c81e2b33b4e51c00d37689af3b6642f718d829af3f24c3256",
+    "stakeTx": "0xa92b1e1934887240921c384d5685e5714a53cb8d0e796ab060363a0e4434e90b"
+  },
+  {
+    "index": 10,
+    "address": "0xc736e23caFCbbb554E9d145aa99013a14050bfBE",
+    "rwa": 5105,
+    "transferTx": "0xa12e483502d4db11dd7e7c0684f71c55f1a634358c95ffac15a8931aca7dc977",
+    "stakeTx": "0xb6b9650a8bf75f2359a931dd3a1b8a7711b5a92c99b171c1db0a659d614aa623"
+  },
+  {
+    "index": 11,
+    "address": "0x87227879b94C1Af3D9c73E02e53478ca7Ee9d4dE",
+    "rwa": 5111,
+    "transferTx": "0xf30fae571cdca4b187c072d7c7a9aef771b4466543eb9798e6350f36f342bb47",
+    "stakeTx": "0x19a56071bc0f3036755309a52d4805ae3b11ad0ea2d5edda63f89efc686ddb66"
+  },
+  {
+    "index": 12,
+    "address": "0x92a23f9897fa3249De20b7249f4A31d891260381",
+    "rwa": 6303,
+    "transferTx": "0x230dc0f69955053a7fb7f81bd0b7d251a0eb7e41df3a4e754ee2f392674489cf",
+    "stakeTx": "0x7a9f0ded922c4f22e59320dc4f6ddf57bae493636b949a5692942ed8b24e6da8"
+  },
+  {
+    "index": 13,
+    "address": "0x911028A907e17d0f6792DBc45aDA823579E80739",
+    "rwa": 1831,
+    "transferTx": "0xbaf1f7297d3bb97f34e0eb0975581285e13bac796dc1f62663917743807c3876",
+    "stakeTx": "0x9f5f803dbed6682bd6aee108cda4a4d3c1a222463e25e56e63ac510aa2533f35"
+  },
+  {
+    "index": 14,
+    "address": "0x000bB8D2b4BeE271C0a51736eA229717aA69fa3f",
+    "rwa": 5979,
+    "transferTx": "0xe83cdf38bc26910b4111e6a8722bb23faf0a0049eece6a3a06bdd9dc84a3e0e8",
+    "stakeTx": "0x34afeebec0f9662ffebad68fd07b17c2283338dc02723f86a9059122146ed340"
+  },
+  {
+    "index": 15,
+    "address": "0xD341DBCfe748fc10e55a4205CDac851bf9CD8E82",
+    "rwa": 3290,
+    "transferTx": "0x1bd701cc8955ef06a086ce1f42d975ab73825a1fb02e430578371673599e11f9",
+    "stakeTx": "0x3bba9f0d8ee555f36cf1c53a23d23835fc1fed6e37c6dda36ae936e8e26a4585"
+  },
+  {
+    "index": 16,
+    "address": "0x5C2CCB85559becD60f92459E49702cBCcdcCD690",
+    "rwa": 3940,
+    "transferTx": "0x676831dbfcc121c6cddce4445a4b5dd206eadf5521a2fe77d5995632f4cd4fd4",
+    "stakeTx": "0xb72f99a7d3aef7c3df986ee65b27bbd3072638f43767269b2dfa759fbd1bbe44"
+  },
+  {
+    "index": 17,
+    "address": "0x6F3106E66853F5813a0e9d5D7d094B5c638F97AE",
+    "rwa": 993,
+    "transferTx": "0xef31f94efd521dd0d82001950bd458f58b368ea3b519d0f996f7a7fad5b0e46a",
+    "stakeTx": "0xe4d5bc8e80754d263ff7173394f763f69286b262526c12b72895e6ed74150014"
+  },
+  {
+    "index": 18,
+    "address": "0x849edE44E9c878ea25865F102eef4b41F924ba61",
+    "rwa": 4212,
+    "transferTx": "0xefffda241936c9845f324cd36fcfb36b15766dbc38878056c98681dcfbffab7b",
+    "stakeTx": "0xc14b7607a3275e60a030a8eca7485859c5add4bdff01f589100ae148c0ff29b4"
+  },
+  {
+    "index": 19,
+    "address": "0x90d264212061ae0F5911083B6BdA872fB929D4dC",
+    "rwa": 1232,
+    "transferTx": "0x7110f40b65101609bf609103c54cade130604756f525680f0e61912743ae7559",
+    "stakeTx": "0x5f60b4d53c73f472f9dc36c7705dd445449d1437d7551550093f5bb7d23f99d6"
+  },
+  {
+    "index": 20,
+    "address": "0x192946E88Ff7645DF77a06Da9bD7b4c94adD5E83",
+    "rwa": 6482,
+    "transferTx": "0xdec5dc36661b8501cff161b74538317e31f01902d428f4ba79146b8539b8693f",
+    "stakeTx": "0x899505f1afa421f0b474f5cc90c06e60b317e72ba919fd1e86b08cca9bd716df"
+  }
+]

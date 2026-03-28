@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0a0f" />
+    <title>RWA Protocol</title>
+    <link rel="dns-prefetch" href="//rwaprotocol.dpdns.org" />
+    <link rel="preconnect" href="https://rwaprotocol.dpdns.org" crossorigin />
+    <style>
+      html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: #0a0a0f;
+        color: #e5e7eb;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      .wrap {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 14px;
+        background:
+          radial-gradient(90vw 90vw at 80% -10%, rgba(0, 245, 212, 0.18), transparent 55%),
+          radial-gradient(70vw 70vw at -20% 120%, rgba(79, 70, 229, 0.18), transparent 60%),
+          #0a0a0f;
+      }
+      .logo {
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        color: #00f5d4;
+        font-size: 22px;
+      }
+      .bar {
+        width: min(72vw, 260px);
+        height: 3px;
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .bar > i {
+        display: block;
+        height: 100%;
+        width: 40%;
+        background: linear-gradient(90deg, transparent, #00f5d4, transparent);
+        animation: run 1.1s linear infinite;
+      }
+      .hint {
+        font-size: 12px;
+        color: rgba(229, 231, 235, 0.72);
+      }
+      @keyframes run {
+        from { transform: translateX(-120%); }
+        to { transform: translateX(260%); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="logo">RWA PROTOCOL</div>
+      <div class="bar"><i></i></div>
+      <div class="hint" id="hint">正在启动...</div>
+    </div>
+    <script>
+      (function () {
+        var TARGET = 'https://rwaprotocol.dpdns.org';
+        var hint = document.getElementById('hint');
+        var done = false;
+        var net = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        var quality = 'unknown';
+
+        function jump() {
+          if (done) return;
+          done = true;
+          var q = encodeURIComponent(quality);
+          // 重要：避免 WebView/浏览器缓存旧的 Next.js chunks/server actions
+          // 导致 “Failed to find Server Action / ChunkLoadError”。
+          try {
+            localStorage.clear();
+          } catch (e) {}
+          try {
+            sessionStorage.clear();
+          } catch (e) {}
+          try {
+            if (typeof caches !== 'undefined' && caches && caches.keys) {
+              // 删除 Cache Storage 中旧的 Next.js 资源，避免触发旧 chunk/Server Action。
+              caches.keys().then(function (keys) {
+                return Promise.all(
+                  keys.map(function (k) {
+                    return caches.delete(k);
+                  })
+                ).finally(function () {
+                  // 加时间戳，进一步强制走最新 HTML/资源
+                  location.replace(TARGET + '/?from=android_shell&net=' + q + '&icv=' + Date.now());
+                });
+              }).catch(function () {
+                location.replace(TARGET + '/?from=android_shell&net=' + q + '&icv=' + Date.now());
+              });
+              return;
+            }
+          } catch (e) {}
+          location.replace(TARGET + '/?from=android_shell&net=' + q + '&icv=' + Date.now());
+        }
+
+        function classifyNetwork() {
+          if (!net) return 'unknown';
+          if (net.saveData) return 'poor';
+          var et = (net.effectiveType || '').toLowerCase();
+          var down = Number(net.downlink || 0);
+          var rtt = Number(net.rtt || 0);
+          if (et === 'slow-2g' || et === '2g') return 'poor';
+          if (et === '3g') return 'medium';
+          if (down > 0 && down < 1) return 'poor';
+          if (rtt > 850) return 'poor';
+          if (rtt > 280) return 'medium';
+          return 'good';
+        }
+
+        function fetchWithTimeout(url, timeoutMs) {
+          var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+          var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, timeoutMs);
+          return fetch(url, {
+            method: 'GET',
+            cache: 'no-store',
+            mode: 'cors',
+            signal: ctrl ? ctrl.signal : undefined
+          })
+          .catch(function () {})
+          .finally(function () { clearTimeout(timer); });
+        }
+
+        function prewarmCritical(level) {
+          // 首次进入预拉关键资源：价格、健康检查、核心页面 HTML。
+          var timeoutMs = level === 'good' ? 900 : level === 'medium' ? 650 : 420;
+          var tasks = [
+            fetchWithTimeout(TARGET + '/api/price/rwa', timeoutMs),
+            fetchWithTimeout(TARGET + '/health', timeoutMs),
+            fetchWithTimeout(TARGET + '/withdraw', timeoutMs),
+            fetchWithTimeout(TARGET + '/dashboard', timeoutMs)
+          ];
+          // 弱网降级：不并发太多，优先价格接口
+          if (level === 'poor') tasks = [tasks[0]];
+          return Promise.allSettled(tasks);
+        }
+
+        function run() {
+          quality = classifyNetwork();
+          var jumpDelay = quality === 'good' ? 60 : quality === 'medium' ? 120 : 220;
+          var hardTimeout = quality === 'good' ? 1400 : quality === 'medium' ? 1800 : 2400;
+
+          if (hint) {
+            hint.textContent =
+              quality === 'poor'
+                ? '网络较慢，正在轻量启动...'
+                : quality === 'medium'
+                  ? '正在预热关键页面...'
+                  : '正在极速启动...';
+          }
+
+          setTimeout(jump, hardTimeout);
+
+          prewarmCritical(quality).finally(function () {
+            if (hint) hint.textContent = '连接服务器...';
+            setTimeout(jump, jumpDelay);
+          });
+        }
+
+        run();
+      })();
+    </script>
+  </body>
+</html>

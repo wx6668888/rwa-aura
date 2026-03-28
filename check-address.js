@@ -1,8 +1,15 @@
 const { ethers } = require('ethers');
+const { getDeployPrivateKey } = require('./contracts/load-deploy-key');
 
-const privateKey = '72de45eab3e0f215109b5beb29a62188d7784542aab9b72eeb4f82a8b8c69200';
-const wallet = new ethers.Wallet(privateKey);
+const wallet = new ethers.Wallet(getDeployPrivateKey());
+
+const expected =
+  process.env.EXPECTED_WALLET_ADDRESS ||
+  '0x8927e74e0fCaED1D4C87116C805464800651f222';
 
 console.log('私钥对应的地址:', wallet.address);
-console.log('期望的地址:', '0x08Ea66321c4dd47468c3aDc55d06c5De7129A292');
-console.log('是否匹配:', wallet.address.toLowerCase() === '0x08Ea66321c4dd47468c3aDc55d06c5De7129A292'.toLowerCase());
+console.log('期望的地址:', expected);
+console.log(
+  '是否匹配:',
+  wallet.address.toLowerCase() === String(expected).toLowerCase()
+);

@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 
 async function main() {
-  const STAKING_ADDRESS = '0x6140e7fAfcC48a6635d981202A7A9931C672772B';
+  const STAKING_ADDRESS = '0x1E297055ffAA3BDD2a2eD96bD86A1B89d9245f99';
   
   const provider = new ethers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545');
   

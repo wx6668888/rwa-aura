@@ -1,5 +1,8 @@
-$env:DEPLOY_PRIVATE_KEY = "72de45eab3e0f215109b5beb29a62188d7784542aab9b72eeb4f82a8b8c69200"
-$env:BACKEND_ADDRESS = "0x08Ea66321c4dd47468c3aDc55d06c5De7129A292"
+# 勿在此文件写私钥。Hardhat 会加载根目录 .env.deploy / .env；也可先在会话中导出 DEPLOY_PRIVATE_KEY
+if (-not (Test-Path .env.deploy) -and -not (Test-Path .env) -and -not $env:DEPLOY_PRIVATE_KEY -and -not $env:PRIVATE_KEY) {
+    Write-Host "[错误] 未找到 .env / .env.deploy，且未设置 DEPLOY_PRIVATE_KEY / PRIVATE_KEY" -ForegroundColor Red
+    exit 1
+}
 
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "BSC Mainnet Deployment" -ForegroundColor Cyan

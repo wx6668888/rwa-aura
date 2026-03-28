@@ -1,0 +1,12 @@
+---
+description: Require dated tags for every saved version
+alwaysApply: true
+---
+
+# Version Save Tagging
+
+- 每次执行“保存版本”“保存最新版”“定版”“建立版本锚点”时，必须创建带日期的 git tag。
+- 默认标签格式使用 `stable-YYYYMMDD`；同一天多次保存时使用 `stable-YYYYMMDD-HHmm`。
+- 未经用户明确确认，不得把旧提交、旧快照、旧构建产物、source map 恢复结果直接覆盖当前工作区。
+- 在任何恢复或覆盖动作前，先备份当前文件，并明确说明恢复基准来自哪个 tag 或 commit。
+- 如果当前工作区存在未确认的新改动，先提醒用户，再执行保存、恢复或覆盖操作。

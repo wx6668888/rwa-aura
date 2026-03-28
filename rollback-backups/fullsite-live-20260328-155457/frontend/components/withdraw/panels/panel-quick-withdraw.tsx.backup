@@ -1,0 +1,298 @@
+'use client'
+
+import { Zap, ArrowLeft, TrendingUp, Briefcase, Users, Gift, Coins } from 'lucide-react'
+import { useAccount } from 'wagmi'
+import { useState } from 'react'
+import { useStakingContract } from '@/hooks/useStakingContract'
+import { useReferralWithdraw } from '@/hooks/useReferralWithdraw'
+import { TransactionOverlay } from '../transaction-overlay'
+
+interface Props {
+  onMobileBack: () => void
+  data: any
+}
+
+export function PanelQuickWithdraw({ onMobileBack, data }: Props) {
+  const { isConnected } = useAccount()
+  const [withdrawType, setWithdrawType] = useState<'rwa' | 'usdt'>('rwa')
+  const { withdrawFlexibleRWAPrincipal, withdrawFlexibleUSDTPrincipal, withdrawRWARewards, withdrawDividend, withdrawStRWA } = useStakingContract()
+  const { withdraw: withdrawReferral } = useReferralWithdraw()
+  const [showOverlay, setShowOverlay] = useState(false)
+  const [overlayStatus, setOverlayStatus] = useState<'waiting' | 'pending' | 'success' | 'error'>('waiting')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [txHash, setTxHash] = useState<string | null>(null)
+
+  // 计算可提取金额
+  const rwaPrincipal = parseFloat(data.rwaPrincipal || '0')
+  const usdtPrincipal = parseFloat(data.usdtPrincipal || '0')
+  const rwaYield = parseFloat(data.yieldAmount || '0')
+  const referral = parseFloat(data.referralAmount || '0')
+  const dividend = parseFloat(data.dividendAmount || '0')
+  const strwa = parseFloat(data.strwaAmount || '0')
+
+  const totalRWA = rwaPrincipal + rwaYield + strwa
+  const totalUSDT = usdtPrincipal + referral + dividend
+
+  const hasRWA = totalRWA > 0
+  const hasUSDT = totalUSDT > 0
+
+  const handleQuickWithdraw = async () => {
+    if (withdrawType === 'rwa' && !hasRWA) {
+      alert('暂无可提取的 RWA')
+      return
+    }
+    if (withdrawType === 'usdt' && !hasUSDT) {
+      alert('暂无可提取的 USDT')
+      return
+    }
+
+    setShowOverlay(true)
+    setOverlayStatus('waiting')
+    setError(null)
+    setLoading(true)
+
+    try {
+      const hashes: string[] = []
+
+      if (withdrawType === 'rwa') {
+        // 提取 RWA 本金
+        if (rwaPrincipal > 0) {
+          const hash = await withdrawFlexibleRWAPrincipal(rwaPrincipal.toString())
+          hashes.push(hash)
+        }
+        // 提取 RWA 收益
+        if (rwaYield > 0) {
+          const hash = await withdrawRWARewards(rwaYield.toString(), false)
+          hashes.push(hash)
+        }
+        // 兑换 stRWA
+        if (strwa > 0) {
+          const hash = await withdrawStRWA(strwa.toString())
+          hashes.push(hash)
+        }
+      } else {
+        // 提取 USDT 本金
+        if (usdtPrincipal > 0) {
+          const hash = await withdrawFlexibleUSDTPrincipal(usdtPrincipal.toString())
+          hashes.push(hash)
+        }
+        // 提取推荐奖励
+        if (referral > 0) {
+          const hash = await withdrawReferral(referral.toString())
+          hashes.push(hash)
+        }
+        // 提取项目分红
+        if (dividend > 0) {
+          const hash = await withdrawDividend(dividend.toString())
+          hashes.push(hash)
+        }
+      }
+
+      setTxHash(hashes[0])
+      setOverlayStatus('success')
+    } catch (err: any) {
+      console.error('提取失败:', err)
+      
+      let errorMessage = '提取失败，请重试'
+      if (err.message?.includes('User rejected') || err.message?.includes('User denied')) {
+        errorMessage = '您已取消交易'
+      } else if (err.message?.includes('insufficient funds')) {
+        errorMessage = 'BNB 余额不足，无法支付 Gas 费用'
+      } else if (err.message?.includes('execution reverted')) {
+        errorMessage = '合约执行失败，请检查提取金额'
+      }
+      
+      setError(errorMessage)
+      setOverlayStatus('error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-[#0a0a0f]/40">
+      {/* Enhanced Header */}
+      <div className="flex items-center justify-between p-6 border-b border-[rgba(0,255,200,0.12)]">
+        <button
+          onClick={onMobileBack}
+          className="lg:hidden flex items-center gap-2 text-[rgba(238,242,255,0.5)] hover:text-emerald-400 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span className="text-sm">返回</span>
+        </button>
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 p-0.5">
+            <div className="w-full h-full bg-[#0a0a0f] rounded-xl flex items-center justify-center">
+              <Zap className="w-6 h-6 text-amber-400" />
+            </div>
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-white">一键提取</h2>
+            <p className="text-xs text-white/40 mt-0.5">快速提取所有可用资产</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 p-6 overflow-y-auto">
+        <div className="max-w-2xl mx-auto space-y-6">
+          {/* Enhanced 币种选择 */}
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              onClick={() => setWithdrawType('rwa')}
+              className={`relative overflow-hidden px-6 py-8 rounded-2xl border transition-all duration-300 ${
+                withdrawType === 'rwa'
+                  ? 'bg-amber-500/10 border-amber-500/30 shadow-lg shadow-amber-500/20'
+                  : 'bg-white/[0.02] border-white/10 hover:bg-white/[0.04] hover:border-white/15'
+              }`}
+            >
+              {withdrawType === 'rwa' && (
+                <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 to-orange-500/10 animate-pulse" />
+              )}
+              <div className="relative z-10 text-center">
+                <div className="text-sm font-semibold text-amber-400 mb-3">提取 RWA</div>
+                <div className="text-3xl font-bold text-white mb-2" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
+                  {totalRWA.toFixed(2)}
+                </div>
+                <div className="text-xs text-white/40">
+                  ≈ ${(totalRWA * 0.85).toFixed(2)} USDT
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setWithdrawType('usdt')}
+              className={`relative overflow-hidden px-6 py-8 rounded-2xl border transition-all duration-300 ${
+                withdrawType === 'usdt'
+                  ? 'bg-emerald-500/10 border-emerald-500/30 shadow-lg shadow-emerald-500/20'
+                  : 'bg-white/[0.02] border-white/10 hover:bg-white/[0.04] hover:border-white/15'
+              }`}
+            >
+              {withdrawType === 'usdt' && (
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-teal-500/10 animate-pulse" />
+              )}
+              <div className="relative z-10 text-center">
+                <div className="text-sm font-semibold text-emerald-400 mb-3">提取 USDT</div>
+                <div className="text-3xl font-bold text-white mb-2" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
+                  {totalUSDT.toFixed(2)}
+                </div>
+                <div className="text-xs text-white/40">
+                  ≈ ${totalUSDT.toFixed(2)} USDT
+                </div>
+              </div>
+            </button>
+          </div>
+
+          {/* Enhanced 明细卡片 */}
+          <div className="bg-white/[0.02] backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+            <h3 className="text-sm font-semibold text-white/70 mb-4 flex items-center gap-2">
+              <div className="w-1 h-4 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full" />
+              提取明细
+            </h3>
+            <div className="space-y-3">
+              {withdrawType === 'rwa' ? (
+                <>
+                  {rwaPrincipal > 0 && (
+                    <div className="flex items-center justify-between py-3 px-4 bg-white/[0.02] rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                          <Briefcase className="w-4 h-4 text-emerald-400" />
+                        </div>
+                        <span className="text-sm text-white/70">质押本金</span>
+                      </div>
+                      <span className="text-sm font-semibold text-white" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
+                        {rwaPrincipal.toFixed(2)} RWA
+                      </span>
+                    </div>
+                  )}
+                  {rwaYield > 0 && (
+                    <div className="flex items-center justify-between py-3 px-4 bg-white/[0.02] rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                          <TrendingUp className="w-4 h-4 text-green-400" />
+                        </div>
+                        <span className="text-sm text-white/70">RWA 收益</span>
+                      </div>
+                      <span className="text-sm font-semibold text-white" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
+                        {rwaYield.toFixed(2)} RWA
+                      </span>
+                    </div>
+                  )}
+                  {strwa > 0 && (
+                    <div className="flex items-center justify-between py-2">
+                      <div className="flex items-center gap-2">
+                        <Coins className="w-4 h-4 text-[#00ffc8]" />
+                        <span className="text-[13px] text-[rgba(238,242,255,0.7)]">stRWA 兑换</span>
+                      </div>
+                      <span className="text-[14px] font-[600] text-[#f1f5f9]" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
+                        {strwa.toFixed(2)} stRWA
+                      </span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {usdtPrincipal > 0 && (
+                    <div className="flex items-center justify-between py-2">
+                      <div className="flex items-center gap-2">
+                        <Briefcase className="w-4 h-4 text-[#00ffc8]" />
+                        <span className="text-[13px] text-[rgba(238,242,255,0.7)]">质押本金</span>
+                      </div>
+                      <span className="text-[14px] font-[600] text-[#f1f5f9]" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
+                        {usdtPrincipal.toFixed(2)} USDT
+                      </span>
+                    </div>
+                  )}
+                  {referral > 0 && (
+                    <div className="flex items-center justify-between py-2">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-[#00ffc8]" />
+                        <span className="text-[13px] text-[rgba(238,242,255,0.7)]">推荐奖励</span>
+                      </div>
+                      <span className="text-[14px] font-[600] text-[#f1f5f9]" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
+                        {referral.toFixed(2)} USDT
+                      </span>
+                    </div>
+                  )}
+                  {dividend > 0 && (
+                    <div className="flex items-center justify-between py-2">
+                      <div className="flex items-center gap-2">
+                        <Gift className="w-4 h-4 text-[#00ffc8]" />
+                        <span className="text-[13px] text-[rgba(238,242,255,0.7)]">项目分红</span>
+                      </div>
+                      <span className="text-[14px] font-[600] text-[#f1f5f9]" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
+                        {dividend.toFixed(2)} USDT
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* 一键提取按钮 */}
+          <button
+            onClick={handleQuickWithdraw}
+            disabled={!isConnected || loading || (withdrawType === 'rwa' ? !hasRWA : !hasUSDT)}
+            className="w-full h-[54px] rounded-2xl bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-[#0a0a0f] text-[15px] font-[700] flex items-center justify-center gap-2.5 hover:shadow-[0_0_30px_rgba(251,191,36,0.4)] hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0"
+            style={{ fontFamily: 'var(--font-space-grotesk)' }}
+          >
+            <Zap className="w-5 h-5" />
+            {loading ? '处理中...' : `一键提取 ${withdrawType === 'rwa' ? 'RWA' : 'USDT'}`}
+          </button>
+        </div>
+      </div>
+
+      <TransactionOverlay
+        show={showOverlay}
+        status={overlayStatus}
+        txHash={txHash}
+        amount={(withdrawType === 'rwa' ? totalRWA : totalUSDT).toString()}
+        withdrawType={withdrawType}
+        error={error}
+        onClose={() => setShowOverlay(false)}
+      />
+    </div>
+  )
+}

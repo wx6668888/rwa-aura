@@ -1,8 +1,13 @@
 import { ethers } from 'hardhat';
 
 async function main() {
-  const rwaAddress = '0x3FF4327E8e3239233aE30cA1Bb882B758e6b594B';
-  const stakingAddress = '0x6140e7fAfcC48a6635d981202A7A9931C672772B';
+  // 须与 backend/src/config/bsc-mainnet-addresses.ts 及部署脚本当前 RWA/Staking 一致
+  const rwaAddress =
+    process.env.RWA_TOKEN_ADDRESS || process.env.RWA_TOKEN || '0x9EF16931f3628f48dE1A2FfCF6f7fdf34A5240A6';
+  const stakingAddress =
+    process.env.STAKING_CONTRACT_ADDRESS ||
+    process.env.STAKING_CONTRACT ||
+    '0x1E297055ffAA3BDD2a2eD96bD86A1B89d9245f99';
   
   const rwa = await ethers.getContractAt('RWATokenWithPermit', rwaAddress);
   

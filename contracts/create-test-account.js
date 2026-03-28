@@ -1,4 +1,5 @@
 const { ethers } = require('ethers');
+const { getDeployPrivateKey } = require('./load-deploy-key');
 
 async function createTestAccount() {
   // 生成新的测试账户
@@ -12,10 +13,8 @@ async function createTestAccount() {
   
   // 连接到BSC主网
   const RPC_URL = 'https://bsc-dataseed.binance.org/';
-  const DEPLOYER_PRIVATE_KEY = '0x72de45eab3e0f215109b5beb29a62188d7784542aab9b72eeb4f82a8b8c69200';
-  
   const provider = new ethers.JsonRpcProvider(RPC_URL);
-  const deployer = new ethers.Wallet(DEPLOYER_PRIVATE_KEY, provider);
+  const deployer = new ethers.Wallet(getDeployPrivateKey(), provider);
   
   console.log('从部署地址转入BNB...');
   console.log('部署地址:', deployer.address);

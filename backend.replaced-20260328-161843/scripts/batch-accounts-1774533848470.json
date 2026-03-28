@@ -1,0 +1,142 @@
+[
+  {
+    "index": 1,
+    "address": "0x7cCAdf3eC8A702a12a615E92E15955a891350783",
+    "privateKey": "0x8c32a990a0838cd28f580c8a4c6d93f1be6e7c213dbb97800e2f4f8e227f553f",
+    "rwaAmount": 2344,
+    "rwaAmountWei": "2344000000000000000000"
+  },
+  {
+    "index": 2,
+    "address": "0x0d07382dF5F5C0839ab041141Ff95e4E9EFB05F0",
+    "privateKey": "0xf3ba6b208eda840dae5a9d73fec523e87be7f31a3610e74af9ab18299e6fbb82",
+    "rwaAmount": 5135,
+    "rwaAmountWei": "5135000000000000000000"
+  },
+  {
+    "index": 3,
+    "address": "0x1bEE2610091b49216bcd89D392aeb071a068eE79",
+    "privateKey": "0xbdfc6cb60f672f483622331b5593bc8daf27737bb9878a70a7f77c46bd0fff3e",
+    "rwaAmount": 4388,
+    "rwaAmountWei": "4388000000000000000000"
+  },
+  {
+    "index": 4,
+    "address": "0xA8f25015Ec4441D8673aeAac8edFefCFFb210f8f",
+    "privateKey": "0xf8e90d1218d30c3f398c5164788f68f28b29d18af3175884c11053d32eacfff2",
+    "rwaAmount": 6243,
+    "rwaAmountWei": "6243000000000000000000"
+  },
+  {
+    "index": 5,
+    "address": "0x9dCA15cBbB018f0E6c4c9D7d37c372A47361351C",
+    "privateKey": "0x644dbde23f63a8762360435c89a8ef2f9c10b1cd2d70c958f2154bad4db697f8",
+    "rwaAmount": 3503,
+    "rwaAmountWei": "3503000000000000000000"
+  },
+  {
+    "index": 6,
+    "address": "0xD9F4f98f939Bd768b875Aa006275848C7e371d4a",
+    "privateKey": "0xe2d1431412af2136d9942619a6c8d5577d194ad3dc1eb82e07e57c132677bea5",
+    "rwaAmount": 701,
+    "rwaAmountWei": "701000000000000000000"
+  },
+  {
+    "index": 7,
+    "address": "0x2e67B8ADc679c270A969B24A6EBf2C05dB0D3b2C",
+    "privateKey": "0x4baa7957274b4f0eac67c70a99facdb48bd8522e0f87ff3b42666290c52b2d60",
+    "rwaAmount": 4559,
+    "rwaAmountWei": "4559000000000000000000"
+  },
+  {
+    "index": 8,
+    "address": "0xAC82286A48aA50588393f6ed09159950F33fc6D9",
+    "privateKey": "0xf82d99cd6feebddca8e3b0d187ef5034b72b793ca2ee787f3ffc1741f8f47674",
+    "rwaAmount": 3250,
+    "rwaAmountWei": "3250000000000000000000"
+  },
+  {
+    "index": 9,
+    "address": "0x613131a9268fE0335B7af7cBB569E54fbE14E015",
+    "privateKey": "0x7a15660d0f0ecbffc672bc1a0a07e2939a10a4e2698ce5364b13c2446c99ad7a",
+    "rwaAmount": 325,
+    "rwaAmountWei": "325000000000000000000"
+  },
+  {
+    "index": 10,
+    "address": "0xc736e23caFCbbb554E9d145aa99013a14050bfBE",
+    "privateKey": "0x8206a43acb7cc234d99d2188094fe8ac76d80997ff0a999909240119d43ac4be",
+    "rwaAmount": 5105,
+    "rwaAmountWei": "5105000000000000000000"
+  },
+  {
+    "index": 11,
+    "address": "0x87227879b94C1Af3D9c73E02e53478ca7Ee9d4dE",
+    "privateKey": "0xa8f67a915f7d4e063d94fefaea9f547c2838ee6f6be63efe8a31dd25e03933c6",
+    "rwaAmount": 5111,
+    "rwaAmountWei": "5111000000000000000000"
+  },
+  {
+    "index": 12,
+    "address": "0x92a23f9897fa3249De20b7249f4A31d891260381",
+    "privateKey": "0x9e360eedae0b78924b577f46783ed16cc42007467a7843772a41d33b30d64909",
+    "rwaAmount": 6303,
+    "rwaAmountWei": "6303000000000000000000"
+  },
+  {
+    "index": 13,
+    "address": "0x911028A907e17d0f6792DBc45aDA823579E80739",
+    "privateKey": "0x6854272bb6b356c9c830b15cc4a0a412cf0cb535046a6f00ff4787ab6d42a970",
+    "rwaAmount": 1831,
+    "rwaAmountWei": "1831000000000000000000"
+  },
+  {
+    "index": 14,
+    "address": "0x000bB8D2b4BeE271C0a51736eA229717aA69fa3f",
+    "privateKey": "0x61f4987b0bec8061e2703fbcafb8ff565af39c888982437a5be346084d737d52",
+    "rwaAmount": 5979,
+    "rwaAmountWei": "5979000000000000000000"
+  },
+  {
+    "index": 15,
+    "address": "0xD341DBCfe748fc10e55a4205CDac851bf9CD8E82",
+    "privateKey": "0x249ae3301402c5f0e26a7dc9f41fc621d57db3df5053340aec277f8471619efd",
+    "rwaAmount": 3290,
+    "rwaAmountWei": "3290000000000000000000"
+  },
+  {
+    "index": 16,
+    "address": "0x5C2CCB85559becD60f92459E49702cBCcdcCD690",
+    "privateKey": "0xba1434eab2118c74f681785af0eec85dfc0b402dbd54ee46e523ea4c9a91e358",
+    "rwaAmount": 3940,
+    "rwaAmountWei": "3940000000000000000000"
+  },
+  {
+    "index": 17,
+    "address": "0x6F3106E66853F5813a0e9d5D7d094B5c638F97AE",
+    "privateKey": "0x56a962135bac6ae9d00b12cdc5950fe2c252b62d0ec68fca3e76eaf7f5fb4546",
+    "rwaAmount": 993,
+    "rwaAmountWei": "993000000000000000000"
+  },
+  {
+    "index": 18,
+    "address": "0x849edE44E9c878ea25865F102eef4b41F924ba61",
+    "privateKey": "0xe37f2a0d8e18c5b89ce3588487c287587fa086fee84755651dd847a5deb796f1",
+    "rwaAmount": 4212,
+    "rwaAmountWei": "4212000000000000000000"
+  },
+  {
+    "index": 19,
+    "address": "0x90d264212061ae0F5911083B6BdA872fB929D4dC",
+    "privateKey": "0xcde8d97c5ace7e1061d7b34bf87a767275d87b487df6bd8f2e72f972b8810db2",
+    "rwaAmount": 1232,
+    "rwaAmountWei": "1232000000000000000000"
+  },
+  {
+    "index": 20,
+    "address": "0x192946E88Ff7645DF77a06Da9bD7b4c94adD5E83",
+    "privateKey": "0xbb7eb86b88197a964404d59b286f963528dd9aa2e03868fae1d618383528c4e6",
+    "rwaAmount": 6482,
+    "rwaAmountWei": "6482000000000000000000"
+  }
+]

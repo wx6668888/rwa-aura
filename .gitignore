@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+!.env.deploy.example
 
 .git/
 .DS_Store
@@ -27,4 +28,10 @@ frontend/dist-capacitor/
 
 *.sqlite
 *.db
+
+# 本地部署输出（含地址，勿提交）
+scripts/last-staking-deploy.json
+
+# 视频临时备份，不纳入版本库
+frontend/public/videos/*.bak*
 

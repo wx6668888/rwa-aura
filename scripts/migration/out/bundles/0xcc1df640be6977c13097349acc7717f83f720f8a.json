@@ -1,0 +1,90 @@
+{
+  "meta": {
+    "legacyStaking": "0x8FA4A4BE954a80c940623DDa1ed6e3D50FC25175",
+    "user": "0xcc1DF640be6977c13097349aCc7717f83F720F8a",
+    "legacyStakesCounter": "0"
+  },
+  "readable": {
+    "userInfo": {
+      "totalStaked": "0",
+      "rwaPending": "0",
+      "usdtRewards": "0",
+      "lastWithdrawTime": "0",
+      "referrer": "0xCD5b97505499B1575e481446384430bb159851b6",
+      "firstStakeTime": "0",
+      "nodeLevel": 0,
+      "isActive": false
+    },
+    "rwaInfo": {
+      "totalStakedRWA": "500000000000000000000",
+      "rwaPending": "5200000000000000500",
+      "lastWithdrawTime": "0",
+      "referrer": "0xCD5b97505499B1575e481446384430bb159851b6",
+      "firstStakeTime": "1773942952",
+      "nodeLevel": 1,
+      "isActive": true
+    },
+    "usdtLocksCount": 0,
+    "rwaLocksCount": 2,
+    "stakeHistoryCount": 2
+  },
+  "migrationImportUserBundleArgs": {
+    "user": "0xcc1DF640be6977c13097349aCc7717f83F720F8a",
+    "uInfo": [
+      "0",
+      "0",
+      "0",
+      "0",
+      "0xCD5b97505499B1575e481446384430bb159851b6",
+      "0",
+      0,
+      false
+    ],
+    "rInfo": [
+      "500000000000000000000",
+      "5200000000000000500",
+      "0",
+      "0xCD5b97505499B1575e481446384430bb159851b6",
+      "1773942952",
+      1,
+      true
+    ],
+    "usdtLocks": [],
+    "rwaLocks": [
+      {
+        "stakeId": "4",
+        "totalAmount": "300000000000000000000",
+        "principalAmount": "150000000000000000000",
+        "lockStartTime": "1773942952",
+        "lockEndTime": "1776534952",
+        "isWithdrawn": false,
+        "lockPeriod": "30"
+      },
+      {
+        "stakeId": "5",
+        "totalAmount": "200000000000000000000",
+        "principalAmount": "100000000000000000000",
+        "lockStartTime": "1773943531",
+        "lockEndTime": "1776535531",
+        "isWithdrawn": false,
+        "lockPeriod": "30"
+      }
+    ],
+    "usdtFlexPrincipal_": "0",
+    "usdtFlexTotal_": "0",
+    "rwaFlexPrincipal_": "0",
+    "rwaFlexTotal_": "0",
+    "hist": [
+      [
+        "300000000000000000000",
+        "1773942952"
+      ],
+      [
+        "200000000000000000000",
+        "1773943531"
+      ]
+    ],
+    "globalDeltaTotalStaked": "0",
+    "globalDeltaTotalStakedRWA": "500000000000000000000"
+  }
+}

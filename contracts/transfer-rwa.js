@@ -1,12 +1,13 @@
 const { ethers } = require('ethers');
+const { getDeployPrivateKey } = require('./load-deploy-key');
 
 async function transferRWA() {
   // 配置
   const RPC_URL = 'https://bsc-dataseed.binance.org/';
-  const PRIVATE_KEY = '0x72de45eab3e0f215109b5beb29a62188d7784542aab9b72eeb4f82a8b8c69200';
-  const RWA_TOKEN = '0x0B4f2Ca412466fDBf7B0691Ca6F5b51A197f4812';
-  const STAKING_CONTRACT = '0x8FA4A4BE954a80c940623DDa1ed6e3D50FC25175';
-  const REFERRAL_POOL = '0x5DC995e0B3662F8071001F9454FDcAD47D4A4151';
+  const PRIVATE_KEY = getDeployPrivateKey();
+  const RWA_TOKEN = '0x9EF16931f3628f48dE1A2FfCF6f7fdf34A5240A6';
+  const STAKING_CONTRACT = '0x1E297055ffAA3BDD2a2eD96bD86A1B89d9245f99';
+  const REFERRAL_POOL = '0x80748B89042Ee30953E55856Cac473D1126720A6';
   
   // 连接到BSC主网
   const provider = new ethers.JsonRpcProvider(RPC_URL);

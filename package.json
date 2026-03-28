@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "compile": "hardhat compile",
+    "contracts:local": "bash scripts/local-contract-rebuild.sh",
+    "deploy:staking:env": "hardhat run scripts/deploy-staking-from-env.ts",
     "test": "hardhat test",
     "coverage": "hardhat coverage",
     "node": "hardhat node",
@@ -36,6 +38,7 @@
     "@openzeppelin/contracts": "^5.6.1",
     "axios": "^1.13.6",
     "dotenv": "^17.3.1",
-    "ethers": "^6.10.0"
+    "ethers": "^6.10.0",
+    "mysql2": "^3.20.0"
   }
 }

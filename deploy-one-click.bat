@@ -4,14 +4,14 @@ echo BSC主网一键部署脚本
 echo ========================================
 echo.
 
-REM 设置私钥（仅在本地使用）
-set DEPLOY_PRIVATE_KEY=72de45eab3e0f215109b5beb29a62188d7784542aab9b72eeb4f82a8b8c69200
-set BACKEND_ADDRESS=0x08Ea66321c4dd47468c3aDc55d06c5De7129A292
+if not exist .env.deploy if not exist .env (
+  echo [错误] 未找到 .env 或 .env.deploy
+  echo 请创建并配置 DEPLOY_PRIVATE_KEY 或 PRIVATE_KEY（勿提交到 Git）
+  pause
+  exit /b 1
+)
 
-echo 1. 创建环境变量文件...
-echo DEPLOY_PRIVATE_KEY=%DEPLOY_PRIVATE_KEY%> .env.deploy
-echo BACKEND_ADDRESS=%BACKEND_ADDRESS%>> .env.deploy
-echo ✓ 环境变量文件已创建
+echo 1. Hardhat 将从 .env / .env.deploy 加载配置（勿在 bat 中写私钥）
 echo.
 
 echo 2. 编译合约...

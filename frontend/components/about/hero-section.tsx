@@ -70,7 +70,7 @@ export function HeroSection() {
                 <div className="font-[family-name:var(--font-jetbrains-mono)] text-2xl font-extrabold text-[#00f5d4] sm:text-[32px]">
                   {tvlUsdtText}
                 </div>
-                <div className="mt-1 text-[10px] text-[#64748b] sm:text-xs">{t('about.stat1Label')}</div>
+                <div className="mt-1 whitespace-nowrap text-[10px] text-[#64748b] sm:text-xs">{t('about.stat1Label')}</div>
               </div>
               <div className="text-center sm:text-left">
                 <div className="font-[family-name:var(--font-jetbrains-mono)] text-2xl font-extrabold text-[#00f5d4] sm:text-[32px]">
@@ -126,7 +126,7 @@ export function HeroSection() {
               <div className="flex h-[280px] w-full max-w-7xl px-4 items-center justify-center">
                 <div className="relative h-[280px] w-full max-w-[320px] flex items-center justify-center">
                   <LottieAnimation
-                    src="/动画/Data center.json"
+                    src="/动画/data-center.json"
                     loop
                     autoplay
                     width="100%"
@@ -140,7 +140,7 @@ export function HeroSection() {
             <div className="hidden lg:flex items-center justify-center h-[380px] w-full max-w-[420px]">
               <div className="w-full h-full max-h-[380px] flex items-center justify-center">
                 <LottieAnimation
-                  src="/动画/Data center.json"
+                  src="/动画/data-center.json"
                   loop
                   autoplay
                   width="100%"

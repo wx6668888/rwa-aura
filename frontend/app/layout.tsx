@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 import { Inter, Space_Grotesk, JetBrains_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
@@ -55,6 +55,13 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
 }
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#05050a',
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -62,9 +69,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh" suppressHydrationWarning>
-      <head />
+      <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="RWA Protocol" />
+      </head>
       <body
-        className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} font-sans antialiased`}
+        className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} font-sans antialiased overflow-x-hidden`}
       >
         {/* 在最早阶段执行，抑制 MetaMask 扩展与 Next.js 热重载冲突的错误 */}
         <Script

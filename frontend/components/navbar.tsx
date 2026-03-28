@@ -37,6 +37,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
 import { LanguageSwitcher } from '@/components/language-switcher'
+import { WalletDetailsModal } from '@/components/wallet-details-modal'
 
 // 导航分组配置
 type NavItem = {
@@ -258,8 +259,13 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [hoveredGroup, setHoveredGroup] = useState<string | null>(null)
   const [isScrolled, setIsScrolled] = useState(false)
+  const [isHidden, setIsHidden] = useState(false)
+  const [walletModalOpen, setWalletModalOpen] = useState(false)
+  const [openChainModalRef, setOpenChainModalRef] = useState<(() => void) | undefined>(undefined)
   const pathname = usePathname()
-  const hoverTimeoutRef = useRef<NodeJS.Timeout>()
+  const allowHideOnScroll = pathname === '/'
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const lastScrollYRef = useRef(0)
 
   // 滚动监听：只在跨过阈值时切换一次，避免 Android WebView 频繁 setState 造成滚动抖动
   useEffect(() => {
@@ -267,8 +273,23 @@ export function Navbar() {
     const onScroll = () => {
       if (raf) cancelAnimationFrame(raf)
       raf = requestAnimationFrame(() => {
-        const next = window.scrollY > 10
+        const currentY = window.scrollY
+        const next = currentY > 10
         setIsScrolled((prev) => (prev === next ? prev : next))
+        if (!allowHideOnScroll) {
+          setIsHidden(false)
+          lastScrollYRef.current = currentY
+          return
+        }
+        const delta = currentY - lastScrollYRef.current
+        if (mobileOpen) {
+          setIsHidden(false)
+        } else if (currentY < 24 || delta < -6) {
+          setIsHidden(false)
+        } else if (delta > 6 && currentY > 80) {
+          setIsHidden(true)
+        }
+        lastScrollYRef.current = currentY
       })
     }
 
@@ -278,7 +299,7 @@ export function Navbar() {
       window.removeEventListener('scroll', onScroll)
       if (raf) cancelAnimationFrame(raf)
     }
-  }, [])
+  }, [mobileOpen, allowHideOnScroll])
 
   function isActive(href: string) {
     if (href === '/') return pathname === '/'
@@ -322,7 +343,10 @@ export function Navbar() {
 
   return (
     <>
-      <header className={`fixed top-0 left-0 right-0 z-[100] h-16 transition-all duration-300 ${headerBg}`}>
+      <header
+        className={`fixed left-0 right-0 z-[100] h-16 transition-opacity duration-300 ${isHidden ? 'pointer-events-none opacity-0' : 'opacity-100'} ${headerBg}`}
+        style={{ top: 'var(--app-safe-top, 0px)' }}
+      >
         <nav className="mx-auto flex h-full max-w-7xl items-center justify-between px-4 lg:px-8">
           {/* Left: Logo + Language Switcher（桌面端单行不换行） */}
           <div className="flex items-center gap-3 shrink-0 min-w-0">
@@ -604,7 +628,7 @@ export function Navbar() {
                           <button
                             onClick={openChainModal}
                             type="button"
-                            className={`${isSwapPage ? 'flex' : 'hidden md:flex'} items-center gap-2 rounded-full border border-[#ffffff0d] bg-[#0d0d1499] px-2.5 py-2 text-sm font-medium text-[#f1f5f9] backdrop-blur-xl transition-all hover:border-[#00f5d4]/30 whitespace-nowrap shrink-0 max-w-[120px] sm:max-w-[140px] truncate`}
+                            className={`${isSwapPage ? 'hidden' : 'hidden md:flex'} items-center gap-2 rounded-full border border-[#ffffff0d] bg-[#0d0d1499] px-2.5 py-2 text-sm font-medium text-[#f1f5f9] backdrop-blur-xl transition-all hover:border-[#00f5d4]/30 whitespace-nowrap shrink-0 max-w-[120px] sm:max-w-[140px] truncate`}
                             title={chain.name ?? undefined}
                           >
                             {chain.hasIcon && (
@@ -631,7 +655,14 @@ export function Navbar() {
                           </button>
 
                           <button
-                            onClick={openAccountModal}
+                            onClick={() => {
+                              setOpenChainModalRef(() => openChainModal)
+                              setWalletModalOpen(true)
+                              setTimeout(() => {
+                                const modal = document.querySelector('[data-wallet-details-modal="1"]')
+                                if (!modal) openAccountModal()
+                              }, 0)
+                            }}
                             type="button"
                             className="rounded-full bg-[#00f5d4] px-4 py-2 font-[family-name:var(--font-space-grotesk)] text-sm font-semibold text-[#05050a] transition-all hover:scale-[1.02] hover:brightness-110 whitespace-nowrap shrink-0"
                             title={account.displayName}
@@ -717,6 +748,11 @@ export function Navbar() {
           </div>
         </>
       )}
+      <WalletDetailsModal
+        open={walletModalOpen}
+        onClose={() => setWalletModalOpen(false)}
+        onOpenChainModal={openChainModalRef}
+      />
     </>
   )
 }

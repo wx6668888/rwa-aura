@@ -1,4 +1,5 @@
 const { ethers } = require('hardhat');
+const { getDeployPrivateKey } = require('./load-deploy-key');
 
 async function deployAdditionalContracts() {
   console.log('=== 部署额外合约 ===');
@@ -6,12 +7,10 @@ async function deployAdditionalContracts() {
   
   // 配置
   const USDT_ADDRESS = '0x55d398326f99059fF775485246999027B3197955';
-  const RWA_ADDRESS = '0x0B4f2Ca412466fDBf7B0691Ca6F5b51A197f4812';
-  const TREASURY_ADDRESS = '0x08Ea66321c4dd47468c3aDc55d06c5De7129A292';
+  const RWA_ADDRESS = '0x9EF16931f3628f48dE1A2FfCF6f7fdf34A5240A6';
+  const TREASURY_ADDRESS = '0x8927e74e0fCaED1D4C87116C805464800651f222';
   
-  // 创建部署钱包
-  const PRIVATE_KEY = '0x72de45eab3e0f215109b5beb29a62188d7784542aab9b72eeb4f82a8b8c69200';
-  const deployer = new ethers.Wallet(PRIVATE_KEY, ethers.provider);
+  const deployer = new ethers.Wallet(getDeployPrivateKey(), ethers.provider);
   
   console.log('部署账户:', deployer.address);
   const balance = await ethers.provider.getBalance(deployer.address);

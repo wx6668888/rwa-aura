@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowUpRight } from 'lucide-react'
 import { useLocale } from '@/components/locale-provider'
+import { useTranslation } from '@/lib/i18n'
 import { BSC_BLOCK_EXPLORER } from '@/lib/contracts/addresses'
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
 
@@ -29,6 +30,7 @@ function formatTokenAmount(n: number, maxFrac = 4) {
 
 export function HomeLatestStakes() {
   const { locale } = useLocale()
+  const { t } = useTranslation(locale)
   const reducedMotion = usePrefersReducedMotion()
   const sectionRef = useRef<HTMLElement | null>(null)
   const [inView, setInView] = useState(false)
@@ -75,7 +77,7 @@ export function HomeLatestStakes() {
           observer.disconnect()
         }
       },
-      { threshold: 0.12, rootMargin: '0px 0px -8% 0px' }
+      { threshold: 0.08, rootMargin: '0px 0px -5% 0px' }
     )
     observer.observe(el)
     return () => observer.disconnect()
@@ -86,12 +88,15 @@ export function HomeLatestStakes() {
   const timeLocale =
     locale === 'zh' ? 'zh-CN' : locale === 'ja' ? 'ja-JP' : locale === 'ko' ? 'ko-KR' : 'en-US'
 
+  const showList = !loading && !error && rows.length > 0
+
   return (
-    <section
-      ref={sectionRef}
-      className="relative overflow-hidden border-y border-border-subtle bg-[#08080f]/95 py-10 lg:py-14"
-    >
+    <section ref={sectionRef} className="relative overflow-x-hidden border-y border-border-subtle py-10 lg:py-14">
       <div className="relative mx-auto max-w-3xl px-4 lg:px-8">
+        <h2 className="mb-6 text-center font-[family-name:var(--font-space-grotesk)] text-xl font-bold tracking-tight text-white sm:mb-8 sm:text-2xl lg:text-left">
+          {t('home.recentStakesTitle')}
+        </h2>
+
         {loading ? (
           <div className="flex flex-col gap-5">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -101,17 +106,23 @@ export function HomeLatestStakes() {
               />
             ))}
           </div>
-        ) : error && rows.length === 0 ? null : rows.length === 0 ? null : (
+        ) : error && rows.length === 0 ? (
+          <p className="text-center text-sm text-white/45">{t('home.recentStakesError')}</p>
+        ) : rows.length === 0 ? (
+          <p className="text-center text-sm text-white/45">{t('home.recentStakesEmpty')}</p>
+        ) : null}
+
+        {showList ? (
           <div className="flex flex-col gap-5 sm:gap-6">
             {rows.map((row, i) => {
               const fromLeft = i % 2 === 0
               const slideOut = reducedMotion
                 ? 'translate-x-0'
                 : fromLeft
-                  ? '-translate-x-10 sm:-translate-x-14'
-                  : 'translate-x-10 sm:translate-x-14'
+                  ? '-translate-x-[28px] sm:-translate-x-10'
+                  : 'translate-x-[28px] sm:translate-x-10'
               const visible = inView ? 'translate-x-0 opacity-100' : `${slideOut} opacity-0`
-              const delayMs = inView ? i * 200 : 0
+              const delayMs = inView ? i * 280 : 0
               const ts = row.timestampMs > 0 ? new Date(row.timestampMs) : null
               const timeStr = ts
                 ? ts.toLocaleString(timeLocale, {
@@ -127,15 +138,12 @@ export function HomeLatestStakes() {
               return (
                 <article
                   key={`${row.txHash ?? 'nohash'}-${row.userAddress}-${i}-${row.timestampMs}`}
-                  className={`relative overflow-hidden rounded-lg border border-white/[0.14] bg-white/[0.07] py-3 backdrop-blur-xl transition-[transform,opacity,box-shadow] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-[0_0_42px_rgba(0,255,200,0.16)] ${visible}`}
+                  className={`relative overflow-hidden rounded-lg border border-white/[0.12] bg-white/[0.05] py-3 backdrop-blur-xl transition-[transform,opacity] duration-[2000ms] ease-out ${visible}`}
                   style={{
                     transitionDelay: `${delayMs}ms`,
-                    boxShadow: `
-                      0 0 0 1px rgba(0,255,200,0.07),
-                      0 0 36px -4px rgba(0,255,200,0.14),
-                      0 12px 40px rgba(0,0,0,0.45),
-                      inset 0 1px 0 rgba(255,255,255,0.08)
-                    `,
+                    boxShadow: inView
+                      ? '0 0 0 1px rgba(0,255,200,0.1), 0 0 28px rgba(0,255,200,0.18), 0 10px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)'
+                      : '0 8px 24px rgba(0,0,0,0.35)',
                   }}
                 >
                   {txUrl ? (
@@ -167,7 +175,7 @@ export function HomeLatestStakes() {
               )
             })}
           </div>
-        )}
+        ) : null}
       </div>
     </section>
   )

@@ -1,0 +1,32 @@
+@keyframes brandMarquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.track {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  width: max-content;
+  animation: brandMarquee 28s linear infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track {
+    animation: none;
+  }
+}
+
+.strip {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+}

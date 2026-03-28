@@ -9,9 +9,18 @@ export function CapacitorNativeRuntime() {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
 
-    // Keep UI consistent with dark app shell（失败不冒泡，避免未捕获 Promise）
-    void StatusBar.setStyle({ style: Style.Dark }).catch(() => {})
-    void StatusBar.setBackgroundColor({ color: '#0a0a0f' }).catch(() => {})
+    const platform = Capacitor.getPlatform()
+
+    if (platform === 'ios') {
+      // iOS：沉浸模式，隐藏状态栏，避免与 WebView 顶部重叠
+      void StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {})
+      void StatusBar.hide().catch(() => {})
+    } else {
+      void StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {})
+      void StatusBar.setStyle({ style: Style.Dark }).catch(() => {})
+      void StatusBar.setBackgroundColor({ color: '#0a0a0f' }).catch(() => {})
+      void StatusBar.show().catch(() => {})
+    }
 
     // Native back button: if no history, exit app.
     const sub = CapApp.addListener('backButton', ({ canGoBack }) => {

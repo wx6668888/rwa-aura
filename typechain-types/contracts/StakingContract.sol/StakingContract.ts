@@ -23,6 +23,133 @@ import type {
   TypedContractMethod,
 } from "../../common";
 
+export declare namespace StakingContract {
+  export type UserInfoStruct = {
+    totalStaked: BigNumberish;
+    rwaPending: BigNumberish;
+    usdtRewards: BigNumberish;
+    lastWithdrawTime: BigNumberish;
+    referrer: AddressLike;
+    firstStakeTime: BigNumberish;
+    nodeLevel: BigNumberish;
+    isActive: boolean;
+  };
+
+  export type UserInfoStructOutput = [
+    totalStaked: bigint,
+    rwaPending: bigint,
+    usdtRewards: bigint,
+    lastWithdrawTime: bigint,
+    referrer: string,
+    firstStakeTime: bigint,
+    nodeLevel: bigint,
+    isActive: boolean
+  ] & {
+    totalStaked: bigint;
+    rwaPending: bigint;
+    usdtRewards: bigint;
+    lastWithdrawTime: bigint;
+    referrer: string;
+    firstStakeTime: bigint;
+    nodeLevel: bigint;
+    isActive: boolean;
+  };
+
+  export type RWAStakeInfoStruct = {
+    totalStakedRWA: BigNumberish;
+    rwaPending: BigNumberish;
+    lastWithdrawTime: BigNumberish;
+    referrer: AddressLike;
+    firstStakeTime: BigNumberish;
+    nodeLevel: BigNumberish;
+    isActive: boolean;
+  };
+
+  export type RWAStakeInfoStructOutput = [
+    totalStakedRWA: bigint,
+    rwaPending: bigint,
+    lastWithdrawTime: bigint,
+    referrer: string,
+    firstStakeTime: bigint,
+    nodeLevel: bigint,
+    isActive: boolean
+  ] & {
+    totalStakedRWA: bigint;
+    rwaPending: bigint;
+    lastWithdrawTime: bigint;
+    referrer: string;
+    firstStakeTime: bigint;
+    nodeLevel: bigint;
+    isActive: boolean;
+  };
+
+  export type USDTLockedPrincipalStruct = {
+    stakeId: BigNumberish;
+    totalAmount: BigNumberish;
+    principalAmount: BigNumberish;
+    lockStartTime: BigNumberish;
+    lockEndTime: BigNumberish;
+    isWithdrawn: boolean;
+    lockPeriod: BigNumberish;
+  };
+
+  export type USDTLockedPrincipalStructOutput = [
+    stakeId: bigint,
+    totalAmount: bigint,
+    principalAmount: bigint,
+    lockStartTime: bigint,
+    lockEndTime: bigint,
+    isWithdrawn: boolean,
+    lockPeriod: bigint
+  ] & {
+    stakeId: bigint;
+    totalAmount: bigint;
+    principalAmount: bigint;
+    lockStartTime: bigint;
+    lockEndTime: bigint;
+    isWithdrawn: boolean;
+    lockPeriod: bigint;
+  };
+
+  export type RWALockedPrincipalStruct = {
+    stakeId: BigNumberish;
+    totalAmount: BigNumberish;
+    principalAmount: BigNumberish;
+    lockStartTime: BigNumberish;
+    lockEndTime: BigNumberish;
+    isWithdrawn: boolean;
+    lockPeriod: BigNumberish;
+  };
+
+  export type RWALockedPrincipalStructOutput = [
+    stakeId: bigint,
+    totalAmount: bigint,
+    principalAmount: bigint,
+    lockStartTime: bigint,
+    lockEndTime: bigint,
+    isWithdrawn: boolean,
+    lockPeriod: bigint
+  ] & {
+    stakeId: bigint;
+    totalAmount: bigint;
+    principalAmount: bigint;
+    lockStartTime: bigint;
+    lockEndTime: bigint;
+    isWithdrawn: boolean;
+    lockPeriod: bigint;
+  };
+
+  export type StakeRecordStruct = {
+    amount: BigNumberish;
+    timestamp: BigNumberish;
+  };
+
+  export type StakeRecordStructOutput = [amount: bigint, timestamp: bigint] & {
+    amount: bigint;
+    timestamp: bigint;
+  };
+}
+
 export interface StakingContractInterface extends Interface {
   getFunction(
     nameOrSignature:
@@ -62,6 +189,12 @@ export interface StakingContractInterface extends Interface {
       | "metaStakeRWA"
       | "metaStakeRWAWithPermit"
       | "metaStakeWithPermit"
+      | "migrationEnabled"
+      | "migrationImportUserBundle"
+      | "migrationSeen"
+      | "migrationSetDynamicRewardsPaid"
+      | "migrationSetGlobalTotals"
+      | "migrationSetStakesCounter"
       | "nonces"
       | "owner"
       | "pause"
@@ -77,8 +210,10 @@ export interface StakingContractInterface extends Interface {
       | "rwaMaturedStRwaBurned"
       | "rwaStakes"
       | "rwaToken"
+      | "setBackendAddress"
       | "setBuybackAddress"
       | "setMaxRewardPerCall"
+      | "setMigrationEnabled"
       | "setReferralRewardPool"
       | "setStRWAToken"
       | "setWhitelist"
@@ -87,6 +222,7 @@ export interface StakingContractInterface extends Interface {
       | "stakeHistory"
       | "stakeLockPeriods"
       | "stakeRWA"
+      | "stakesCounter"
       | "totalDynamicRewardsPaid"
       | "totalStaked"
       | "totalStakedRWA"
@@ -122,6 +258,8 @@ export interface StakingContractInterface extends Interface {
       | "FlexibleUSDTPrincipalWithdrawn"
       | "MaxRewardPerCallUpdated"
       | "MetaTransactionExecuted"
+      | "MigrationToggled"
+      | "MigrationUserImported"
       | "NodeLevelUpdated"
       | "OwnershipTransferred"
       | "Paused"
@@ -319,6 +457,43 @@ export interface StakingContractInterface extends Interface {
       BytesLike
     ]
   ): string;
+  encodeFunctionData(
+    functionFragment: "migrationEnabled",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "migrationImportUserBundle",
+    values: [
+      AddressLike,
+      StakingContract.UserInfoStruct,
+      StakingContract.RWAStakeInfoStruct,
+      StakingContract.USDTLockedPrincipalStruct[],
+      StakingContract.RWALockedPrincipalStruct[],
+      BigNumberish,
+      BigNumberish,
+      BigNumberish,
+      BigNumberish,
+      StakingContract.StakeRecordStruct[],
+      BigNumberish,
+      BigNumberish
+    ]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "migrationSeen",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "migrationSetDynamicRewardsPaid",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "migrationSetGlobalTotals",
+    values: [BigNumberish, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "migrationSetStakesCounter",
+    values: [BigNumberish]
+  ): string;
   encodeFunctionData(functionFragment: "nonces", values: [AddressLike]): string;
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(functionFragment: "pause", values?: undefined): string;
@@ -365,12 +540,20 @@ export interface StakingContractInterface extends Interface {
   ): string;
   encodeFunctionData(functionFragment: "rwaToken", values?: undefined): string;
   encodeFunctionData(
+    functionFragment: "setBackendAddress",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(
     functionFragment: "setBuybackAddress",
     values: [AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "setMaxRewardPerCall",
     values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "setMigrationEnabled",
+    values: [boolean]
   ): string;
   encodeFunctionData(
     functionFragment: "setReferralRewardPool",
@@ -403,6 +586,10 @@ export interface StakingContractInterface extends Interface {
   encodeFunctionData(
     functionFragment: "stakeRWA",
     values: [BigNumberish, AddressLike, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "stakesCounter",
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "totalDynamicRewardsPaid",
@@ -625,6 +812,30 @@ export interface StakingContractInterface extends Interface {
     functionFragment: "metaStakeWithPermit",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(
+    functionFragment: "migrationEnabled",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "migrationImportUserBundle",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "migrationSeen",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "migrationSetDynamicRewardsPaid",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "migrationSetGlobalTotals",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "migrationSetStakesCounter",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "nonces", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "pause", data: BytesLike): Result;
@@ -668,11 +879,19 @@ export interface StakingContractInterface extends Interface {
   decodeFunctionResult(functionFragment: "rwaStakes", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "rwaToken", data: BytesLike): Result;
   decodeFunctionResult(
+    functionFragment: "setBackendAddress",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "setBuybackAddress",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "setMaxRewardPerCall",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "setMigrationEnabled",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -698,6 +917,10 @@ export interface StakingContractInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "stakeRWA", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "stakesCounter",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "totalDynamicRewardsPaid",
     data: BytesLike
@@ -928,6 +1151,46 @@ export namespace MetaTransactionExecutedEvent {
     user: string;
     relayer: string;
     action: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace MigrationToggledEvent {
+  export type InputTuple = [enabled: boolean];
+  export type OutputTuple = [enabled: boolean];
+  export interface OutputObject {
+    enabled: boolean;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace MigrationUserImportedEvent {
+  export type InputTuple = [
+    user: AddressLike,
+    usdtLockCount: BigNumberish,
+    rwaLockCount: BigNumberish,
+    globalDeltaTotalStaked: BigNumberish,
+    globalDeltaTotalStakedRWA: BigNumberish
+  ];
+  export type OutputTuple = [
+    user: string,
+    usdtLockCount: bigint,
+    rwaLockCount: bigint,
+    globalDeltaTotalStaked: bigint,
+    globalDeltaTotalStakedRWA: bigint
+  ];
+  export interface OutputObject {
+    user: string;
+    usdtLockCount: bigint;
+    rwaLockCount: bigint;
+    globalDeltaTotalStaked: bigint;
+    globalDeltaTotalStakedRWA: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -1568,6 +1831,47 @@ export interface StakingContract extends BaseContract {
     "nonpayable"
   >;
 
+  migrationEnabled: TypedContractMethod<[], [boolean], "view">;
+
+  migrationImportUserBundle: TypedContractMethod<
+    [
+      user: AddressLike,
+      uInfo: StakingContract.UserInfoStruct,
+      rInfo: StakingContract.RWAStakeInfoStruct,
+      usdtLocks: StakingContract.USDTLockedPrincipalStruct[],
+      rwaLocks: StakingContract.RWALockedPrincipalStruct[],
+      usdtFlexPrincipal_: BigNumberish,
+      usdtFlexTotal_: BigNumberish,
+      rwaFlexPrincipal_: BigNumberish,
+      rwaFlexTotal_: BigNumberish,
+      hist: StakingContract.StakeRecordStruct[],
+      globalDeltaTotalStaked: BigNumberish,
+      globalDeltaTotalStakedRWA: BigNumberish
+    ],
+    [void],
+    "nonpayable"
+  >;
+
+  migrationSeen: TypedContractMethod<[arg0: AddressLike], [boolean], "view">;
+
+  migrationSetDynamicRewardsPaid: TypedContractMethod<
+    [newPaid: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
+  migrationSetGlobalTotals: TypedContractMethod<
+    [newTotalStaked: BigNumberish, newTotalStakedRWA: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
+  migrationSetStakesCounter: TypedContractMethod<
+    [minNext: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
   nonces: TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
 
   owner: TypedContractMethod<[], [string], "view">;
@@ -1646,6 +1950,12 @@ export interface StakingContract extends BaseContract {
 
   rwaToken: TypedContractMethod<[], [string], "view">;
 
+  setBackendAddress: TypedContractMethod<
+    [newBackend: AddressLike],
+    [void],
+    "nonpayable"
+  >;
+
   setBuybackAddress: TypedContractMethod<
     [_buybackAddress: AddressLike],
     [void],
@@ -1654,6 +1964,12 @@ export interface StakingContract extends BaseContract {
 
   setMaxRewardPerCall: TypedContractMethod<
     [newLimit: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
+  setMigrationEnabled: TypedContractMethod<
+    [enabled: boolean],
     [void],
     "nonpayable"
   >;
@@ -1697,6 +2013,8 @@ export interface StakingContract extends BaseContract {
     [void],
     "nonpayable"
   >;
+
+  stakesCounter: TypedContractMethod<[], [bigint], "view">;
 
   totalDynamicRewardsPaid: TypedContractMethod<[], [bigint], "view">;
 
@@ -2104,6 +2422,45 @@ export interface StakingContract extends BaseContract {
     "nonpayable"
   >;
   getFunction(
+    nameOrSignature: "migrationEnabled"
+  ): TypedContractMethod<[], [boolean], "view">;
+  getFunction(
+    nameOrSignature: "migrationImportUserBundle"
+  ): TypedContractMethod<
+    [
+      user: AddressLike,
+      uInfo: StakingContract.UserInfoStruct,
+      rInfo: StakingContract.RWAStakeInfoStruct,
+      usdtLocks: StakingContract.USDTLockedPrincipalStruct[],
+      rwaLocks: StakingContract.RWALockedPrincipalStruct[],
+      usdtFlexPrincipal_: BigNumberish,
+      usdtFlexTotal_: BigNumberish,
+      rwaFlexPrincipal_: BigNumberish,
+      rwaFlexTotal_: BigNumberish,
+      hist: StakingContract.StakeRecordStruct[],
+      globalDeltaTotalStaked: BigNumberish,
+      globalDeltaTotalStakedRWA: BigNumberish
+    ],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "migrationSeen"
+  ): TypedContractMethod<[arg0: AddressLike], [boolean], "view">;
+  getFunction(
+    nameOrSignature: "migrationSetDynamicRewardsPaid"
+  ): TypedContractMethod<[newPaid: BigNumberish], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "migrationSetGlobalTotals"
+  ): TypedContractMethod<
+    [newTotalStaked: BigNumberish, newTotalStakedRWA: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "migrationSetStakesCounter"
+  ): TypedContractMethod<[minNext: BigNumberish], [void], "nonpayable">;
+  getFunction(
     nameOrSignature: "nonces"
   ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
   getFunction(
@@ -2189,11 +2546,17 @@ export interface StakingContract extends BaseContract {
     nameOrSignature: "rwaToken"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
+    nameOrSignature: "setBackendAddress"
+  ): TypedContractMethod<[newBackend: AddressLike], [void], "nonpayable">;
+  getFunction(
     nameOrSignature: "setBuybackAddress"
   ): TypedContractMethod<[_buybackAddress: AddressLike], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "setMaxRewardPerCall"
   ): TypedContractMethod<[newLimit: BigNumberish], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "setMigrationEnabled"
+  ): TypedContractMethod<[enabled: boolean], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "setReferralRewardPool"
   ): TypedContractMethod<[_pool: AddressLike], [void], "nonpayable">;
@@ -2234,6 +2597,9 @@ export interface StakingContract extends BaseContract {
     [void],
     "nonpayable"
   >;
+  getFunction(
+    nameOrSignature: "stakesCounter"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
     nameOrSignature: "totalDynamicRewardsPaid"
   ): TypedContractMethod<[], [bigint], "view">;
@@ -2421,6 +2787,20 @@ export interface StakingContract extends BaseContract {
     MetaTransactionExecutedEvent.InputTuple,
     MetaTransactionExecutedEvent.OutputTuple,
     MetaTransactionExecutedEvent.OutputObject
+  >;
+  getEvent(
+    key: "MigrationToggled"
+  ): TypedContractEvent<
+    MigrationToggledEvent.InputTuple,
+    MigrationToggledEvent.OutputTuple,
+    MigrationToggledEvent.OutputObject
+  >;
+  getEvent(
+    key: "MigrationUserImported"
+  ): TypedContractEvent<
+    MigrationUserImportedEvent.InputTuple,
+    MigrationUserImportedEvent.OutputTuple,
+    MigrationUserImportedEvent.OutputObject
   >;
   getEvent(
     key: "NodeLevelUpdated"
@@ -2640,6 +3020,28 @@ export interface StakingContract extends BaseContract {
       MetaTransactionExecutedEvent.InputTuple,
       MetaTransactionExecutedEvent.OutputTuple,
       MetaTransactionExecutedEvent.OutputObject
+    >;
+
+    "MigrationToggled(bool)": TypedContractEvent<
+      MigrationToggledEvent.InputTuple,
+      MigrationToggledEvent.OutputTuple,
+      MigrationToggledEvent.OutputObject
+    >;
+    MigrationToggled: TypedContractEvent<
+      MigrationToggledEvent.InputTuple,
+      MigrationToggledEvent.OutputTuple,
+      MigrationToggledEvent.OutputObject
+    >;
+
+    "MigrationUserImported(address,uint256,uint256,uint256,uint256)": TypedContractEvent<
+      MigrationUserImportedEvent.InputTuple,
+      MigrationUserImportedEvent.OutputTuple,
+      MigrationUserImportedEvent.OutputObject
+    >;
+    MigrationUserImported: TypedContractEvent<
+      MigrationUserImportedEvent.InputTuple,
+      MigrationUserImportedEvent.OutputTuple,
+      MigrationUserImportedEvent.OutputObject
     >;
 
     "NodeLevelUpdated(address,uint8,uint8,uint256)": TypedContractEvent<

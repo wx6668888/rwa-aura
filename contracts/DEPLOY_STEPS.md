@@ -3,7 +3,7 @@
 ## 第一步：准备部署账户
 
 ### 1.1 确认部署地址
-- **地址**：0x08Ea66321c4dd47468c3aDc55d06c5De7129A292
+- **地址**：0x8927e74e0fCaED1D4C87116C805464800651f222
 - **用途**：这个地址将成为所有合约的owner（拥有者）
 - **为什么**：owner拥有合约的管理权限，可以配置参数、暂停合约等
 
@@ -18,7 +18,7 @@
 ### 1.3 检查余额
 ```bash
 # 可以在BSCScan查看余额
-https://bscscan.com/address/0x08Ea66321c4dd47468c3aDc55d06c5De7129A292
+https://bscscan.com/address/0x8927e74e0fCaED1D4C87116C805464800651f222
 ```
 
 ---
@@ -61,7 +61,7 @@ copy .env.deploy.example .env.deploy
 
 ```
 DEPLOY_PRIVATE_KEY=你的私钥（不要加0x前缀）
-BACKEND_ADDRESS=0x08Ea66321c4dd47468c3aDc55d06c5De7129A292
+BACKEND_ADDRESS=0x8927e74e0fCaED1D4C87116C805464800651f222
 ```
 
 **重要安全提醒**：
@@ -121,10 +121,10 @@ npx hardhat run contracts/deploy-mainnet.js --network bscMainnet
 === BSC主网合约部署 ===
 
 配置信息：
-  Owner地址: 0x08Ea66321c4dd47468c3aDc55d06c5De7129A292
+  Owner地址: 0x8927e74e0fCaED1D4C87116C805464800651f222
   ...
 
-部署账户: 0x08Ea66321c4dd47468c3aDc55d06c5De7129A292
+部署账户: 0x8927e74e0fCaED1D4C87116C805464800651f222
 账户余额: 0.002 BNB
 
 1. 部署RWAToken...

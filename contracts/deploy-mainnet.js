@@ -1,4 +1,5 @@
 const { ethers } = require('hardhat');
+const { getDeployPrivateKey } = require('./load-deploy-key');
 
 /**
  * BSC主网部署脚本
@@ -14,7 +15,7 @@ async function main() {
   console.log('');
   
   // 配置
-  const OWNER_ADDRESS = '0x08Ea66321c4dd47468c3aDc55d06c5De7129A292';
+  const OWNER_ADDRESS = '0x8927e74e0fCaED1D4C87116C805464800651f222';
   const BACKEND_ADDRESS = OWNER_ADDRESS;
   const TREASURY_ADDRESS = OWNER_ADDRESS;
   const USDT_ADDRESS = '0x55d398326f99059fF775485246999027B3197955';
@@ -26,9 +27,7 @@ async function main() {
   console.log('  USDT地址:', USDT_ADDRESS);
   console.log('');
   
-  // 直接创建钱包，绕过getSigners()
-  const privateKey = '0x72de45eab3e0f215109b5beb29a62188d7784542aab9b72eeb4f82a8b8c69200';
-  const deployer = new ethers.Wallet(privateKey, ethers.provider);
+  const deployer = new ethers.Wallet(getDeployPrivateKey(), ethers.provider);
   
   console.log('部署账户:', deployer.address);
   
