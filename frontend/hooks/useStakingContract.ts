@@ -304,8 +304,6 @@ export function useStakingContract() {
     usdtFlexiblePrincipal,
     refetchRwaFlexiblePrincipal,
     refetchUsdtFlexiblePrincipal,
-    refetchUSDTLockedPrincipals,
-    refetchRWALockedPrincipals,
     
     // Functions
     stake,

@@ -22,6 +22,7 @@ coverage/
 *.tgz
 
 backend/logs/
+backend/reports/
 frontend/android/app/build/
 frontend/android/.gradle/
 frontend/dist-capacitor/
@@ -41,3 +42,9 @@ frontend/public/videos/*.bak*
 # 前端 deploy 脚本生成的本地快照
 frontend/.deploy-backups/
 
+# 代码修复过程中的本地回滚备份
+frontend/rollback-backups/
+
+*.rej
+*.orig
+*.save

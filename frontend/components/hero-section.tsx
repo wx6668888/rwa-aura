@@ -5,6 +5,7 @@ import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
 import { useHomepageStats } from '@/hooks/useHomepageStats'
+import { useCountUp } from '@/hooks/useCountUp'
 import { formatUsdFull } from '@/lib/stats-display'
 import { RotatingLabels } from '@/components/rotating-labels'
 import Link from 'next/link'
@@ -33,29 +34,47 @@ export function HeroSection() {
   const { t } = useTranslation(locale)
   const reducedMotion = usePrefersReducedMotion()
   const stats = useHomepageStats()
-  const [scrollY, setScrollY] = useState(0)
+  /** 仅手机：上滑遮罩透明度；量化步进 + rAF，避免每像素 scroll 都 setState 导致整 hero 重渲染 */
+  const [mobileScrollCoverOpacity, setMobileScrollCoverOpacity] = useState(0)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
     const mq = window.matchMedia(MOBILE_MAX_WIDTH)
-    const tick = () => {
-      if (!mq.matches) {
-        setScrollY(0)
-        return
-      }
-      setScrollY(window.scrollY)
+    let raf = 0
+
+    const computeOpacity = () => {
+      if (!mq.matches) return 0
+      const y = window.scrollY
+      return Math.min(0.94, Math.max(0, y) / MOBILE_SCROLL_COVER_RANGE)
     }
-    tick()
-    window.addEventListener('scroll', tick, { passive: true })
-    mq.addEventListener('change', tick)
+
+    const flush = () => {
+      raf = 0
+      const raw = computeOpacity()
+      // 分档足够细，肉眼与连续透明度一致，仍远少于「每像素 scroll」的 setState 次数
+      const quantized = Math.round(raw * 120) / 120
+      setMobileScrollCoverOpacity((prev) => (prev === quantized ? prev : quantized))
+    }
+
+    const onScroll = () => {
+      if (raf) return
+      raf = window.requestAnimationFrame(flush)
+    }
+
+    flush()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    mq.addEventListener('change', flush)
     return () => {
-      window.removeEventListener('scroll', tick)
-      mq.removeEventListener('change', tick)
+      window.removeEventListener('scroll', onScroll)
+      mq.removeEventListener('change', flush)
+      if (raf) window.cancelAnimationFrame(raf)
     }
   }, [])
-
-  const mobileScrollCoverOpacity = Math.min(0.94, Math.max(0, scrollY) / MOBILE_SCROLL_COVER_RANGE)
-  const tvlText = formatUsdFull(stats.tvlUsdt)
+  const animatedTvl = useCountUp(stats.tvlUsdt, {
+    durationMs: 1600,
+    disabled: reducedMotion,
+  })
+  const tvlText = formatUsdFull(animatedTvl)
   const lead = t('hero.lead').trim()
   const marqueeA = t('hero.marqueeA')
   const marqueeB = t('hero.marqueeB')
@@ -107,7 +126,7 @@ export function HeroSection() {
       {/* 手机端遮罩更轻；上滑时额外叠一层实色，逐渐盖住地球 */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/22 via-black/10 to-[#05070d]/78 lg:from-black/36 lg:via-black/20 lg:to-[#05070d]/88" />
       <div
-        className="pointer-events-none absolute inset-0 z-[1] bg-[#08080f] transition-opacity duration-150 ease-out lg:hidden"
+        className="pointer-events-none absolute inset-0 z-[1] bg-[#08080f] transition-opacity duration-150 ease-out lg:hidden [will-change:opacity]"
         style={{ opacity: mobileScrollCoverOpacity }}
         aria-hidden
       />

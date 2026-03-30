@@ -92,7 +92,7 @@ export function useRWA() {
     address: rwaTokenAddress as Address,
     abi: ERC20_ABI,
     functionName: 'allowance',
-    args: address && stakingAddress ? [address, stakingAddress] : undefined,
+    args: address && stakingAddress ? [address, stakingAddress as `0x${string}`] : undefined,
     query: {
       enabled: !!address && !!rwaTokenAddress && !!stakingAddress,
     },
@@ -184,7 +184,7 @@ export function useRWA() {
   const rwaBalanceWei = !address || balanceIsError || balance === undefined ? undefined : balance
   const formattedAllowance =
     allowance === undefined ? '0' : formatUnits(allowance, 18)
-  const isApproved = allowance !== undefined && allowance > 0n
+  const isApproved = allowance !== undefined && allowance > BigInt(0)
 
   if (balanceIsError && balanceReadError) {
     console.warn('[useRWA] balanceOf failed', rwaTokenAddress, balanceReadError)

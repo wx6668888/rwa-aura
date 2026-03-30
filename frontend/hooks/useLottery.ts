@@ -384,26 +384,25 @@ export function useLottery() {
     }
   };
 
-  // 批量领取奖金
+  // 批量领取奖金（逐个调用 claimPrize）
   const claimMultiplePrizes = async (ticketIds: string[]) => {
     if (!isContractDeployed || !lotteryContractAddress) {
       throw new Error("彩票合约未部署，请等待合约部署完成");
     }
 
     try {
-      const hash = await claimPrizeWrite({
-        address: lotteryContractAddress,
-        abi: LOTTERY_ABI,
-        functionName: "claimMultiplePrizes",
-        args: [ticketIds.map(id => BigInt(id))],
-      });
-      
-      setClaimTxHash(hash);
-      
-      // 等待交易确认后刷新
-      setTimeout(() => {
-        refetchUserTickets();
-      }, 3000);
+      for (const id of ticketIds) {
+        const hash = await claimPrizeWrite({
+          address: lotteryContractAddress,
+          abi: LOTTERY_ABI,
+          functionName: "claimPrize",
+          args: [BigInt(id)],
+        });
+        setClaimTxHash(hash);
+        // 等待片刻以避免 RPC 速率限制
+        await new Promise((r) => setTimeout(r, 500));
+      }
+      setTimeout(() => { refetchUserTickets(); }, 3000);
     } catch (error) {
       console.error('批量领奖失败:', error);
       throw error;

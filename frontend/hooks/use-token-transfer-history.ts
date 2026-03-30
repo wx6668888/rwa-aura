@@ -27,17 +27,18 @@ export function useTokenTransferHistory(
 
   const scaleToTokenDecimals = useCallback(
     (raw: string, rowDecimals: number): bigint => {
-      let v = 0n
+      let v = BigInt(0)
       try {
         v = BigInt(raw || '0')
       } catch {
-        v = 0n
+        v = BigInt(0)
       }
       const from = Number.isFinite(rowDecimals) ? Math.max(0, Math.floor(rowDecimals)) : tokenDecimals
       const to = Math.max(0, Math.floor(tokenDecimals))
       if (from === to) return v
       const diff = Math.abs(to - from)
-      const mul = 10n ** BigInt(diff)
+      let mul = BigInt(1)
+      for (let i = 0; i < diff; i++) mul *= BigInt(10)
       return from < to ? v * mul : v / mul
     },
     [tokenDecimals]

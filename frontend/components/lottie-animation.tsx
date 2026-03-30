@@ -19,11 +19,7 @@ const DotLottieReact = dynamic(
     }),
   {
     ssr: false,
-    loading: () => (
-      <div className="w-full h-full flex items-center justify-center text-[#64748b] text-sm">
-        加载动画中...
-      </div>
-    ),
+    loading: () => <div className="h-full min-h-[4rem] w-full bg-transparent" aria-hidden />,
   }
 )
 

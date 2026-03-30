@@ -31,7 +31,7 @@ export function ProtocolSwapEngine() {
   const { isConnected, chainId, address } = useAccount()
   const publicClient = usePublicClient()
   const { price: rwaPrice } = useRwaPrice()
-  const { balance: usdtBal, approve: approveUSDT, refetchBalance: refetchUsdt } = useUSDT()
+  const { balance: usdtBal, approveMax: approveUSDTMax, refetchBalance: refetchUsdt } = useUSDT()
   const { balanceFormatted: rwaBal, approveMax: approveRWAMax, refetchBalance: refetchRwa } = useRWAToken()
   const { swapUSDTToRWA, swapRWAToUSDT, swapAddress: internalSwapAddress } = useUSDTRWASwap()
 
@@ -102,7 +102,7 @@ export function ProtocolSwapEngine() {
     ;(async () => {
       try {
         if (fromId === 'USDT' && usdtAddr) {
-          const w = parseUnits(fromAmount, 6)
+          const w = parseUnits(fromAmount, 18)
           const al = await publicClient.readContract({
             address: usdtAddr,
             abi: erc20ABI,
@@ -175,7 +175,7 @@ export function ProtocolSwapEngine() {
     setBusy(true)
     setSwapErr(null)
     try {
-      if (fromId === 'USDT') await approveUSDT(fromAmount, swapSpender)
+      if (fromId === 'USDT') await approveUSDTMax(swapSpender)
       else await approveRWAMax(swapSpender)
       setNeedsApproval(false)
     } catch (e: unknown) {
@@ -183,7 +183,7 @@ export function ProtocolSwapEngine() {
     } finally {
       setBusy(false)
     }
-  }, [swapSpender, fromId, fromAmount, approveUSDT, approveRWAMax, locale])
+  }, [swapSpender, fromId, approveUSDTMax, approveRWAMax, locale])
 
   const handleSwap = useCallback(async () => {
     if (!internalSwapAvailable) return
@@ -413,7 +413,7 @@ export function ProtocolSwapEngine() {
         excludeId={toId}
         title={t('swap.selectToken')}
         onPick={(meta) => {
-          onPick('from', meta.id)
+          onPick('from', meta.id as SwapTokenId)
         }}
       />
       <TokenSelectSheet
@@ -423,7 +423,7 @@ export function ProtocolSwapEngine() {
         excludeId={fromId}
         title={t('swap.selectToken')}
         onPick={(meta) => {
-          onPick('to', meta.id)
+          onPick('to', meta.id as SwapTokenId)
         }}
       />
     </div>

@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Copy, X } from 'lucide-react'
-import { erc20Abi, formatUnits } from 'viem'
-import { useAccount, useBalance, useChainId, useDisconnect, useReadContracts } from 'wagmi'
+import { Copy, X, ArrowUpRight } from 'lucide-react'
+import Link from 'next/link'
+import { useAccount, useChainId, useDisconnect } from 'wagmi'
 import { getWalletAssetRows } from '@/lib/swap-tokens'
-import { useWalletUsdtEstimate } from '@/hooks/use-wallet-usdt-estimate'
+import { useWalletUsdtEstimate, type WalletBalancesMap } from '@/hooks/use-wallet-usdt-estimate'
 import { useTokenTransferHistory } from '@/hooks/use-token-transfer-history'
 
 type TabKey = 'network' | 'assets' | 'history'
@@ -31,32 +31,8 @@ export function WalletDetailsModal({ open, isOpen, onClose, onOpenChainModal }: 
   const [copied, setCopied] = useState(false)
 
   const rows = useMemo(() => getWalletAssetRows(chainId), [chainId])
-  const tokenRows = rows.filter((r) => r.balanceTarget !== 'native')
 
-  const nativeBalance = useBalance({
-    address: modalOpen && isConnected ? address : undefined,
-    query: { enabled: modalOpen && isConnected && !!address },
-  })
-
-  const contracts = useMemo(
-    () =>
-      modalOpen && isConnected && address
-        ? tokenRows.map((r) => ({
-            address: r.balanceTarget as `0x${string}`,
-            abi: erc20Abi,
-            functionName: 'balanceOf' as const,
-            args: [address],
-          }))
-        : [],
-    [modalOpen, isConnected, address, tokenRows]
-  )
-
-  const erc20Balances = useReadContracts({
-    contracts,
-    query: { enabled: modalOpen && isConnected && contracts.length > 0 },
-  })
-
-  const { totalUsdt, isLoading: estimateLoading } = useWalletUsdtEstimate(
+  const { totalUsdt, isLoading: estimateLoading, balancesMap } = useWalletUsdtEstimate(
     address as `0x${string}` | undefined,
     rows,
     modalOpen && isConnected
@@ -93,14 +69,9 @@ export function WalletDetailsModal({ open, isOpen, onClose, onOpenChainModal }: 
 
   const modalHeight = tab === 'network' ? 'min(50dvh, 50vh)' : 'min(75dvh, 75vh)'
 
-  const assetRows = rows.map((r, i) => {
-    let amount = '0'
-    if (r.balanceTarget === 'native' && nativeBalance.data?.value != null) {
-      amount = formatUnits(nativeBalance.data.value, r.decimals)
-    } else if (r.balanceTarget !== 'native' && erc20Balances.data?.[i - 1]?.status === 'success') {
-      const raw = erc20Balances.data[i - 1].result as bigint
-      amount = formatUnits(raw, r.decimals)
-    }
+  const assetRows = rows.map((r) => {
+    // 直接从已经查询成功的 balancesMap 中获取余额
+    const amount = balancesMap[r.symbol] || '0'
     return { ...r, amount }
   })
 
@@ -121,35 +92,38 @@ export function WalletDetailsModal({ open, isOpen, onClose, onOpenChainModal }: 
       onClick={onClose}
     >
       <div
-        className="relative z-[141] flex w-full max-w-2xl flex-col self-end overflow-hidden rounded-t-3xl border border-[#2a3342] bg-[#0e1119]/95 shadow-[0_-12px_60px_rgba(0,0,0,0.55)] transition-[height,max-height] duration-300 ease-out sm:rounded-3xl"
+        className="relative z-[141] flex w-full max-w-[420px] flex-col self-end overflow-hidden rounded-t-3xl border border-[#27262c] bg-[#111318]/95 shadow-[0_-12px_60px_rgba(0,0,0,0.55)] transition-[height,max-height] duration-300 ease-out sm:rounded-3xl"
         style={{ height: modalHeight, maxHeight: modalHeight }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-[#1f2733] px-4 py-3">
-          <div className="text-sm font-semibold text-[#e2e8f0]">钱包总览</div>
+        <div className="flex items-center justify-between border-b border-[#27262c] px-5 py-4">
+          <div className="text-[17px] font-bold text-[#f4eeff]">钱包总览</div>
           <button className="rounded-md p-1 text-[#94a3b8] hover:bg-[#1a2230]" onClick={onClose} type="button">
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="border-b border-[#1f2733] px-4 py-3">
-          <div className="text-xs text-[#64748b]">地址</div>
-          <div className="mt-1 flex items-center gap-2">
-            <span className="text-sm text-[#e2e8f0]">{shortAddr(address)}</span>
-            <button type="button" onClick={onCopy} className="rounded-md p-1 text-[#94a3b8] hover:bg-[#1a2230]">
-              <Copy className="h-3.5 w-3.5" />
-            </button>
-            {copied ? <span className="text-xs text-[#00f5d4]">已复制</span> : null}
-          </div>
-          <div className="mt-2 text-xs text-[#64748b]">
-            总资产（USDT）:{' '}
-            <span className="font-semibold text-[#e2e8f0]">
-              {estimateLoading || totalUsdt == null ? '--' : totalUsdt.toFixed(2)}
-            </span>
+        <div className="border-b border-[#27262c] px-5 py-4 bg-[#181a20]">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between bg-[#111318] p-4 rounded-2xl border border-[#262c38]">
+              <div className="flex flex-col">
+                <span className="text-xs text-[#7a859a] mb-1">当前地址</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[16px] font-bold text-[#f4eeff]">{shortAddr(address)}</span>
+                  {copied ? <span className="text-[10px] bg-[#00f5d4]/20 text-[#00f5d4] px-1.5 py-0.5 rounded">已复制</span> : null}
+                </div>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="text-xs text-[#7a859a] mb-1">总资产 (USDT)</span>
+                <span className="text-[18px] font-bold text-[#3b82f6]">
+                  ${estimateLoading || totalUsdt == null ? '--' : totalUsdt.toFixed(2)}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="flex gap-1 border-b border-[#1f2733] p-2">
+        <div className="flex gap-2 border-b border-[#27262c] p-3 bg-[#111318]">
           {(['network', 'assets', 'history'] as TabKey[]).map((k) => (
             <button
               key={k}
@@ -182,12 +156,19 @@ export function WalletDetailsModal({ open, isOpen, onClose, onOpenChainModal }: 
           {tab === 'assets' && (
             <div className="space-y-2">
               {assetRows.map((r) => (
-                <div key={r.key} className="flex items-center justify-between rounded-xl border border-[#1f2733] bg-[#101722] px-3 py-2">
-                  <div>
-                    <div className="text-sm font-semibold text-[#e2e8f0]">{r.symbol}</div>
-                    <div className="text-xs text-[#64748b]">{r.name}</div>
+                <div key={r.key} className="flex items-center justify-between rounded-2xl border border-[#262c38] bg-[#1a1f2c] px-4 py-3 hover:bg-[#202634] transition-colors">
+                  <div className="flex items-center gap-3">
+                    {r.iconUrl ? (
+                      <img src={r.iconUrl} alt={r.symbol} className="h-9 w-9 rounded-full" />
+                    ) : (
+                      <div className={`h-9 w-9 rounded-full bg-gradient-to-br ${r.accent} flex items-center justify-center text-[10px] font-bold text-white shadow-inner`}>{r.symbol.slice(0, 3)}</div>
+                    )}
+                    <div>
+                      <div className="text-[15px] font-semibold text-[#e2e8f0]">{r.symbol}</div>
+                      <div className="text-[13px] text-[#64748b]">{r.name}</div>
+                    </div>
                   </div>
-                  <div className="text-sm text-[#cbd5e1]">{Number(r.amount).toFixed(4)}</div>
+                  <div className="text-[15px] font-medium text-[#e2e8f0]">{Number(r.amount).toFixed(4)}</div>
                 </div>
               ))}
             </div>
@@ -198,28 +179,42 @@ export function WalletDetailsModal({ open, isOpen, onClose, onOpenChainModal }: 
               {transfers.loading ? <div className="text-xs text-[#64748b]">加载中...</div> : null}
               {!transfers.loading && transfers.items.length === 0 ? <div className="text-xs text-[#64748b]">暂无记录</div> : null}
               {transfers.items.map((it) => (
-                <div key={`${it.txHash}-${it.logIndex}`} className="rounded-xl border border-[#1f2733] bg-[#101722] px-3 py-2">
-                  <div className="flex items-center justify-between">
-                    <span className={`text-xs ${it.direction === 'in' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {it.direction === 'in' ? '转入' : '转出'}
-                    </span>
-                    <span className="text-xs text-[#cbd5e1]">{Number(transfers.formatAmount(it.value)).toFixed(4)} RWA</span>
+                <div key={`${it.txHash}-${it.logIndex}`} className="rounded-2xl border border-[#262c38] bg-[#1a1f2c] p-3 hover:bg-[#202634] transition-colors flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-full ${it.direction === 'in' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                      {it.direction === 'in' ? <ArrowUpRight className="h-4 w-4 rotate-180" /> : <ArrowUpRight className="h-4 w-4" />}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[14px] font-semibold text-[#e2e8f0]">{it.direction === 'in' ? '接收 RWA' : '发送 RWA'}</span>
+                      <span className="text-[12px] text-[#64748b]">{it.timestampMs ? new Date(it.timestampMs).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'}) : '--'}</span>
+                    </div>
                   </div>
-                  <div className="mt-1 text-[11px] text-[#64748b]">{shortAddr(it.txHash)}</div>
+                  <div className="flex flex-col items-end">
+                    <span className={`text-[15px] font-bold ${it.direction === 'in' ? 'text-emerald-400' : 'text-[#e2e8f0]'}`}>{it.direction === 'in' ? '+' : '-'}{Number(transfers.formatAmount(it.value)).toFixed(2)}</span>
+                    <a href={it.direction === 'in' ? `https://bscscan.com/address/${it.from}` : `https://bscscan.com/address/${it.to}`} target="_blank" rel="noreferrer" className="text-[12px] text-[#7a859a] hover:text-[#3b82f6] flex items-center gap-1 mt-0.5 transition-colors">
+                      {it.direction === 'in' ? `来自 ${shortAddr(it.from)}` : `发至 ${shortAddr(it.to)}`} <ArrowUpRight className="h-3 w-3" />
+                    </a>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        <div className="border-t border-[#1f2733] p-3">
+        <div className="border-t border-[#27262c] p-4 bg-[#111318] flex gap-3">
+          <button type="button" onClick={onCopy} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-[#202634] py-3 text-[14px] font-semibold text-[#f4eeff] hover:bg-[#2a3143] transition-colors">
+            <Copy className="h-4 w-4" /> 复制
+          </button>
+          <Link href="/swap" onClick={onClose} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-[#3b82f6] py-3 text-[14px] font-semibold text-white hover:bg-[#2563eb] transition-colors">
+             买币
+          </Link>
           <button
             type="button"
             onClick={() => {
               disconnect()
               onClose()
             }}
-            className="w-full rounded-full bg-[#182231] py-2 text-sm text-[#cbd5e1] hover:bg-[#202c3d]"
+            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-rose-500/10 py-3 text-[14px] font-semibold text-rose-500 hover:bg-rose-500/20 transition-colors"
           >
             断开连接
           </button>

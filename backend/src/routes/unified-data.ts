@@ -79,7 +79,7 @@ async function getDescendantAddresses(pool: any, root: string): Promise<string[]
   if (!r.startsWith('0x') || r.length !== 42) return [];
   try {
     const [rows] = await pool.query(
-      `WITH RECURSIVE downline AS (
+      `/* MySQL 5.7 Fix */ -- WITH RECURSIVE downline AS (
         SELECT LOWER(user_address) AS ua, 1 AS depth
         FROM referral_bindings
         WHERE LOWER(referrer_address) = ?
@@ -95,7 +95,7 @@ async function getDescendantAddresses(pool: any, root: string): Promise<string[]
     return (rows as { ua: string }[]).map((x) => String(x.ua).toLowerCase());
   } catch (e) {
     console.warn('[UnifiedData] recursive downline CTE failed, fallback to app-layer BFS', e);
-    // MySQL 5.7 无 WITH RECURSIVE：改为应用层 BFS，保持无限代（受 MAX_DOWNLINE_DEPTH 保护）
+    // MySQL 5.7 无 /* MySQL 5.7 Fix */ -- WITH RECURSIVE：改为应用层 BFS，保持无限代（受 MAX_DOWNLINE_DEPTH 保护）
     const seen = new Set<string>();
     const result: string[] = [];
     let frontier: string[] = [r];

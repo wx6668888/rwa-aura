@@ -3,7 +3,6 @@ import logger from '../utils/logger';
 import { ethers } from 'ethers';
 import type { ResultSetHeader } from 'mysql2';
 import { normalizeSettlementUserAddress } from '../utils/settlementAddress';
-import { PreciseYieldCalculator } from './PreciseYieldCalculator';
 import { discoverStakerAddressesFromChain } from './on-chain/StakerAddressDiscovery';
 import { OnChainYieldCalculator } from './on-chain/OnChainYieldCalculator';
 import { findBlockAtOrBefore } from './on-chain/chainSettlementUtils';
@@ -14,10 +13,16 @@ export { normalizeSettlementUserAddress } from '../utils/settlementAddress';
 
 const YIELD_PENDING_TX = 'PENDING';
 
+/**
+ * - chain：从链上 StakeEvent 日志收集地址（失败则回退 stake_events → users）
+ * - db：仅从 stake_events 收集地址（不再用 balance_snapshots，避免重复行放大收益）
+ *
+ * 收益金额：**始终**用 OnChainYieldCalculator（结算窗口起点区块读合约仓位），即
+ * 每笔质押本金在合约侧汇总后 × 日收益率 × 窗口时长；与 yield_settlements 唯一键配合，每用户每资产每日最多发一次。
+ */
 export type DailySettlementDataSource = 'chain' | 'db';
 
 export class DailySettlementService {
-  private calculator: PreciseYieldCalculator;
   private onChainCalculator: OnChainYieldCalculator;
   private stakingContract: ethers.Contract;
   private provider: ethers.JsonRpcProvider;
@@ -28,12 +33,11 @@ export class DailySettlementService {
     rpcUrl: string;
     stakingContractAddress: string;
     backendPrivateKey: string;
-    /** 默认 chain：用户与仓位来自链上日志+合约 view；db 为旧逻辑（依赖 balance_snapshots） */
+    /** 默认 chain：仅影响「待结算用户」如何发现；收益一律链上计算 */
     dataSource?: DailySettlementDataSource;
     /** 扫描 StakeEvent 的起始块；未设时回退为 latest-500000 并打 warn */
     stakingDeployBlock?: number;
   }) {
-    this.calculator = new PreciseYieldCalculator();
     this.provider = new ethers.JsonRpcProvider(config.rpcUrl);
     const wallet = new ethers.Wallet(config.backendPrivateKey, this.provider);
     const stakingABI = ["function updateUserRewards(address user, uint256 rwAmount, uint256 usdtAmount, uint256 stakeId) external"];
@@ -75,16 +79,12 @@ export class DailySettlementService {
         `Starting daily settlement dataSource=${this.dataSource} [toTime=北京8点/UTC0点日界]: ${new Date(fromTime * 1000).toISOString()} → ${new Date(toTime * 1000).toISOString()}`
       );
 
-      const blockAtFrom =
-        this.dataSource === 'chain'
-          ? await findBlockAtOrBefore(this.provider, fromTime)
-          : undefined;
+      const blockAtFrom = await findBlockAtOrBefore(this.provider, fromTime);
 
       const users = await this.getActiveUsers(blockAtFrom);
 
       logger.info(
-        `Daily settlement dataSource=${this.dataSource}, users=${users.length}` +
-          (blockAtFrom !== undefined ? `, blockAtFrom=${blockAtFrom}` : '')
+        `Daily settlement dataSource=${this.dataSource}, users=${users.length}, blockAtFrom=${blockAtFrom} (yield=on-chain buckets @ this block)`
       );
 
       let successCount = 0;
@@ -109,7 +109,7 @@ export class DailySettlementService {
     assetType: 'USDT' | 'RWA',
     fromTime: number,
     toTime: number,
-    blockAtFrom?: number
+    blockAtFrom: number
   ): Promise<void> {
     const addr = normalizeSettlementUserAddress(userAddress);
 
@@ -136,17 +136,14 @@ export class DailySettlementService {
       }
     })();
 
-    const { totalYield, details } =
-      this.dataSource === 'chain'
-        ? await this.onChainCalculator.calculateYield(
-            calcAddress,
-            assetType,
-            fromTime,
-            toTime,
-            this.provider,
-            blockAtFrom
-          )
-        : await this.calculator.calculateYield(addr, assetType, fromTime, toTime);
+    const { totalYield, details } = await this.onChainCalculator.calculateYield(
+      calcAddress,
+      assetType,
+      fromTime,
+      toTime,
+      this.provider,
+      blockAtFrom
+    );
     if (totalYield === '0') {
       logger.info(`No yield for ${addr} (${assetType})`);
       await query(
@@ -207,31 +204,21 @@ export class DailySettlementService {
   }
 
   private async getActiveUsers(
-    blockAtFrom?: number
+    blockAtFrom: number
   ): Promise<Array<{ address: string; asset_type: 'USDT' | 'RWA' }>> {
-    if (this.dataSource === 'db') {
-      const users: Array<{ address: string; asset_type: 'USDT' | 'RWA' }> = [];
-      const usdtUsers = await query<Array<{ address: string }>>(
-        `SELECT DISTINCT user_address as address FROM balance_snapshots WHERE asset_type = 'USDT'`
-      );
-      users.push(
-        ...usdtUsers.map((u) => ({
-          address: normalizeSettlementUserAddress(u.address),
-          asset_type: 'USDT' as const,
-        }))
-      );
-      const rwaUsers = await query<Array<{ address: string }>>(
-        `SELECT DISTINCT user_address as address FROM balance_snapshots WHERE asset_type = 'RWA'`
-      );
-      users.push(
-        ...rwaUsers.map((u) => ({
-          address: normalizeSettlementUserAddress(u.address),
-          asset_type: 'RWA' as const,
-        }))
-      );
-      return users;
-    }
+    let addresses: string[];
 
+    if (this.dataSource === 'db') {
+      logger.warn(
+        '[DailySettlement] DAILY_SETTLEMENT_DATA_SOURCE=db：仅从 stake_events 取候选地址（已废弃 balance_snapshots）；收益仍按链上仓位计算。建议改为 chain。'
+      );
+      const rows = await query<Array<{ address: string }>>(
+        `SELECT DISTINCT LOWER(TRIM(user_address)) AS address FROM stake_events
+         WHERE amount > 0 AND event_type IN ('USDT','RWA')
+           AND user_address IS NOT NULL AND TRIM(user_address) != ''`
+      );
+      addresses = rows.map((r) => normalizeSettlementUserAddress(r.address));
+    } else {
     const latest = await this.provider.getBlockNumber();
     let fromBlock = this.stakingDeployBlock;
     if (!fromBlock || fromBlock < 0) {
@@ -250,7 +237,6 @@ export class DailySettlementService {
       );
     }
 
-    let addresses: string[];
     try {
       addresses = await discoverStakerAddressesFromChain({
         provider: this.provider,
@@ -260,23 +246,29 @@ export class DailySettlementService {
       });
     } catch (e) {
       logger.warn(
-        '[DailySettlement] 链上日志扫描失败（RPC 修剪/限流等），改用数据库 users 表地址列表作为回退（仍用合约 view 判断 RWA/USDT 仓位）:',
+        '[DailySettlement] 链上日志扫描失败，先回退 stake_events 地址，再回退 users 表（仍用合约 view 过滤当期仓位）:',
         e
       );
-      const rows = await query<Array<{ address: string }>>(
-        `SELECT DISTINCT LOWER(address) as address FROM users WHERE address IS NOT NULL AND address != ''`
+      const seRows = await query<Array<{ address: string }>>(
+        `SELECT DISTINCT LOWER(TRIM(user_address)) AS address FROM stake_events
+         WHERE amount > 0 AND event_type IN ('USDT','RWA')
+           AND user_address IS NOT NULL AND TRIM(user_address) != ''`
       );
-      addresses = rows.map((r) => r.address);
+      addresses = seRows.map((r) => r.address);
       if (addresses.length === 0) {
-        logger.error('[DailySettlement] 回退列表为空，请检查 users 表或修复 RPC / 配置 STAKING_DEPLOY_BLOCK');
+        const uRows = await query<Array<{ address: string }>>(
+          `SELECT DISTINCT LOWER(address) as address FROM users WHERE address IS NOT NULL AND address != ''`
+        );
+        addresses = uRows.map((r) => r.address);
+      }
+      if (addresses.length === 0) {
+        logger.error('[DailySettlement] 回退列表为空，请检查 stake_events/users 或修复 RPC / STAKING_DEPLOY_BLOCK');
         throw e;
       }
       logger.info(`[DailySettlement] 回退地址数: ${addresses.length}`);
     }
-
-    if (blockAtFrom === undefined) {
-      throw new Error('[DailySettlement] chain 模式需要 blockAtFrom');
     }
+
 
     const users: Array<{ address: string; asset_type: 'USDT' | 'RWA' }> = [];
 

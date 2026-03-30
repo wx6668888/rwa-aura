@@ -133,6 +133,14 @@ require_cmd curl
 
 cd "$PROJECT_DIR"
 
+CF_FILE="$PROJECT_DIR/.env.cf"
+if [[ -f "$CF_FILE" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$CF_FILE"
+  set +a
+fi
+
 create_predeploy_backup
 
 log "Building frontend..."

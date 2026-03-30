@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { query } from '../config/database.config';
 import logger from '../utils/logger';
+import { BALANCE_SNAPSHOTS_EFFECTIVE_SUBQUERY } from '../sql/balanceSnapshotsEffective';
 
 const router = express.Router();
 
@@ -120,7 +121,7 @@ router.get('/wallets/balances', async (req, res) => {
         const { page = 1, limit = 20, sortBy = 'total_balance', sortOrder = 'DESC' } = req.query;
         const offset = (Number(page) - 1) * Number(limit);
         
-        // 查询用户余额（从balance_snapshots汇总）
+        // 从 balance_snapshots 汇总（逻辑去重后，与 dedupe 脚本 / 唯一索引一致）
         const balances = await query(`
             SELECT 
                 u.address as user_address,
@@ -130,7 +131,7 @@ router.get('/wallets/balances', async (req, res) => {
                 (COALESCE(SUM(CASE WHEN bs.asset_type = 'USDT' THEN CAST(bs.amount AS DECIMAL(38,0)) ELSE 0 END), 0) + 
                  COALESCE(SUM(CASE WHEN bs.asset_type = 'RWA' THEN CAST(bs.amount AS DECIMAL(38,0)) ELSE 0 END), 0) * 0.85) / 1e18 as total_balance_usd
             FROM users u
-            LEFT JOIN balance_snapshots bs ON LOWER(u.address) = LOWER(bs.user_address)
+            LEFT JOIN ${BALANCE_SNAPSHOTS_EFFECTIVE_SUBQUERY} ON LOWER(u.address) = LOWER(bs.user_address)
             GROUP BY u.address, u.node_level
             ORDER BY ${sortBy === 'usdt_balance' ? 'usdt_balance' : sortBy === 'rwa_balance' ? 'rwa_balance' : 'total_balance_usd'} ${sortOrder}
             LIMIT ? OFFSET ?

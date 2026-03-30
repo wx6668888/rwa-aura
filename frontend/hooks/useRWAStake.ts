@@ -26,7 +26,7 @@ export function useRWAStake() {
         address: rwaAddress as `0x${string}`,
         abi: [{ name: 'approve', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ type: 'bool' }] }],
         functionName: 'approve',
-        args: [stakingAddress, amountWei],
+        args: [stakingAddress as `0x${string}`, amountWei],
       });
       console.log('Approve tx:', approveTx);
       

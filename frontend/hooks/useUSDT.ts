@@ -43,7 +43,7 @@ export function useUSDT() {
     address: usdtAddress as `0x${string}`,
     abi: erc20ABI,
     functionName: 'allowance',
-    args: address && stakingAddress ? [address, stakingAddress] : undefined,
+    args: address && stakingAddress ? [address, stakingAddress as `0x${string}`] : undefined,
     query: {
       enabled: !!address && !!usdtAddress && !!stakingAddress,
     },
@@ -58,8 +58,8 @@ export function useUSDT() {
     if (!amt || isNaN(parseFloat(amt))) {
       throw new Error('请输入有效的质押金额')
     }
-    // Convert amount to 6 decimals (USDT precision)
-    const amountInWei = parseUnits(amt, 6)
+    // Convert amount to 18 decimals (USDT precision in current protocol)
+    const amountInWei = parseUnits(amt, 18)
     
     const hash = await writeContractAsync({
       address: usdtAddress as `0x${string}`,
@@ -72,8 +72,9 @@ export function useUSDT() {
   }
 
   // Approve max amount
-  async function approveMax() {
+  async function approveMax(spender?: string) {
     if (!usdtAddress || !stakingAddress) throw new Error('Contract addresses not found')
+    const targetSpender = spender || stakingAddress
     
     const maxAmount = BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
     
@@ -81,7 +82,7 @@ export function useUSDT() {
       address: usdtAddress as `0x${string}`,
       abi: erc20ABI,
       functionName: 'approve',
-      args: [stakingAddress as `0x${string}`, maxAmount],
+      args: [targetSpender as `0x${string}`, maxAmount],
     })
 
     return hash
@@ -90,7 +91,7 @@ export function useUSDT() {
   // Check if amount is approved
   function isApproved(amount: string): boolean {
     if (!allowance) return false
-    const amountInWei = parseUnits(amount, 6)
+    const amountInWei = parseUnits(amount, 18)
     return allowance >= amountInWei
   }
 
@@ -101,9 +102,9 @@ export function useUSDT() {
         ? '—'
         : balance === undefined
           ? '…'
-          : formatUnits(balance, 6)
+          : formatUnits(balance, 18)
   const formattedAllowance =
-    allowance === undefined ? '0' : formatUnits(allowance, 6)
+    allowance === undefined ? '0' : formatUnits(allowance, 18)
 
   return {
     usdtAddress,

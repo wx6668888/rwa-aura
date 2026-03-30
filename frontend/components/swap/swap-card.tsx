@@ -32,52 +32,39 @@ export default function SwapCard() {
   const [slippage, setSlippage] = useState(0.5);
 
   // 获取合约地址
-  const addresses = CONTRACT_ADDRESSES[chain?.id || 56];
-  const fromTokenAddress = fromToken === 'USDT' ? addresses.usdtToken : addresses.rwaToken;
-  const toTokenAddress = toToken === 'USDT' ? addresses.usdtToken : addresses.rwaToken;
+  const addresses = CONTRACT_ADDRESSES[chain?.id || 56] || CONTRACT_ADDRESSES[56];
+  const fromTokenAddress = addresses.usdtToken as Address;
+  const toTokenAddress = addresses.rwaToken as Address;
 
-  // 检测是否是 USDT ↔ RWA 直接互换
-  const isUSDTRWASwap = (fromToken === 'USDT' && toToken === 'RWA') || (fromToken === 'RWA' && toToken === 'USDT');
-
-  // 使用自动刷新的报价 Hook（仅用于非 USDT ↔ RWA 交易）
   const { quote, isLoading, refresh } = useSwapQuote(
-    isUSDTRWASwap ? undefined : fromTokenAddress as Address,
-    isUSDTRWASwap ? undefined : toTokenAddress as Address,
-    isUSDTRWASwap ? '' : fromAmount,
+    fromTokenAddress,
+    toTokenAddress,
+    fromAmount,
     slippage,
     15000, // 15秒刷新
-    fromToken === 'USDT' ? 6 : 18,  // USDT 6位，RWA 18位
-    toToken === 'USDT' ? 6 : 18
+    18,
+    18
   );
 
   // 生成报价数据
   const mockQuote = fromAmount && parseFloat(fromAmount) > 0 ? {
-    outputAmount: fromToken === 'USDT' 
-      ? (parseFloat(fromAmount) / 0.85).toFixed(4)  // USDT -> RWA (固定价格 1 RWA = 0.85 USDT)
-      : (parseFloat(fromAmount) * 0.85).toFixed(4), // RWA -> USDT
-    executionPrice: fromToken === 'USDT' ? (1 / 0.85).toFixed(4) : '0.85',
+    outputAmount: (parseFloat(fromAmount) / 0.85).toFixed(4),
+    executionPrice: (1 / 0.85).toFixed(4),
     priceImpact: 0,
-    minOutputAmount: fromToken === 'USDT'
-      ? (parseFloat(fromAmount) / 0.85).toFixed(4)
-      : (parseFloat(fromAmount) * 0.85).toFixed(4),
+    minOutputAmount: (parseFloat(fromAmount) / 0.85).toFixed(4),
     gasEstimate: '0',
     route: [fromToken, toToken]
   } : null;
 
-  // 使用报价：USDT ↔ RWA 使用固定价格，其他使用 PancakeSwap 报价
-  const displayQuote = isUSDTRWASwap ? mockQuote : (quote || mockQuote);
+  const displayQuote = quote || mockQuote;
 
   // 自动更新输出金额
   const toAmount = displayQuote?.outputAmount || '';
 
   // 根据当前选择的代币获取对应余额
-  const fromBalance = fromToken === 'USDT' 
-    ? parseFloat(usdtBalance || '0').toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : parseFloat(rwaBalance || '0').toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fromBalance = parseFloat(usdtBalance || '0').toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   
-  const toBalance = toToken === 'USDT'
-    ? parseFloat(usdtBalance || '0').toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : parseFloat(rwaBalance || '0').toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const toBalance = parseFloat(rwaBalance || '0').toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const handleRefresh = () => {
     refresh();

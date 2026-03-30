@@ -12,6 +12,9 @@ export const WALLET_RWA_USDT_RATE = 0.85
 const STABLE_SYMBOLS = new Set(['USDT', 'USDC', 'BUSD', 'FDUSD'])
 const PRICEABLE_SYMBOLS = new Set(['RWA', 'USDT', 'WBNB', 'USDC', 'BUSD', 'FDUSD'])
 
+/** 返回代币余额的映射：symbol -> formatted amount */
+export type WalletBalancesMap = Record<string, string>
+
 export function useWalletUsdtEstimate(
   address: `0x${string}` | undefined,
   rows: WalletAssetRow[],
@@ -109,5 +112,22 @@ export function useWalletUsdtEstimate(
 
   const isLoading = Boolean(enabled && address) && !isBalancesReady
 
-  return { totalUsdt, isLoading }
+  // 创建余额映射，供组件直接使用
+  const balancesMap = useMemo<WalletBalancesMap>(() => {
+    const map: WalletBalancesMap = {}
+    if (nativeRow && nativeQuery.data?.value != null) {
+      map[nativeRow.symbol] = formatUnits(nativeQuery.data.value, nativeRow.decimals)
+    }
+    if (erc20Query.data) {
+      erc20Rows.forEach((row, i) => {
+        const r = erc20Query.data![i]
+        if (r?.status === 'success' && r.result !== undefined) {
+          map[row.symbol] = formatUnits(r.result as bigint, row.decimals)
+        }
+      })
+    }
+    return map
+  }, [nativeRow, nativeQuery.data, erc20Query.data, erc20Rows])
+
+  return { totalUsdt, isLoading, balancesMap }
 }

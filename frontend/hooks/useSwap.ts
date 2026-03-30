@@ -81,12 +81,13 @@ export function useSwap(
       });
 
       const result = await contractCall;
+      const tuple = result as readonly [bigint, bigint, bigint, bigint] | null;
       
-      if (!result) {
+      if (!tuple) {
         return null;
       }
 
-      const [amountOut, , , gasEstimate] = result;
+      const [amountOut, , , gasEstimate] = tuple;
       const outputAmount = formatUnits(amountOut, toDecimals);
       const executionPrice = (parseFloat(outputAmount) / parseFloat(amount)).toFixed(6);
       

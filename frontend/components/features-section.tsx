@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { DotLottieAnimation } from '@/components/lottie-animation'
+import { LazyDotLottieAnimation } from '@/components/lazy-dot-lottie'
 
 export function FeaturesSection() {
   const cardRef = useRef<HTMLDivElement | null>(null)
@@ -52,7 +52,7 @@ export function FeaturesSection() {
         />
 
         <div className="relative mx-auto mt-1 h-[280px] w-full max-w-4xl overflow-hidden md:mt-2 md:h-[380px]">
-          <DotLottieAnimation
+          <LazyDotLottieAnimation
             src="/稳定币0.lottie"
             autoplay
             loop

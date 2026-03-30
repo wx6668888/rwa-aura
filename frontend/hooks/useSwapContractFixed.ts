@@ -147,8 +147,8 @@ export function useSwapContractFixed() {
     if (!swapEnabled) return { ok: false, reason: '互换已暂停' }
     
     const amountWei = parseUnits(amount, 18)
-    const userUsed = userDailyUsed || 0n
-    const userLimit = userDailyLimit || 0n
+    const userUsed = userDailyUsed || BigInt(0)
+    const userLimit = userDailyLimit || BigInt(0)
     
     if (userUsed + amountWei > userLimit) {
       return { ok: false, reason: '超出个人每日限额' }

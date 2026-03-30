@@ -13,7 +13,13 @@
     "test:settlement-invariants": "ts-node --transpile-only scripts/test-daily-settlement-invariants.ts",
     "test": "npm run typecheck && npm run typecheck:ci && npm run test:settlement-invariants",
     "dedupe:yield-settlements": "ts-node --transpile-only scripts/dedupe-yield-settlements.ts",
-    "migrate:yield-settlements-unique": "ts-node --transpile-only scripts/apply-yield-settlements-unique-migration.ts"
+    "migrate:yield-settlements-unique": "ts-node --transpile-only scripts/apply-yield-settlements-unique-migration.ts",
+    "remediation:yield-data": "ts-node --transpile-only scripts/run-full-yield-data-remediation.ts",
+    "report:phantom-prededupe": "ts-node --transpile-only scripts/report-phantom-principal-from-prededupe-snapshots.ts",
+    "export:stake-events": "ts-node --transpile-only scripts/export-stake-events-full.ts",
+    "verify:yield-post-fix": "ts-node --transpile-only scripts/verify-yield-data-post-fix.ts",
+    "reconcile:yield-vs-stake-ledger": "ts-node --transpile-only scripts/reconcile-yield-settlements-vs-stake-ledger.ts",
+    "batch:reconcile-yield-ledger": "ts-node --transpile-only scripts/batch-reconcile-yield-ledger-persist.ts"
   },
   "dependencies": {
     "@types/better-sqlite3": "^7.6.13",

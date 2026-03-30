@@ -1,4 +1,5 @@
 import { useAccount, usePublicClient } from 'wagmi'
+import { decodeEventLog } from 'viem'
 import { useEffect, useState } from 'react'
 import { CONTRACT_ADDRESSES } from '@/lib/contracts/addresses'
 import { stakingContractABI } from '@/lib/contracts/stakingContractABI'
@@ -129,10 +130,10 @@ export function useDirectReferrals() {
         for (const log of logs) {
           try {
             // 使用 decodeEventLog 正确解析事件
-            const decoded = await publicClient.decodeEventLog({
+            const decoded = decodeEventLog({
               abi: stakingContractABI.filter((item: any) => item.type === 'event' && item.name === 'StakeEvent'),
               data: log.data,
-              topics: log.topics,
+              topics: log.topics as [`0x${string}`, ...`0x${string}`[]] | [],
             })
 
             const args = decoded.args as any

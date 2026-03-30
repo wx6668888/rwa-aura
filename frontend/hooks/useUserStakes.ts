@@ -137,7 +137,7 @@ export function useUserStakes() {
           data: `0x${string}`
           topics: (`0x${string}` | `0x${string}`[])[]
           blockNumber: bigint
-          logIndex?: bigint
+          logIndex?: number | bigint
           transactionHash?: `0x${string}`
         }[] = []
 
@@ -212,7 +212,7 @@ export function useUserStakes() {
             const decoded = decodeEventLog({
                   abi: stakingContractABI,
                   data: log.data,
-                  topics: log.topics,
+                  topics: log.topics as [`0x${string}`, ...`0x${string}`[]] | [],
             }) as any
 
             if (decoded.eventName !== 'StakeEvent' && decoded.eventName !== 'RWAStakeEvent') {

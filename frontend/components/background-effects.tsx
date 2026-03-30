@@ -7,7 +7,7 @@ export function BackgroundEffects({ opacity = 12 }: BackgroundEffectsProps) {
   const purpleOpacity = (opacity - 2) / 100
 
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden max-lg:[contain:strict]">
       {/* Cyan orb top-right */}
       <div
         className="absolute -top-40 end-[-200px] h-[600px] w-[600px] rounded-full blur-[180px]"
@@ -19,7 +19,7 @@ export function BackgroundEffects({ opacity = 12 }: BackgroundEffectsProps) {
         style={{ background: 'radial-gradient(circle, #8b5cf6 0%, transparent 70%)', opacity: purpleOpacity }}
       />
       {/* Grain overlay */}
-      <svg className="absolute inset-0 h-full w-full opacity-[0.04]">
+      <svg className="absolute inset-0 hidden h-full w-full opacity-[0.04] lg:block">
         <filter id="grain">
           <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
         </filter>

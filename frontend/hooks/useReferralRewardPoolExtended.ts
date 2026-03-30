@@ -87,7 +87,7 @@ export function useReferralRewardPoolExtended() {
     if (!poolAddress) throw new Error('合约未找到')
     
     const amountWei = parseUnits(amount, 6) // USDT 6位
-    const minWei = minWithdrawal || 0n
+    const minWei = minWithdrawal || BigInt(0)
     
     if (amountWei < minWei) {
       throw new Error(`最低提现 ${formatUnits(minWei, 6)} USDT`)

@@ -23,7 +23,7 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
   const { t } = useTranslation(locale);
   const { address, isConnected, chainId } = useAccount();
   const publicClient = usePublicClient();
-  const { approve: approveUSDT } = useUSDT();
+  const { approveMax: approveUSDTMax } = useUSDT();
   // 专用 USDT→RWA 互换（不依赖 PancakeSwap 流动性）
   const { swapUSDTToRWA, swapAddress: internalSwapAddress } = useUSDTRWASwap();
   
@@ -87,7 +87,7 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
           setNeedsApproval(false);
           return;
         }
-        const amountWei = parseUnits(fromAmount, 6);
+        const amountWei = parseUnits(fromAmount, 18);
         const allowance = await publicClient.readContract({
           address: fromTokenAddress as `0x${string}`,
           abi: erc20ABI,
@@ -118,8 +118,7 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
     try {
       setIsApproving(true);
       setSwapError(null);
-      // 授权给 USDTRWASwap 合约
-      await approveUSDT(fromAmount, swapSpender);
+      await approveUSDTMax(swapSpender);
       
       setNeedsApproval(false);
       setJustApproved(true);
@@ -146,7 +145,7 @@ export default function SwapButton({ fromToken, toToken, fromAmount }: SwapButto
     } finally {
       setIsApproving(false);
     }
-  }, [fromTokenAddress, internalSwapAvailable, swapSpender, approveUSDT, fromAmount]);
+  }, [fromTokenAddress, internalSwapAvailable, swapSpender, approveUSDTMax]);
 
   const handleSwap = useCallback(async () => {
     if (!fromAmount || parseFloat(fromAmount) <= 0) {

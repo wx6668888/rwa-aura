@@ -895,6 +895,7 @@ const base: TranslationMap = {
       'Security partners and infrastructure you can verify on-chain—same bar as leading DeFi protocols.',
     trustedPartnersRow: 'CertiK|BNB Chain|PancakeSwap|TokenPocket|BscScan',
     securityBadge: 'Security',
+    trustCardsSwipeHint: 'Swipe',
   },
   features: {
     label: 'Features',
@@ -1895,6 +1896,14 @@ const base: TranslationMap = {
   footer: {
     copyright: '© 2025 RWA Protocol. All rights reserved.',
     contractLabel: 'Staking contract:',
+    linkTerms: 'Terms of Service',
+    linkPrivacy: 'Privacy Policy',
+    linkPrivacyClauses: 'Privacy terms',
+    linkHelp: 'Help',
+    linkKnowledge: 'Knowledge',
+    linkSecurity: 'Security',
+    linkAbout: 'About',
+    emailLabel: 'Email',
   },
 }
 
@@ -1903,6 +1912,14 @@ const zh: TranslationMap = {
   footer: {
     copyright: '© 2025 RWA Protocol. 保留所有权利。',
     contractLabel: '质押合约:',
+    linkTerms: '服务条款',
+    linkPrivacy: '隐私政策',
+    linkPrivacyClauses: '隐私条款',
+    linkHelp: '帮助中心',
+    linkKnowledge: '知识库',
+    linkSecurity: '安全',
+    linkAbout: '关于我们',
+    emailLabel: '联系邮箱',
   },
   common: {
     ...base.common,
@@ -2049,6 +2066,7 @@ const zh: TranslationMap = {
     trustedBySub: '安全与基础设施伙伴均可公开核验——与一线 DeFi 项目同等标准。',
     trustedPartnersRow: 'CertiK|BNB Chain|PancakeSwap|TokenPocket|BscScan',
     securityBadge: '安全',
+    trustCardsSwipeHint: '左右滑动',
   },
   stats: {
     tvl: {

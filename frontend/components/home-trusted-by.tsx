@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * 品牌横滚：双轨 + translateX(-50%) 无缝循环（trusted-brands-marquee__track）
+ * 「备受顶尖机构信赖」：单卡片容器 + 背景 wave 视频（已压缩为小体积 MP4）
  */
 import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
@@ -45,74 +45,76 @@ export function HomeTrustedBy() {
   const reduced = usePrefersReducedMotion()
 
   return (
-    <section className="relative overflow-hidden border-t border-neutral-800 bg-black py-20 md:py-[7.5rem]">
-      {!reduced && (
-        <video
-          className="absolute inset-0 z-0 h-full w-full object-cover"
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="metadata"
-          aria-hidden
-        >
-          <source src={WAVE_VIDEO_SRC} type="video/mp4" />
-        </video>
-      )}
-
-      <div
-        className={cn(
-          'absolute inset-0 z-10 bg-black',
-          reduced ? 'opacity-90' : 'opacity-60',
+    <section className="mx-auto max-w-7xl px-4 py-10 lg:px-8 lg:py-12">
+      <div className="relative overflow-hidden rounded-3xl border border-white/14 bg-[#0d0d14]/90 shadow-[0_0_40px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-[#0d0d14]/82">
+        {!reduced && (
+          <video
+            className="pointer-events-none absolute inset-0 z-0 h-full w-full scale-105 object-cover opacity-50"
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="metadata"
+            aria-hidden
+          >
+            <source src={WAVE_VIDEO_SRC} type="video/mp4" />
+          </video>
         )}
-        aria-hidden
-      />
 
-      <div className="relative z-20 mx-auto max-w-7xl space-y-10 px-6">
-        <h2
+        <div
           className={cn(
-            'text-center text-2xl font-normal md:text-4xl',
-            locale === 'zh' ? 'tracking-wide' : 'uppercase tracking-widest',
+            'pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-[#0a0a0f]/88 via-[#05050a]/82 to-[#0a0a0f]/90',
+            reduced && 'from-[#0a0a0f] via-[#05050a] to-[#0a0a0f]',
           )}
-          style={{
-            color: '#00f5d4',
-            textShadow:
-              '0 0 12px rgba(0,245,212,0.85), 0 0 28px rgba(0,245,212,0.45), 0 0 48px rgba(0,245,212,0.2)',
-          }}
-        >
-          {t('home.trustedByTitle')}
-        </h2>
+          aria-hidden
+        />
 
-        {reduced ? (
-          <div className="flex flex-wrap items-center justify-center gap-x-16 gap-y-8">
-            {BRAND_IMAGES.map(({ src, alt }) => (
-              <img
-                key={alt}
-                src={src}
-                alt={alt}
-                className="block h-[40px] w-auto object-contain opacity-95"
-                loading="lazy"
-                decoding="async"
-                referrerPolicy="no-referrer"
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="relative w-full overflow-hidden py-2">
-            <div className={styles.track}>
-              <BrandStrip />
-              <BrandStrip />
+        <div className="relative z-10 px-5 py-10 md:px-10 md:py-12">
+          <h2
+            className={cn(
+              'text-center text-2xl font-semibold md:text-3xl',
+              locale === 'zh' ? 'tracking-wide' : 'uppercase tracking-widest',
+            )}
+            style={{
+              color: '#00f5d4',
+              textShadow:
+                '0 0 12px rgba(0,245,212,0.85), 0 0 28px rgba(0,245,212,0.45), 0 0 48px rgba(0,245,212,0.2)',
+            }}
+          >
+            {t('home.trustedByTitle')}
+          </h2>
+
+          {reduced ? (
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-12 gap-y-8 md:mt-10">
+              {BRAND_IMAGES.map(({ src, alt }) => (
+                <img
+                  key={alt}
+                  src={src}
+                  alt={alt}
+                  className="block h-[40px] w-auto object-contain opacity-95"
+                  loading="lazy"
+                  decoding="async"
+                  referrerPolicy="no-referrer"
+                />
+              ))}
             </div>
-            <div
-              className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-black to-transparent"
-              aria-hidden
-            />
-            <div
-              className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-black to-transparent"
-              aria-hidden
-            />
-          </div>
-        )}
+          ) : (
+            <div className="relative mt-8 w-full overflow-hidden py-2 md:mt-10">
+              <div className={styles.track}>
+                <BrandStrip />
+                <BrandStrip />
+              </div>
+              <div
+                className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-[#0a0a0f] to-transparent md:w-14"
+                aria-hidden
+              />
+              <div
+                className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-[#0a0a0f] to-transparent md:w-14"
+                aria-hidden
+              />
+            </div>
+          )}
+        </div>
       </div>
     </section>
   )

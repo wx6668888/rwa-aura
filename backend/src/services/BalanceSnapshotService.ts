@@ -1,5 +1,6 @@
 import { query } from '../config/database.config';
 import logger from '../utils/logger';
+import { isMysqlDuplicateKey } from '../utils/mysqlErrors';
 
 export class BalanceSnapshotService {
   /**
@@ -30,12 +31,22 @@ export class BalanceSnapshotService {
       return;
     }
 
-    await query(
-      `INSERT INTO balance_snapshots 
-       (user_address, asset_type, balance_type, amount, timestamp, event_type, lock_end_time, tx_hash)
-       VALUES (?, ?, ?, ?, ?, 'stake', ?, ?)`,
-      [addr, assetType, balanceType, amount, timestamp, lockEndTime, txHash]
-    );
+    try {
+      await query(
+        `INSERT INTO balance_snapshots 
+         (user_address, asset_type, balance_type, amount, timestamp, event_type, lock_end_time, tx_hash)
+         VALUES (?, ?, ?, ?, ?, 'stake', ?, ?)`,
+        [addr, assetType, balanceType, amount, timestamp, lockEndTime, txHash]
+      );
+    } catch (e) {
+      if (isMysqlDuplicateKey(e)) {
+        logger.warn(
+          `Snapshot stake duplicate key (unique index): ${addr} ${assetType} ${balanceType} tx=${txHash}`
+        );
+        return;
+      }
+      throw e;
+    }
 
     logger.info(`Snapshot recorded: ${addr} stake ${amount} ${assetType} (${balanceType})`);
   }
@@ -66,12 +77,20 @@ export class BalanceSnapshotService {
       return;
     }
 
-    await query(
-      `INSERT INTO balance_snapshots 
-       (user_address, asset_type, balance_type, amount, timestamp, event_type, tx_hash)
-       VALUES (?, ?, ?, ?, ?, 'withdraw', ?)`,
-      [addr, assetType, balanceType, negativeAmount, timestamp, txHash]
-    );
+    try {
+      await query(
+        `INSERT INTO balance_snapshots 
+         (user_address, asset_type, balance_type, amount, timestamp, event_type, tx_hash)
+         VALUES (?, ?, ?, ?, ?, 'withdraw', ?)`,
+        [addr, assetType, balanceType, negativeAmount, timestamp, txHash]
+      );
+    } catch (e) {
+      if (isMysqlDuplicateKey(e)) {
+        logger.warn(`Snapshot withdraw duplicate key (unique index): ${addr} ${assetType} tx=${txHash}`);
+        return;
+      }
+      throw e;
+    }
 
     logger.info(`Snapshot recorded: ${addr} withdraw ${amount} ${assetType}`);
   }
@@ -99,12 +118,20 @@ export class BalanceSnapshotService {
       return;
     }
 
-    await query(
-      `INSERT INTO balance_snapshots 
-       (user_address, asset_type, balance_type, amount, timestamp, event_type)
-       VALUES (?, ?, 'flexible', ?, ?, 'mature')`,
-      [addr, assetType, amount, timestamp]
-    );
+    try {
+      await query(
+        `INSERT INTO balance_snapshots 
+         (user_address, asset_type, balance_type, amount, timestamp, event_type)
+         VALUES (?, ?, 'flexible', ?, ?, 'mature')`,
+        [addr, assetType, amount, timestamp]
+      );
+    } catch (e) {
+      if (isMysqlDuplicateKey(e)) {
+        logger.warn(`Snapshot mature duplicate key (unique index): ${addr} ${assetType} ts=${timestamp}`);
+        return;
+      }
+      throw e;
+    }
 
     logger.info(`Snapshot recorded: ${addr} lock matured ${amount} ${assetType} (${lockPeriod}d)`);
   }

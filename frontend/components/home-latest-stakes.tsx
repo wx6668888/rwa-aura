@@ -35,10 +35,27 @@ export function HomeLatestStakes() {
   const sectionRef = useRef<HTMLElement | null>(null)
   const [inView, setInView] = useState(false)
   const [rows, setRows] = useState<RecentStakeRow[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState(false)
 
   useEffect(() => {
+    const el = sectionRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setInView(true)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.08, rootMargin: '0px 0px 15% 0px' }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (!inView) return
     let cancelled = false
     ;(async () => {
       setLoading(true)
@@ -65,22 +82,6 @@ export function HomeLatestStakes() {
     return () => {
       cancelled = true
     }
-  }, [])
-
-  useEffect(() => {
-    const el = sectionRef.current
-    if (!el || inView) return
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setInView(true)
-          observer.disconnect()
-        }
-      },
-      { threshold: 0.08, rootMargin: '0px 0px -5% 0px' }
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
   }, [inView])
 
   const accent = '#00ffc8'
@@ -88,7 +89,8 @@ export function HomeLatestStakes() {
   const timeLocale =
     locale === 'zh' ? 'zh-CN' : locale === 'ja' ? 'ja-JP' : locale === 'ko' ? 'ko-KR' : 'en-US'
 
-  const showList = !loading && !error && rows.length > 0
+  const showSkeleton = !inView || loading
+  const showList = inView && !loading && !error && rows.length > 0
 
   return (
     <section ref={sectionRef} className="relative overflow-x-hidden border-y border-border-subtle py-10 lg:py-14">
@@ -97,7 +99,7 @@ export function HomeLatestStakes() {
           {t('home.recentStakesTitle')}
         </h2>
 
-        {loading ? (
+        {showSkeleton ? (
           <div className="flex flex-col gap-5">
             {Array.from({ length: 5 }).map((_, i) => (
               <div

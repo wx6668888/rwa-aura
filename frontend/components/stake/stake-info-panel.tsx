@@ -49,30 +49,27 @@ export function StakeInfoPanelContent() {
 
   return (
     <div>
-      <p className="mb-3 text-[11px] uppercase tracking-widest text-[#64748b]" style={{ fontVariant: 'small-caps' }}>
+      <p className="mb-3 text-[11px] uppercase tracking-widest text-text-secondary" style={{ fontVariant: 'small-caps' }}>
         {t('info.title')}
       </p>
       {/* 社区激励池余额（/api/stats/analytics 链上池子余额 + 使用占比） */}
       <div>
-        <p className="text-[11px] uppercase tracking-widest text-[#64748b]" style={{ fontVariant: 'small-caps' }}>
+        <p className="text-[11px] uppercase tracking-widest text-text-secondary" style={{ fontVariant: 'small-caps' }}>
           {t('info.poolLabel')}
         </p>
-        <p
-          className="mt-1 font-[family-name:var(--font-jetbrains-mono)] text-2xl font-semibold sm:text-3xl"
-          style={{ color: '#00f5d4' }}
-        >
+        <p className="mt-1 font-[family-name:var(--font-jetbrains-mono)] text-2xl font-semibold text-plasma-cyan sm:text-3xl">
           {poolUsd}
         </p>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#1a1a2e]">
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
           <div
-            className="h-full rounded-full bg-[#00f5d4] transition-[width] duration-500"
+            className="h-full rounded-full bg-plasma-cyan/80 transition-[width] duration-500"
             style={{ width: `${usagePct}%`, boxShadow: '0 0 8px rgba(0,245,212,0.25)' }}
           />
         </div>
-        <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px] text-[#64748b]">
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px] text-text-secondary">
           <span>
             {t('info.poolUsed')} {usagePct.toFixed(0)}% · {locale?.startsWith('zh') ? '剩余额度' : 'Remaining'}{' '}
-            <span className="font-mono text-[#94a3b8]">{remainingUsd}</span>
+            <span className="font-mono text-text-primary/80">{remainingUsd}</span>
           </span>
           <span className={usagePct >= 90 ? 'text-amber-400' : 'text-[#10b981]'}>
             {usagePct >= 90
@@ -86,57 +83,54 @@ export function StakeInfoPanelContent() {
         </div>
       </div>
 
-      <div className="my-4 border-t border-[#ffffff0d]" />
+      <div className="my-4 border-t border-border-subtle" />
 
       {/* 协议 TVL（索引 / 链上统计） */}
       <div>
-        <p className="text-[11px] uppercase tracking-widest text-[#64748b]" style={{ fontVariant: 'small-caps' }}>
+        <p className="text-[11px] uppercase tracking-widest text-text-secondary" style={{ fontVariant: 'small-caps' }}>
           {locale?.startsWith('zh') ? '协议总 TVL（估算）' : 'Protocol TVL (est.)'}
         </p>
-        <p className="mt-1 font-[family-name:var(--font-jetbrains-mono)] text-lg font-medium text-[#e2e8f0]">{tvlUsd}</p>
-        <p className="mt-0.5 text-[10px] text-[#475569]">
+        <p className="mt-1 font-[family-name:var(--font-jetbrains-mono)] text-lg font-medium text-text-primary">{tvlUsd}</p>
+        <p className="mt-0.5 text-[10px] text-text-disabled">
           {locale?.startsWith('zh') ? '数据来自站点统计 API，约每分钟刷新' : 'From site stats API, refreshes ~every minute'}
         </p>
       </div>
 
-      <div className="my-4 border-t border-[#ffffff0d]" />
+      <div className="my-4 border-t border-border-subtle" />
 
       {/* 每日收益（产品规则与合约一致，展示固定基准） */}
       <div>
-        <p className="text-[11px] uppercase tracking-widest text-[#64748b]" style={{ fontVariant: 'small-caps' }}>
+        <p className="text-[11px] uppercase tracking-widest text-text-secondary" style={{ fontVariant: 'small-caps' }}>
           {t('info.yieldLabel')}
         </p>
-        <p
-          className="mt-1 font-[family-name:var(--font-space-grotesk)] text-4xl font-black leading-none sm:text-[52px]"
-          style={{ color: '#00f5d4' }}
-        >
+        <p className="mt-1 font-[family-name:var(--font-space-grotesk)] text-4xl font-black leading-none text-plasma-cyan sm:text-[52px]">
           {t('info.yieldValue')}
         </p>
-        <p className="mt-1 text-[13px] text-[#64748b]">{t('info.yieldSub')}</p>
+        <p className="mt-1 text-[13px] text-text-secondary">{t('info.yieldSub')}</p>
       </div>
 
-      <div className="my-4 border-t border-[#ffffff0d]" />
+      <div className="my-4 border-t border-border-subtle" />
 
       <div>
-        <p className="text-[11px] uppercase tracking-widest text-[#64748b]" style={{ fontVariant: 'small-caps' }}>
+        <p className="text-[11px] uppercase tracking-widest text-text-secondary" style={{ fontVariant: 'small-caps' }}>
           {t('info.taxLabel')}
         </p>
         <div className="mt-3 flex h-3 overflow-hidden rounded-full">
-          <div className="flex-[2] rounded-l-full bg-[#00f5d4]" style={{ boxShadow: '0 0 6px rgba(0,245,212,0.25)' }} />
-          <div className="flex-[1] bg-[#f43f5e]" />
-          <div className="flex-[1] rounded-r-full bg-[#7c3aed]" />
+          <div className="flex-[2] rounded-l-full bg-plasma-cyan" style={{ boxShadow: '0 0 6px rgba(0,245,212,0.25)' }} />
+          <div className="flex-[1] bg-danger" />
+          <div className="flex-[1] rounded-r-full bg-void-purple" />
         </div>
         <div className="mt-2 flex items-center justify-between gap-1">
-          <span className="text-xs text-[#64748b]">{t('info.taxTreasury')}</span>
+          <span className="text-xs text-text-secondary">{t('info.taxTreasury')}</span>
           <span className="text-xs text-[#f43f5e]">{t('info.taxBurn')}</span>
           <span className="text-xs text-[#7c3aed]">{t('info.taxLiquidity')}</span>
         </div>
       </div>
 
-      <div className="my-4 border-t border-[#ffffff0d]" />
+      <div className="my-4 border-t border-border-subtle" />
 
       <div>
-        <p className="text-[11px] uppercase tracking-widest text-[#64748b]" style={{ fontVariant: 'small-caps' }}>
+        <p className="text-[11px] uppercase tracking-widest text-text-secondary" style={{ fontVariant: 'small-caps' }}>
           {t('info.levelLabel')}
         </p>
         <div className="mt-2 flex items-center gap-3">
@@ -145,14 +139,14 @@ export function StakeInfoPanelContent() {
             <p className="text-sm font-bold" style={{ color: entryLevel.color }}>
               {locale?.startsWith('zh') ? entryLevel.name : entryLevel.nameEn}
             </p>
-            <p className="text-xs text-[#64748b]">
+            <p className="text-xs text-text-secondary">
               {entryLevel.rewardPercentage}% {t('info.levelRateSuffix')} · L1–L9
             </p>
           </div>
         </div>
       </div>
 
-      <p className="mt-4 text-center text-[10px] text-[#475569]">
+      <p className="mt-4 text-center text-[10px] text-text-disabled">
         {locale?.startsWith('zh') ? '上次同步：' : 'Last updated: '}
         {updatedLabel}
       </p>

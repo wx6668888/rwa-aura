@@ -20,7 +20,7 @@ export default function PrivacyPage() {
           </h1>
           
           <div className="prose prose-invert max-w-none space-y-6 text-[#64748b]">
-            <section>
+            <section id="clauses">
               <h2 className="mb-4 font-[family-name:var(--font-space-grotesk)] text-2xl font-bold text-[#f1f5f9]">
                 {t('privacy.section1Title')}
               </h2>

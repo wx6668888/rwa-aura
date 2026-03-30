@@ -105,14 +105,14 @@ export function useTeamDividendExtended() {
     if (!poolAddress) throw new Error('合约未找到')
     
     const amountWei = parseUnits(amount, 6)
-    const maxWei = maxPerTx || 0n
+    const maxWei = maxPerTx || BigInt(0)
     
     if (amountWei > maxWei) {
       throw new Error(`单笔最高 ${formatUnits(maxWei, 6)} USDT`)
     }
     
-    const count = dailyCount || 0n
-    const limit = maxPerDay || 0n
+    const count = dailyCount || BigInt(0)
+    const limit = maxPerDay || BigInt(0)
     if (count >= limit) {
       throw new Error('今日提现次数已达上限')
     }
@@ -127,8 +127,8 @@ export function useTeamDividendExtended() {
 
   return {
     balance: balance ? formatUnits(balance, 6) : '0',
-    dailyCount: Number(dailyCount || 0n),
-    maxPerDay: Number(maxPerDay || 0n),
+    dailyCount: Number(dailyCount ?? BigInt(0)),
+    maxPerDay: Number(maxPerDay ?? BigInt(0)),
     maxPerTx: maxPerTx ? formatUnits(maxPerTx, 6) : '100000',
     poolStatus: poolStatus ? {
       total: formatUnits(poolStatus[0], 6),

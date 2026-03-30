@@ -13,7 +13,7 @@ export const metadata = {
 
 export default function StakePage() {
   return (
-    <div className="min-h-screen bg-[#0b0e11] font-sans">
+    <div className="relative min-h-screen bg-void-black font-sans text-text-primary overflow-x-hidden">
       <BackgroundEffects />
       <Navbar />
       <StakePageClient />

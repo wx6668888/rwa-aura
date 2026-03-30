@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { DotLottieAnimation } from '@/components/lottie-animation'
+import { LazyDotLottieAnimation } from '@/components/lazy-dot-lottie'
 
 export function HowItWorksSection() {
   const cardRef = useRef<HTMLDivElement | null>(null)
@@ -31,7 +31,7 @@ export function HowItWorksSection() {
     <section className="mx-auto max-w-7xl px-4 py-12 lg:px-8">
       <div
         ref={cardRef}
-        className={`relative overflow-hidden rounded-3xl border border-white/14 bg-[#0d0d14]/82 px-6 pb-6 pt-3 backdrop-blur-2xl supports-[backdrop-filter]:bg-[#0d0d14]/72 transition-all duration-700 ease-out md:px-10 md:pb-10 md:pt-4 ${
+        className={`relative overflow-visible rounded-3xl border border-white/14 bg-[#0d0d14]/82 px-6 pb-6 pt-3 backdrop-blur-2xl supports-[backdrop-filter]:bg-[#0d0d14]/72 transition-all duration-700 ease-out md:overflow-hidden md:px-10 md:pb-10 md:pt-4 ${
           entered ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-8 scale-[0.98] opacity-0'
         }`}
       >
@@ -51,20 +51,21 @@ export function HowItWorksSection() {
           aria-hidden
         />
 
-        <div className="relative mx-auto -mt-2 h-[320px] w-full max-w-4xl overflow-hidden md:-mt-1 md:h-[380px]">
-          <DotLottieAnimation
+        {/* 移动端：拉满卡片可视宽度 + 不加 overflow-hidden，避免 network 插画左右被裁 */}
+        <div className="relative -mx-6 -mt-2 h-[360px] w-[calc(100%+3rem)] max-w-none overflow-visible px-0 md:mx-auto md:-mt-1 md:h-[380px] md:w-full md:max-w-4xl md:overflow-hidden">
+          <LazyDotLottieAnimation
             src="/network.lottie"
             autoplay
             loop
             speed={1}
             className={[
-              'absolute left-1/2 top-0 z-10 h-full -translate-x-1/2',
-              'w-[132%] max-w-none md:w-[120%]',
-              'flex items-start justify-center',
+              'absolute left-1/2 top-0 z-10 flex h-full w-[min(104%,480px)] -translate-x-1/2 items-start justify-center',
+              'max-md:w-[min(100%,calc(100vw-2rem))] max-md:max-w-[480px]',
+              'md:w-[120%] md:max-w-none',
               'origin-top [&_canvas]:origin-top [&_svg]:origin-top',
               '[&_canvas]:mx-auto [&_svg]:mx-auto',
-              '[&_canvas]:-translate-y-[11%] [&_svg]:-translate-y-[11%] md:[&_canvas]:-translate-y-[8%] md:[&_svg]:-translate-y-[8%]',
-              '[&_canvas]:scale-[1.12] [&_svg]:scale-[1.12]',
+              'max-md:[&_canvas]:-translate-y-[4%] max-md:[&_svg]:-translate-y-[4%] max-md:[&_canvas]:scale-[1] max-md:[&_svg]:scale-[1]',
+              'md:[&_canvas]:-translate-y-[8%] md:[&_svg]:-translate-y-[8%] md:[&_canvas]:scale-[1.12] md:[&_svg]:scale-[1.12]',
               '[&_canvas]:h-full [&_svg]:h-full [&_canvas]:w-full [&_svg]:w-full',
             ].join(' ')}
           />

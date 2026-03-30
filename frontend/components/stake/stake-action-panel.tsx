@@ -283,21 +283,24 @@ export function StakeActionPanel({ stakeMode }: StakeActionPanelProps) {
         )
       }
       
-      const hash = stakeMode === 'USDT'
-        ? await gaslessStake(
-            usdtAddr!,
-            stakingAddr,
-            amount,
-            referrerAddress,
-            lockPeriodNum
-          )
-        : await gaslessStakeRWA(
-            rwaAddr!,
-            stakingAddr,
-            amount,
-            referrerAddress,
-            lockPeriodNum
-          )
+      // gaslessStake / gaslessStakeRWA 返回 { txHash, pending }，必须取 txHash 字符串再调 RPC
+      const relayerResult =
+        stakeMode === 'USDT'
+          ? await gaslessStake(
+              usdtAddr!,
+              stakingAddr,
+              amount,
+              referrerAddress,
+              lockPeriodNum
+            )
+          : await gaslessStakeRWA(
+              rwaAddr!,
+              stakingAddr,
+              amount,
+              referrerAddress,
+              lockPeriodNum
+            )
+      const hash = relayerResult.txHash
       setTxHash(hash)
       
       // Wait for transaction confirmation using publicClient
@@ -543,7 +546,7 @@ export function StakeActionPanel({ stakeMode }: StakeActionPanelProps) {
                     ? t('stake.willBecomeEffectiveUser') || `You will become an effective user after this stake (≥${EFFECTIVE_USER_THRESHOLD} USDT)`
                     : t('stake.effectiveUser') || `You are an effective user (≥${EFFECTIVE_USER_THRESHOLD} USDT)`}
                 </p>
-                <p className="mt-1 text-[11px] text-[#64748b]">
+                <p className="mt-1 text-[11px] text-text-secondary">
                   {t('stake.effectiveUserDesc') || 'Effective users are eligible for referral rewards and team bonuses.'}
                 </p>
               </div>
@@ -561,7 +564,7 @@ export function StakeActionPanel({ stakeMode }: StakeActionPanelProps) {
                 <p className="text-xs font-medium text-[#fb923c]">
                   {t('stake.notEffectiveUser') || `Stake at least ${EFFECTIVE_USER_THRESHOLD} USDT to become an effective user`}
                 </p>
-                <p className="mt-1 text-[11px] text-[#64748b]">
+                <p className="mt-1 text-[11px] text-text-secondary">
                   {t('stake.notEffectiveUserDesc', {
                     amount: numAmount.toFixed(2),
                     remaining: (EFFECTIVE_USER_THRESHOLD - numAmount).toFixed(2)
@@ -588,7 +591,7 @@ export function StakeActionPanel({ stakeMode }: StakeActionPanelProps) {
                 ? `当前按前端参考价格 1 RWA ≈ ${RWA_REFERENCE_PRICE} USDT 估算，RWA 质押至少需要 ${MIN_RWA_STAKE_ESTIMATE.toFixed(2)} RWA。`
                 : `At the current frontend reference price (1 RWA ≈ ${RWA_REFERENCE_PRICE} USDT), you need at least ${MIN_RWA_STAKE_ESTIMATE.toFixed(2)} RWA.`}
             </p>
-            <p className="mt-1 text-[11px] text-[#64748b]">
+            <p className="mt-1 text-[11px] text-text-secondary">
               {locale.startsWith('zh')
                 ? '这是前端按当前参考价格估算的 100 USDT 等值门槛；实际价格波动请以当时页面价格为准。'
                 : 'This is the frontend estimate for the 100 USDT equivalent minimum. Actual market price may change.'}
@@ -597,12 +600,12 @@ export function StakeActionPanel({ stakeMode }: StakeActionPanelProps) {
         </div>
       )}
 
-      {/* Amount Input */}
+      {/* Amount Input — 与 swap/tron-recharge-card 金额行一致 */}
       <div>
         <div className="flex items-center justify-between gap-2">
-          <span className="text-xs text-[#64748b]">{t('stake.amountLabel')}</span>
+          <span className="text-[12px] text-text-secondary">{t('stake.amountLabel')}</span>
           <div className="flex min-w-0 items-center gap-2">
-            <span className="truncate font-mono text-xs text-[#64748b]">
+            <span className="truncate font-mono text-[12px] text-text-secondary">
               {t('stake.balance')}: {balance} {stakeMode === 'USDT' ? 'USDT' : 'RWA'}
             </span>
             <button
@@ -618,49 +621,44 @@ export function StakeActionPanel({ stakeMode }: StakeActionPanelProps) {
                 await refetchStakeInfo()
               }}
               disabled={!isConnected}
-              className="shrink-0 text-xs font-semibold text-[#00f5d4] hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+              className="shrink-0 text-[12px] font-semibold text-plasma-cyan hover:underline disabled:cursor-not-allowed disabled:opacity-40"
             >
               {t('stake.balanceRefresh')}
             </button>
           </div>
         </div>
 
-        <div className="mt-2 flex h-[68px] items-center gap-2 overflow-hidden rounded-2xl border border-[#2d2d33] bg-[#27272c] px-3 sm:gap-4 sm:px-4">
+        <div className="mt-2 flex min-h-14 items-center gap-2 overflow-hidden rounded-2xl border border-border-subtle bg-surface-2 px-3 sm:gap-4 sm:px-4">
           <input
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder={t('stake.amountPlaceholder')}
             disabled={!isConnected}
-            className="min-w-0 flex-1 bg-transparent font-[family-name:var(--font-jetbrains-mono)] text-2xl text-[#f1f5f9] outline-none placeholder:text-[#334155] disabled:opacity-50 disabled:cursor-not-allowed sm:text-3xl [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            className="min-h-14 min-w-0 flex-1 bg-transparent text-[22px] font-bold text-text-primary outline-none placeholder:text-text-disabled disabled:cursor-not-allowed disabled:opacity-50 sm:text-[28px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             aria-label={t('stake.amountLabel')}
           />
-          {/* Token selector pill */}
           <button
             type="button"
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#ffffff0d] bg-[#13131e] px-2 py-1.5 transition-colors hover:border-[#ffffff1a] sm:gap-2 sm:px-3"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-border-subtle bg-surface-1 px-2 py-1.5 transition-colors hover:border-border-active sm:gap-2 sm:px-3"
           >
-            <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
-              stakeMode === 'USDT' ? 'bg-[#00f5d4] text-[#05050a]' : 'bg-[#00f5d4] text-[#05050a]'
-            }`}>
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-plasma-cyan text-[10px] font-bold text-void-black">
               {stakeMode === 'USDT' ? 'U' : 'R'}
             </span>
-            <span className="hidden text-sm font-semibold text-[#f1f5f9] sm:inline">
+            <span className="hidden text-sm font-semibold text-text-primary sm:inline">
               {stakeMode === 'USDT' ? 'USDT' : 'RWA'}
             </span>
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#64748b]" />
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-text-secondary" />
           </button>
         </div>
 
         <div className="mt-2 flex items-center justify-between">
-          <span className="text-xs text-[#64748b]">
-            {t('stake.minStake')}
-          </span>
+          <span className="text-[12px] text-text-secondary">{t('stake.minStake')}</span>
           <button
             type="button"
             onClick={handleSetMax}
             disabled={!isConnected}
-            className="rounded-full border border-[#00f5d420] px-3 py-1 text-xs text-[#00f5d4] transition-colors hover:bg-[#00f5d410] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-full border border-border-subtle px-3 py-1 text-[10px] font-semibold text-text-secondary transition-colors hover:border-plasma-cyan/40 hover:text-plasma-cyan disabled:cursor-not-allowed disabled:opacity-50"
           >
             {t('stake.max')}
           </button>
@@ -670,7 +668,7 @@ export function StakeActionPanel({ stakeMode }: StakeActionPanelProps) {
       {/* Lock Period Selection */}
       <div className="mt-6">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] uppercase tracking-wider text-[#64748b]" style={{ fontVariant: 'small-caps' }}>
+          <span className="text-[11px] uppercase tracking-wider text-text-secondary" style={{ fontVariant: 'small-caps' }}>
             {t('stake.lockPeriod')}
           </span>
         </div>
@@ -683,8 +681,8 @@ export function StakeActionPanel({ stakeMode }: StakeActionPanelProps) {
               disabled={!isConnected}
               className={`rounded-xl border px-3 py-2.5 text-xs font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
                 lockPeriod === period
-                  ? 'border-[#00f5d4] bg-[#00f5d412] text-[#00f5d4]'
-                  : 'border-[#2d2d33] bg-[#27272c] text-[#94a3b8] hover:border-[#ffffff1a]'
+                  ? 'border-plasma-cyan bg-plasma-cyan/15 text-plasma-cyan'
+                  : 'border-border-subtle bg-surface-2 text-text-secondary hover:border-plasma-cyan/40'
               }`}
             >
               {period === 'flexible' && t('stake.lockPeriodFlexible')}
@@ -699,8 +697,8 @@ export function StakeActionPanel({ stakeMode }: StakeActionPanelProps) {
             disabled={!isConnected}
             className={`col-span-2 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
               lockPeriod === '365'
-                ? 'border-[#00f5d4] bg-[#00f5d412] text-[#00f5d4]'
-                : 'border-[#2d2d33] bg-[#27272c] text-[#94a3b8] hover:border-[#ffffff1a]'
+                ? 'border-plasma-cyan bg-plasma-cyan/15 text-plasma-cyan'
+                : 'border-border-subtle bg-surface-2 text-text-secondary hover:border-plasma-cyan/40'
             }`}
           >
             {t('stake.lockPeriod365')}
@@ -714,92 +712,90 @@ export function StakeActionPanel({ stakeMode }: StakeActionPanelProps) {
           showAllocation ? 'mt-4 max-h-[560px] opacity-100' : 'max-h-0 opacity-0'
         }`}
       >
-        <div className="overflow-y-auto rounded-xl border border-[#ffffff0d] bg-[#0d0d14] p-4">
-          <p className="text-[11px] uppercase tracking-widest text-[#64748b]" style={{ fontVariant: 'small-caps' }}>
+        <div className="overflow-y-auto rounded-2xl border border-white/[0.08] bg-[#12121a]/95 p-4">
+          <p className="text-[11px] uppercase tracking-widest text-text-secondary" style={{ fontVariant: 'small-caps' }}>
             {t('stake.allocation')}
           </p>
 
           {/* 单列：两行占比 + 一条双色进度条 + 一句说明 */}
           <div className="mt-3 space-y-2.5">
             <div className="flex items-center justify-between gap-3 text-[13px]">
-              <span className="min-w-0 text-[#94a3b8]">{t('stake.allocationRowTreasury')}</span>
-              <span className="shrink-0 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-[#94a3b8]">
+              <span className="min-w-0 text-text-secondary">{t('stake.allocationRowTreasury')}</span>
+              <span className="shrink-0 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-text-secondary">
                 {halfAmount}
               </span>
             </div>
             <div className="flex items-center justify-between gap-3 text-[13px]">
-              <span className="min-w-0 text-[#e2e8f0]">{t('stake.allocationRowPool')}</span>
-              <span className="shrink-0 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-[#00f5d4]">
+              <span className="min-w-0 text-text-primary">{t('stake.allocationRowPool')}</span>
+              <span className="shrink-0 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-plasma-cyan">
                 {halfAmount}
               </span>
             </div>
-            <div className="flex h-2 w-full overflow-hidden rounded-full bg-[#1a1a2e]">
+            <div className="flex h-2 w-full overflow-hidden rounded-full bg-white/[0.06]">
               <div
-                className="h-full bg-[#64748b] transition-all duration-500 ease-out"
+                className="h-full bg-text-secondary/60 transition-all duration-500 ease-out"
                 style={{ width: showAllocation ? '50%' : '0%' }}
               />
               <div
-                className="h-full bg-[#00f5d4] transition-all duration-500 ease-out"
+                className="h-full bg-plasma-cyan/80 transition-all duration-500 ease-out"
                 style={{
                   width: showAllocation ? '50%' : '0%',
                   boxShadow: '0 0 10px rgba(0,245,212,0.2)',
                 }}
               />
             </div>
-            <p className="text-[11px] leading-snug text-[#64748b]">{t('stake.allocationNote')}</p>
+            <p className="text-[11px] leading-snug text-text-secondary">{t('stake.allocationNote')}</p>
           </div>
 
-          {/* Daily Yield & Total Yield Display */}
+          {/* Daily Yield & Total Yield Display — 与 swap 预计获得信息块同系 */}
           {numAmount > 0 && (
-            <div className="mt-4 space-y-3 rounded-lg border border-[#00f5d420] bg-[#00f5d410] p-4">
-              <p className="text-[11px] uppercase tracking-widest text-[#00f5d4]" style={{ fontVariant: 'small-caps' }}>
+            <div className="mt-4 space-y-3 rounded-2xl border border-plasma-cyan/15 bg-plasma-cyan/8 p-4">
+              <p className="text-[11px] uppercase tracking-widest text-plasma-cyan" style={{ fontVariant: 'small-caps' }}>
                 {t('stake.yieldPreview')}
               </p>
-              
-              {/* Daily Yield */}
+
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-[#64748b]">{t('stake.dailyYield')}</span>
+                  <span className="text-xs text-text-secondary">{t('stake.dailyYield')}</span>
                   <div className="flex items-baseline gap-1">
-                    <span className="font-[family-name:var(--font-jetbrains-mono)] text-lg font-bold text-[#00f5d4]">
+                    <span className="font-[family-name:var(--font-jetbrains-mono)] text-lg font-bold text-plasma-cyan">
                       {dailyYieldRWA.toFixed(2)}
                     </span>
-                    <span className="text-xs text-[#00f5d4]">RWA</span>
+                    <span className="text-xs text-plasma-cyan">RWA</span>
                   </div>
                 </div>
                 <div className="mt-1 flex items-center justify-between">
-                  <span className="text-[11px] text-[#64748b]">
+                  <span className="text-[11px] text-text-secondary">
                     {lockPeriod === 'flexible' && t('stake.baseYieldRate')}
                     {lockPeriod === '30' && t('stake.yieldRate30')}
                     {lockPeriod === '90' && t('stake.yieldRate90')}
                     {lockPeriod === '180' && t('stake.yieldRate180')}
                     {lockPeriod === '365' && t('stake.yieldRate365')}
                   </span>
-                  <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-[#64748b]">
+                  <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-text-secondary">
                     ≈ {(dailyYieldRWA * rwaPrice).toFixed(2)} USDT
                   </span>
                 </div>
               </div>
 
-              {/* Total Yield by Period */}
-              <div className="mt-3 space-y-2 border-t border-[#00f5d420] pt-3">
-                <p className="text-[11px] text-[#64748b]">{t('stake.totalYieldAtMaturity')}</p>
+              <div className="mt-3 space-y-2 border-t border-plasma-cyan/20 pt-3">
+                <p className="text-[11px] text-text-secondary">{t('stake.totalYieldAtMaturity')}</p>
                 <div className="grid grid-cols-2 gap-2 font-[family-name:var(--font-jetbrains-mono)] text-xs">
-                  <div className="flex items-center justify-between rounded bg-[#0d0d14] px-2 py-1.5">
-                    <span className="text-[#64748b]">{t('stake.days30')}</span>
-                    <span className="text-[#00f5d4]">{totalYield30Days.toFixed(0)} RWA</span>
+                  <div className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-2 px-2 py-1.5">
+                    <span className="text-text-secondary">{t('stake.days30')}</span>
+                    <span className="text-plasma-cyan">{totalYield30Days.toFixed(0)} RWA</span>
                   </div>
-                  <div className="flex items-center justify-between rounded bg-[#0d0d14] px-2 py-1.5">
-                    <span className="text-[#64748b]">{t('stake.days90')}</span>
-                    <span className="text-[#00f5d4]">{totalYield90Days.toFixed(0)} RWA</span>
+                  <div className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-2 px-2 py-1.5">
+                    <span className="text-text-secondary">{t('stake.days90')}</span>
+                    <span className="text-plasma-cyan">{totalYield90Days.toFixed(0)} RWA</span>
                   </div>
-                  <div className="flex items-center justify-between rounded bg-[#0d0d14] px-2 py-1.5">
-                    <span className="text-[#64748b]">{t('stake.days180')}</span>
-                    <span className="text-[#00f5d4]">{totalYield180Days.toFixed(0)} RWA</span>
+                  <div className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-2 px-2 py-1.5">
+                    <span className="text-text-secondary">{t('stake.days180')}</span>
+                    <span className="text-plasma-cyan">{totalYield180Days.toFixed(0)} RWA</span>
                   </div>
-                  <div className="flex items-center justify-between rounded bg-[#0d0d14] px-2 py-1.5">
-                    <span className="text-[#64748b]">{t('stake.days365')}</span>
-                    <span className="text-[#00f5d4]">{totalYield365Days.toFixed(0)} RWA</span>
+                  <div className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-2 px-2 py-1.5">
+                    <span className="text-text-secondary">{t('stake.days365')}</span>
+                    <span className="text-plasma-cyan">{totalYield365Days.toFixed(0)} RWA</span>
                   </div>
                 </div>
               </div>
@@ -812,29 +808,33 @@ export function StakeActionPanel({ stakeMode }: StakeActionPanelProps) {
       {!hasReferrer && numAmount > 0 && (
         <div className="mt-6">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] uppercase tracking-wider text-[#64748b]" style={{ fontVariant: 'small-caps' }}>
+            <span className="text-[11px] uppercase tracking-wider text-text-secondary" style={{ fontVariant: 'small-caps' }}>
               {t('stake.referralLabel')}
             </span>
             <span className="rounded-full bg-[#f43f5e20] px-2 py-0.5 text-[11px] text-[#f43f5e]">
               {t('stake.referralRequired')}
             </span>
           </div>
-          <input
-            type="text"
-            value={referral}
-            onChange={(e) => setReferral(e.target.value)}
-            placeholder={t('stake.referralPlaceholderRequired')}
-            disabled={!isConnected}
-            className={`mt-2 h-[52px] w-full rounded-xl border bg-[#0d0d14] px-5 font-[family-name:var(--font-jetbrains-mono)] text-sm text-[#f1f5f9] outline-none transition-colors placeholder:text-[#334155] disabled:opacity-50 ${
+          <div
+            className={`mt-2 flex min-h-12 w-full items-center rounded-2xl border border-border-subtle bg-surface-2 px-4 transition-colors ${
               referral.trim().length > 0 && !isValidReferral
-                ? 'border-[#f43f5e] focus:border-[#f43f5e]'
+                ? 'border-danger'
                 : isValidReferral
-                  ? 'border-[#10b981] focus:border-[#10b981]'
-                  : 'border-[#ffffff0d] focus:border-[#ffffff1a]'
+                  ? 'border-success'
+                  : 'focus-within:border-border-active'
             }`}
-            aria-label={t('stake.referralLabel')}
-            required
-          />
+          >
+            <input
+              type="text"
+              value={referral}
+              onChange={(e) => setReferral(e.target.value)}
+              placeholder={t('stake.referralPlaceholderRequired')}
+              disabled={!isConnected}
+              className="min-h-12 w-full bg-transparent font-mono text-[13px] text-text-primary outline-none placeholder:text-text-disabled disabled:opacity-50"
+              aria-label={t('stake.referralLabel')}
+              required
+            />
+          </div>
           {/* Error message for invalid address */}
           {referral.trim().length > 0 && !isValidReferral && (
             <p className="mt-2 text-xs text-[#f43f5e]">
@@ -858,7 +858,7 @@ export function StakeActionPanel({ stakeMode }: StakeActionPanelProps) {
       )}
 
       {/* Step Indicator */}
-      <p className="mt-6 text-xs text-[#334155]">{t('stake.step')}</p>
+      <p className="mt-6 text-xs text-text-disabled">{t('stake.step')}</p>
 
       {/* Action Buttons / Result */}
       {status === 'success' ? (
@@ -872,29 +872,29 @@ export function StakeActionPanel({ stakeMode }: StakeActionPanelProps) {
               {t('stake.success')}
             </span>
           </div>
-          <p className="mt-2 font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#64748b]">
+          <p className="mt-2 font-[family-name:var(--font-jetbrains-mono)] text-xs text-text-secondary">
             {t('stake.txLabel')}
           </p>
           <a
             href={getExplorerTxUrl(chainId, txHash)}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-1 inline-block text-xs text-[#00f5d4] hover:underline"
+            className="mt-1 inline-block text-xs text-plasma-cyan hover:underline"
           >
             {t('stake.viewBscscan')}
           </a>
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <button
               type="button"
               onClick={() => router.push('/dashboard')}
-              className="rounded-full bg-[#00f5d4] px-4 py-2 text-sm font-bold text-[#05050a] transition-all hover:brightness-110 shadow-[0_0_20px_rgba(0,245,212,0.3)]"
+              className="rounded-2xl bg-plasma-cyan px-4 py-3 text-sm font-bold text-void-black transition-transform hover:scale-[1.01] hover:brightness-110"
             >
               {t('common.goToDashboardNow')}
             </button>
             <button
               type="button"
               onClick={handleReset}
-              className="rounded-full border border-[#ffffff1a] px-4 py-2 text-sm text-[#f1f5f9] transition-colors hover:bg-[#13131e]"
+              className="rounded-2xl border border-border-subtle bg-surface-2 px-4 py-3 text-sm font-semibold text-text-primary transition-transform hover:scale-[1.01] hover:brightness-110"
             >
               {t('stake.stakeAgain')}
             </button>
@@ -928,24 +928,22 @@ export function StakeActionPanel({ stakeMode }: StakeActionPanelProps) {
               {t('stake.staking')}
             </span>
           </div>
-          <p className="mt-2 text-sm text-[#64748b]">
+          <p className="mt-2 text-sm text-text-secondary">
             {locale.startsWith('zh') ? '请稍候，交易正在处理中...' : 'Please wait, transaction is being processed...'}
           </p>
         </div>
       ) : (
         <div className="mt-3 flex flex-col gap-3">
-          {/* Gasless staking - no approve button needed */}
-          {/* Stake button */}
           <button
             type="button"
             onClick={handleStake}
             disabled={isStakeDisabled}
-            className={`flex h-14 w-full items-center justify-center gap-2 rounded-full text-sm font-bold transition-all
+            className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-[15px] font-bold transition-transform
               ${isStakeDisabled
-                ? 'cursor-not-allowed bg-[#13131e] text-[#334155]'
+                ? 'cursor-not-allowed bg-surface-2 text-text-disabled opacity-60 disabled:hover:scale-100'
                 : status === 'staking'
-                  ? 'bg-[#00f5d466] text-[#05050a]'
-                  : 'bg-[#00f5d4] text-[#05050a] hover:scale-[1.02] hover:brightness-110 shadow-[0_0_20px_rgba(0,245,212,0.3)]'
+                  ? 'bg-plasma-cyan/40 text-void-black'
+                  : 'bg-plasma-cyan text-void-black hover:scale-[1.01] hover:brightness-110'
               }`}
           >
             {status === 'staking' && (
@@ -958,12 +956,12 @@ export function StakeActionPanel({ stakeMode }: StakeActionPanelProps) {
 
       {/* 已绑定推荐人提示：置于表单最下方（Pancake 式布局） */}
       {hasReferrer && (
-        <div className="mt-6 rounded-xl border border-[#00f5d438] bg-[#00f5d408] p-4">
+        <div className="mt-6 rounded-2xl border border-plasma-cyan/15 bg-plasma-cyan/8 p-4">
           <div className="flex items-start gap-3">
-            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#00f5d4]" />
+            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-plasma-cyan" />
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-[#00f5d4]">{t('stake.referrerBound')}</p>
-              <p className="mt-1.5 break-all font-mono text-[11px] text-[#94a3b8]">
+              <p className="text-xs font-medium text-plasma-cyan">{t('stake.referrerBound')}</p>
+              <p className="mt-1.5 break-all font-mono text-[11px] text-text-secondary">
                 {t('stake.referrerAddress')}: {displayReferrer}
               </p>
             </div>
