@@ -1,6 +1,5 @@
 // [Logic Memory] 1 RWA = 0.85 USDT. Timestamp in seconds (Unix timestamp).
 import express from 'express';
-import { ethers } from 'ethers';
 import { getPool } from '../config/database.config';
 
 const router = express.Router();
@@ -77,54 +76,34 @@ async function getDescendantAddresses(pool: any, root: string): Promise<string[]
     .trim()
     .toLowerCase();
   if (!r.startsWith('0x') || r.length !== 42) return [];
-  try {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  let frontier: string[] = [r];
+  let depth = 0;
+
+  while (frontier.length > 0 && depth < MAX_DOWNLINE_DEPTH) {
+    const placeholders = frontier.map(() => '?').join(',');
     const [rows] = await pool.query(
-      `/* MySQL 5.7 Fix */ -- WITH RECURSIVE downline AS (
-        SELECT LOWER(user_address) AS ua, 1 AS depth
-        FROM referral_bindings
-        WHERE LOWER(referrer_address) = ?
-        UNION ALL
-        SELECT LOWER(rb.user_address), d.depth + 1
-        FROM referral_bindings rb
-        INNER JOIN downline d ON LOWER(rb.referrer_address) = d.ua
-        WHERE d.depth < ?
-      )
-      SELECT DISTINCT ua FROM downline`,
-      [r, MAX_DOWNLINE_DEPTH]
+      `SELECT DISTINCT LOWER(user_address) AS ua
+       FROM referral_bindings
+       WHERE LOWER(referrer_address) IN (${placeholders})`,
+      frontier
     );
-    return (rows as { ua: string }[]).map((x) => String(x.ua).toLowerCase());
-  } catch (e) {
-    console.warn('[UnifiedData] recursive downline CTE failed, fallback to app-layer BFS', e);
-    // MySQL 5.7 无 /* MySQL 5.7 Fix */ -- WITH RECURSIVE：改为应用层 BFS，保持无限代（受 MAX_DOWNLINE_DEPTH 保护）
-    const seen = new Set<string>();
-    const result: string[] = [];
-    let frontier: string[] = [r];
-    let depth = 0;
 
-    while (frontier.length > 0 && depth < MAX_DOWNLINE_DEPTH) {
-      const placeholders = frontier.map(() => '?').join(',');
-      const [rows] = await pool.query(
-        `SELECT DISTINCT LOWER(user_address) AS ua
-         FROM referral_bindings
-         WHERE LOWER(referrer_address) IN (${placeholders})`,
-        frontier
-      );
-
-      const next: string[] = [];
-      for (const row of rows as Array<{ ua: string }>) {
-        const ua = String(row.ua || '').toLowerCase();
-        if (!ua || ua === r || seen.has(ua)) continue;
-        seen.add(ua);
-        result.push(ua);
-        next.push(ua);
-      }
-
-      frontier = next;
-      depth += 1;
+    const next: string[] = [];
+    for (const row of rows as Array<{ ua: string }>) {
+      const ua = String(row.ua || '').toLowerCase();
+      if (!ua || ua === r || seen.has(ua)) continue;
+      seen.add(ua);
+      result.push(ua);
+      next.push(ua);
     }
 
-    return result;
+    frontier = next;
+    depth += 1;
   }
+
+  return result;
 }
 
 async function getDirectReferralCount(pool: any, root: string): Promise<number> {

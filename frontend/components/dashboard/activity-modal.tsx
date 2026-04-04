@@ -168,10 +168,10 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl border border-[#00f5d420] bg-gradient-to-br from-[#0d0d14] to-[#13131e] shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 px-4 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))] backdrop-blur-sm animate-fade-in">
+      <div className="relative flex max-h-[min(90vh,calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem))] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[#00f5d420] bg-gradient-to-br from-[#0d0d14] to-[#13131e] shadow-lg sm:max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#00f5d420]">
+        <div className="flex shrink-0 items-center justify-between border-b border-[#00f5d420] p-6">
           <h3 className="text-xl font-semibold text-[#f1f5f9]">{t('activity.title') || '最近活动'}</h3>
           <button 
             onClick={onClose} 
@@ -183,7 +183,7 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)] scrollbar-hide">
+        <div className="min-h-0 flex-1 overflow-y-auto p-6 scrollbar-hide">
           {loading ? (
             <div className="py-12 text-center text-sm text-[#64748b]">
               {t('activity.loading') || '加载中...'}

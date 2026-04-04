@@ -100,7 +100,7 @@ export function PanelPrincipal({ onMobileBack, data, embedded = false }: Props) 
   }
 
   return (
-    <div className="flex h-full flex-col bg-[#020617]/40">
+    <div className="flex h-full flex-col">
       {!embedded ? (
         <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/[0.06] bg-white/[0.03] backdrop-blur-xl">
           <button

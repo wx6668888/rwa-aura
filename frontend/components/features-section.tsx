@@ -1,40 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { LazyDotLottieAnimation } from '@/components/lazy-dot-lottie'
 
 export function FeaturesSection() {
-  const cardRef = useRef<HTMLDivElement | null>(null)
-  const [entered, setEntered] = useState(false)
-
-  useEffect(() => {
-    const el = cardRef.current
-    if (!el || entered) return
-    const obs = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            requestAnimationFrame(() => requestAnimationFrame(() => setEntered(true)))
-            obs.disconnect()
-            break
-          }
-        }
-      },
-      { threshold: 0.14 },
-    )
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [entered])
-
   return (
     <section className="mx-auto max-w-7xl px-4 py-12 lg:px-8">
-      <div
-        ref={cardRef}
-        className={`relative overflow-hidden rounded-3xl border border-white/14 bg-[#0d0d14]/82 px-6 pb-6 pt-3 backdrop-blur-2xl supports-[backdrop-filter]:bg-[#0d0d14]/72 transition-all duration-700 ease-out md:px-10 md:pb-10 md:pt-4 ${
-          entered ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-8 scale-[0.98] opacity-0'
-        }`}
-      >
+      <div className="relative overflow-hidden rounded-3xl border border-white/14 bg-[#0d0d14]/82 px-6 pb-6 pt-3 backdrop-blur-2xl supports-[backdrop-filter]:bg-[#0d0d14]/72 md:px-10 md:pb-10 md:pt-4">
         {/* 右上半圆（带填充），约 1/2 显示在卡片内 */}
         <div
           className="pointer-events-none absolute -right-40 -top-40 h-80 w-80 rounded-full opacity-55 md:-right-44 md:-top-44 md:h-96 md:w-96"

@@ -89,10 +89,19 @@ export class DailySettlementService {
 
       let successCount = 0;
 
-      for (const user of users) {
+      for (let i = 0; i < users.length; i++) {
+        const user = users[i];
         try {
           await this.settleUserYield(user.address, user.asset_type, fromTime, toTime, blockAtFrom);
           successCount++;
+          
+          // --- Rate Limit 冗余设计 ---
+          // QuickNode 限制约为 15-20 RPS，每个账户结算约需 4-8 次请求。
+          // 每处理一个账户后休眠 500ms（即每秒最多处理 2 个账户），约消耗 8-16 RPS，
+          // 为其他并发业务（如前端查询、监控）预留了约 50% 的速率额度。
+          if (i < users.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
         } catch (error) {
           logger.error(`Failed to settle ${user.address} (${user.asset_type}):`, error);
         }

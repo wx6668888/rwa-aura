@@ -723,20 +723,16 @@ export function FundActivityCard() {
       {/* 查看全部 - 弹窗：整页全屏，风格与仪表盘一致 */}
       {showModal && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-[9999] flex flex-col sm:items-center sm:justify-center sm:p-4"
+          className="fixed inset-0 z-[9999] flex flex-col sm:items-center sm:justify-center sm:p-4 pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]"
           style={{
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            width: '100vw',
+            width: '100%',
             minHeight: '100dvh',
             background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(0,245,212,0.06) 0%, transparent 50%), rgba(5,5,10,0.96)',
             backdropFilter: 'blur(12px)',
           }}
         >
           <div
-            className="flex flex-col w-full h-full sm:w-full sm:max-w-4xl sm:h-auto sm:max-h-[88vh] sm:rounded-2xl overflow-hidden min-h-0"
+            className="flex min-h-0 w-full flex-1 flex-col overflow-hidden sm:h-auto sm:max-h-[88vh] sm:w-full sm:max-w-4xl sm:flex-none sm:rounded-2xl"
             style={{
               background: 'linear-gradient(165deg, #0d0d14 0%, #0a0a10 50%, #0d0d14 100%)',
               boxShadow: '0 0 0 1px rgba(0,245,212,0.08), 0 24px 48px -12px rgba(0,0,0,0.6), 0 0 80px -20px rgba(0,245,212,0.12)',

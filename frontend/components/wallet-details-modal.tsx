@@ -115,7 +115,7 @@ export function WalletDetailsModal({ open, isOpen, onClose, onOpenChainModal }: 
               </div>
               <div className="flex flex-col items-end">
                 <span className="text-xs text-[#7a859a] mb-1">总资产 (USDT)</span>
-                <span className="text-[18px] font-bold text-[#3b82f6]">
+                <span className="text-[18px] font-bold text-[#00f5d4]">
                   ${estimateLoading || totalUsdt == null ? '--' : totalUsdt.toFixed(2)}
                 </span>
               </div>
@@ -191,7 +191,7 @@ export function WalletDetailsModal({ open, isOpen, onClose, onOpenChainModal }: 
                   </div>
                   <div className="flex flex-col items-end">
                     <span className={`text-[15px] font-bold ${it.direction === 'in' ? 'text-emerald-400' : 'text-[#e2e8f0]'}`}>{it.direction === 'in' ? '+' : '-'}{Number(transfers.formatAmount(it.value)).toFixed(2)}</span>
-                    <a href={it.direction === 'in' ? `https://bscscan.com/address/${it.from}` : `https://bscscan.com/address/${it.to}`} target="_blank" rel="noreferrer" className="text-[12px] text-[#7a859a] hover:text-[#3b82f6] flex items-center gap-1 mt-0.5 transition-colors">
+                    <a href={it.direction === 'in' ? `https://bscscan.com/address/${it.from}` : `https://bscscan.com/address/${it.to}`} target="_blank" rel="noreferrer" className="text-[12px] text-[#7a859a] hover:text-[#00f5d4] flex items-center gap-1 mt-0.5 transition-colors">
                       {it.direction === 'in' ? `来自 ${shortAddr(it.from)}` : `发至 ${shortAddr(it.to)}`} <ArrowUpRight className="h-3 w-3" />
                     </a>
                   </div>
@@ -205,7 +205,7 @@ export function WalletDetailsModal({ open, isOpen, onClose, onOpenChainModal }: 
           <button type="button" onClick={onCopy} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-[#202634] py-3 text-[14px] font-semibold text-[#f4eeff] hover:bg-[#2a3143] transition-colors">
             <Copy className="h-4 w-4" /> 复制
           </button>
-          <Link href="/swap" onClick={onClose} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-[#3b82f6] py-3 text-[14px] font-semibold text-white hover:bg-[#2563eb] transition-colors">
+          <Link href="/swap" onClick={onClose} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-[#00f5d4] py-3 text-[14px] font-semibold text-[#051018] hover:brightness-110 transition-[filter]">
              买币
           </Link>
           <button

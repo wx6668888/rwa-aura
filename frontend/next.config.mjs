@@ -25,6 +25,15 @@ const nextConfig = {
   // API 代理：将前端请求转发到后端（同源 /api/* 避免浏览器请求 localhost 失败）
   async rewrites() {
     return [
+      // 聊天服务独立端口 3002：必须先于通用 /api 匹配
+      {
+        source: '/api/chat/:path*',
+        destination: 'http://127.0.0.1:3002/api/chat/:path*',
+      },
+      {
+        source: '/chat-ws/:path*',
+        destination: 'http://127.0.0.1:3002/chat-ws/:path*',
+      },
       {
         source: '/api/relayer/:path*',
         destination: 'http://localhost:3001/:path*',

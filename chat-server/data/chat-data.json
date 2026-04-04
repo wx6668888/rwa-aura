@@ -1,0 +1,613 @@
+{
+  "users": [
+    {
+      "id": "e2469417-b92a-46e3-801a-31bce1793904",
+      "address": "guest_smoke01",
+      "nickname": "SmokeGuest",
+      "nodeLevel": "L1",
+      "isBot": false,
+      "isAdmin": false,
+      "isOnline": true,
+      "lastSeen": 1774596641210,
+      "createdAt": 1774596641210
+    },
+    {
+      "id": "0dc62c66-2939-4f4a-99d5-7ddb34469611",
+      "address": "guest_policy01",
+      "nickname": "PolicyUser",
+      "nodeLevel": "L1",
+      "isBot": false,
+      "isAdmin": false,
+      "isOnline": true,
+      "lastSeen": 1774597951809,
+      "createdAt": 1774597951809
+    },
+    {
+      "id": "bec98ffd-8c0e-4227-884f-d3f9b6dec12a",
+      "address": "guest_policy02",
+      "nickname": "OtherUser",
+      "nodeLevel": "L1",
+      "isBot": false,
+      "isAdmin": false,
+      "isOnline": true,
+      "lastSeen": 1774597951810,
+      "createdAt": 1774597951810
+    },
+    {
+      "id": "41dc63b3-b893-4650-8dfe-a0da74da8e55",
+      "address": "0xabc123",
+      "nickname": "Admin",
+      "nodeLevel": "L1",
+      "isBot": false,
+      "isAdmin": true,
+      "isOnline": true,
+      "lastSeen": 1774601213149,
+      "createdAt": 1774601213149
+    },
+    {
+      "id": "c55e67af-c971-426f-81d4-90e882961db8",
+      "address": "guest_noadmin",
+      "nickname": "Guest",
+      "nodeLevel": "L1",
+      "isBot": false,
+      "isAdmin": false,
+      "isOnline": true,
+      "lastSeen": 1774601213150,
+      "createdAt": 1774601213150
+    },
+    {
+      "id": "1ae706e1-2edd-4c03-9200-ca65cdb2dcc5",
+      "address": "0x5451e921ee3b568b20d530805b4809b23f7593d5",
+      "nickname": "0x5451...93D5",
+      "nodeLevel": "L1",
+      "isBot": false,
+      "isAdmin": false,
+      "isOnline": false,
+      "lastSeen": 1775068674186,
+      "createdAt": 1774619193089
+    },
+    {
+      "id": "d05f2e3f-8df1-497a-9949-8d1fe0fd3a65",
+      "address": "guest_rp_test",
+      "nickname": "红包测试",
+      "nodeLevel": "L1",
+      "isBot": false,
+      "isAdmin": false,
+      "isOnline": true,
+      "lastSeen": 1774626701543,
+      "createdAt": 1774626701543
+    },
+    {
+      "id": "dc91cb3a-0810-4c50-98b9-27a2c034829d",
+      "address": "guest_rp_test2",
+      "nickname": "领取者1",
+      "nodeLevel": "L1",
+      "isBot": false,
+      "isAdmin": false,
+      "isOnline": true,
+      "lastSeen": 1774626701546,
+      "createdAt": 1774626701546
+    },
+    {
+      "id": "2ee30b86-9b41-4c2b-86f0-2d8dd7894659",
+      "address": "0x1111111111111111111111111111111111111111",
+      "nickname": "A",
+      "nodeLevel": "L1",
+      "isBot": false,
+      "isAdmin": false,
+      "isOnline": true,
+      "lastSeen": 1774629780716,
+      "createdAt": 1774628773379
+    },
+    {
+      "id": "dd6585a5-db80-45fe-8608-d12bfbd4ad38",
+      "address": "0x2222222222222222222222222222222222222222",
+      "nickname": "B",
+      "nodeLevel": "L1",
+      "isBot": false,
+      "isAdmin": false,
+      "isOnline": true,
+      "lastSeen": 1774629780717,
+      "createdAt": 1774628773380
+    },
+    {
+      "id": "cb2316dd-e237-44d3-a863-ed81007a6027",
+      "address": "0x3333333333333333333333333333333333333333",
+      "nickname": "C",
+      "nodeLevel": "L1",
+      "isBot": false,
+      "isAdmin": false,
+      "isOnline": true,
+      "lastSeen": 1774629780717,
+      "createdAt": 1774628773380
+    },
+    {
+      "id": "55b7773c-5e2f-490f-b567-55c7f9fa3525",
+      "address": "0x152b416818bda6a9482e0de2c67f45a66e72ef8d",
+      "nickname": "小白学徒",
+      "nodeLevel": "L1",
+      "isBot": true,
+      "isAdmin": false,
+      "isOnline": true,
+      "lastSeen": 1774910060820,
+      "createdAt": 1774910060820
+    },
+    {
+      "id": "7211dad3-fbff-43e1-8d90-5bbe04f8ad83",
+      "address": "0x3e48ccf63bf57b3828d9394822907e209232d334",
+      "nickname": "规则研究员",
+      "nodeLevel": "L1",
+      "isBot": true,
+      "isAdmin": false,
+      "isOnline": true,
+      "lastSeen": 1774910060832,
+      "createdAt": 1774910060832
+    },
+    {
+      "id": "45342cd5-5371-4cf5-99fc-4c2cea08f547",
+      "address": "0x28458d2783cfb91988da88fa189b643686c48800",
+      "nickname": "薅羊毛小队",
+      "nodeLevel": "L1",
+      "isBot": true,
+      "isAdmin": false,
+      "isOnline": true,
+      "lastSeen": 1774910060837,
+      "createdAt": 1774910060837
+    },
+    {
+      "id": "3cbe729c-e00a-4cca-af8b-fee6eac51585",
+      "address": "0xd4e17b7d1cc9f0ce8dd1cd3dc114e78748a494eb",
+      "nickname": "收益晒图员",
+      "nodeLevel": "L1",
+      "isBot": true,
+      "isAdmin": false,
+      "isOnline": true,
+      "lastSeen": 1774910060847,
+      "createdAt": 1774910060847
+    },
+    {
+      "id": "214385a2-783a-4bc6-8a23-bda1a8ac618b",
+      "address": "guest_8x7sjb5i",
+      "nickname": "guest_...jb5i",
+      "nodeLevel": "L1",
+      "isBot": false,
+      "isAdmin": false,
+      "isOnline": false,
+      "lastSeen": 1775123250630,
+      "createdAt": 1774910351334
+    },
+    {
+      "id": "001bf187-f437-4759-802f-266d17eba4c1",
+      "address": "0xcc1df640be6977c13097349acc7717f83f720f8a",
+      "nickname": "0xcc1D...0F8a",
+      "nodeLevel": "L1",
+      "isBot": false,
+      "isAdmin": false,
+      "isOnline": false,
+      "lastSeen": 1775118901416,
+      "createdAt": 1775018985280
+    }
+  ],
+  "rooms": [
+    {
+      "id": "room-general",
+      "name": "🌐 General",
+      "description": "Welcome to RWA Aura community",
+      "type": "group",
+      "icon": "🌐",
+      "ownerId": "system",
+      "memberIds": [
+        "e2469417-b92a-46e3-801a-31bce1793904",
+        "0dc62c66-2939-4f4a-99d5-7ddb34469611",
+        "bec98ffd-8c0e-4227-884f-d3f9b6dec12a",
+        "41dc63b3-b893-4650-8dfe-a0da74da8e55",
+        "c55e67af-c971-426f-81d4-90e882961db8",
+        "1ae706e1-2edd-4c03-9200-ca65cdb2dcc5",
+        "d05f2e3f-8df1-497a-9949-8d1fe0fd3a65",
+        "dc91cb3a-0810-4c50-98b9-27a2c034829d",
+        "2ee30b86-9b41-4c2b-86f0-2d8dd7894659",
+        "dd6585a5-db80-45fe-8608-d12bfbd4ad38",
+        "cb2316dd-e237-44d3-a863-ed81007a6027",
+        "55b7773c-5e2f-490f-b567-55c7f9fa3525",
+        "7211dad3-fbff-43e1-8d90-5bbe04f8ad83",
+        "45342cd5-5371-4cf5-99fc-4c2cea08f547",
+        "3cbe729c-e00a-4cca-af8b-fee6eac51585",
+        "214385a2-783a-4bc6-8a23-bda1a8ac618b",
+        "001bf187-f437-4759-802f-266d17eba4c1"
+      ],
+      "isPublic": true,
+      "minTokenGate": 0,
+      "createdAt": 1774596427080
+    },
+    {
+      "id": "room-announcements",
+      "name": "📢 Announcements",
+      "description": "Official announcements (read-only)",
+      "type": "channel",
+      "icon": "📢",
+      "ownerId": "system",
+      "memberIds": [
+        "e2469417-b92a-46e3-801a-31bce1793904",
+        "0dc62c66-2939-4f4a-99d5-7ddb34469611",
+        "bec98ffd-8c0e-4227-884f-d3f9b6dec12a",
+        "41dc63b3-b893-4650-8dfe-a0da74da8e55",
+        "c55e67af-c971-426f-81d4-90e882961db8",
+        "1ae706e1-2edd-4c03-9200-ca65cdb2dcc5",
+        "d05f2e3f-8df1-497a-9949-8d1fe0fd3a65",
+        "dc91cb3a-0810-4c50-98b9-27a2c034829d",
+        "2ee30b86-9b41-4c2b-86f0-2d8dd7894659",
+        "dd6585a5-db80-45fe-8608-d12bfbd4ad38",
+        "cb2316dd-e237-44d3-a863-ed81007a6027",
+        "55b7773c-5e2f-490f-b567-55c7f9fa3525",
+        "7211dad3-fbff-43e1-8d90-5bbe04f8ad83",
+        "45342cd5-5371-4cf5-99fc-4c2cea08f547",
+        "3cbe729c-e00a-4cca-af8b-fee6eac51585",
+        "214385a2-783a-4bc6-8a23-bda1a8ac618b",
+        "001bf187-f437-4759-802f-266d17eba4c1"
+      ],
+      "isPublic": true,
+      "minTokenGate": 0,
+      "createdAt": 1774596427080
+    },
+    {
+      "id": "room-staking",
+      "name": "⚡ Staking Discussion",
+      "description": "Discuss staking strategies and rewards",
+      "type": "group",
+      "icon": "⚡",
+      "ownerId": "system",
+      "memberIds": [
+        "e2469417-b92a-46e3-801a-31bce1793904",
+        "0dc62c66-2939-4f4a-99d5-7ddb34469611",
+        "bec98ffd-8c0e-4227-884f-d3f9b6dec12a",
+        "41dc63b3-b893-4650-8dfe-a0da74da8e55",
+        "c55e67af-c971-426f-81d4-90e882961db8",
+        "1ae706e1-2edd-4c03-9200-ca65cdb2dcc5",
+        "d05f2e3f-8df1-497a-9949-8d1fe0fd3a65",
+        "dc91cb3a-0810-4c50-98b9-27a2c034829d",
+        "2ee30b86-9b41-4c2b-86f0-2d8dd7894659",
+        "dd6585a5-db80-45fe-8608-d12bfbd4ad38",
+        "cb2316dd-e237-44d3-a863-ed81007a6027",
+        "55b7773c-5e2f-490f-b567-55c7f9fa3525",
+        "7211dad3-fbff-43e1-8d90-5bbe04f8ad83",
+        "45342cd5-5371-4cf5-99fc-4c2cea08f547",
+        "3cbe729c-e00a-4cca-af8b-fee6eac51585",
+        "214385a2-783a-4bc6-8a23-bda1a8ac618b",
+        "001bf187-f437-4759-802f-266d17eba4c1"
+      ],
+      "isPublic": true,
+      "minTokenGate": 0,
+      "createdAt": 1774596427080
+    },
+    {
+      "id": "room-trading",
+      "name": "📈 Trading",
+      "description": "RWA trading and market analysis",
+      "type": "group",
+      "icon": "📈",
+      "ownerId": "system",
+      "memberIds": [
+        "e2469417-b92a-46e3-801a-31bce1793904",
+        "0dc62c66-2939-4f4a-99d5-7ddb34469611",
+        "bec98ffd-8c0e-4227-884f-d3f9b6dec12a",
+        "41dc63b3-b893-4650-8dfe-a0da74da8e55",
+        "c55e67af-c971-426f-81d4-90e882961db8",
+        "1ae706e1-2edd-4c03-9200-ca65cdb2dcc5",
+        "d05f2e3f-8df1-497a-9949-8d1fe0fd3a65",
+        "dc91cb3a-0810-4c50-98b9-27a2c034829d",
+        "2ee30b86-9b41-4c2b-86f0-2d8dd7894659",
+        "dd6585a5-db80-45fe-8608-d12bfbd4ad38",
+        "cb2316dd-e237-44d3-a863-ed81007a6027",
+        "55b7773c-5e2f-490f-b567-55c7f9fa3525",
+        "7211dad3-fbff-43e1-8d90-5bbe04f8ad83",
+        "45342cd5-5371-4cf5-99fc-4c2cea08f547",
+        "3cbe729c-e00a-4cca-af8b-fee6eac51585",
+        "214385a2-783a-4bc6-8a23-bda1a8ac618b",
+        "001bf187-f437-4759-802f-266d17eba4c1"
+      ],
+      "isPublic": true,
+      "minTokenGate": 0,
+      "createdAt": 1774596427080
+    },
+    {
+      "id": "room-vip",
+      "name": "💎 VIP Lounge",
+      "description": "Exclusive room for L5+ members",
+      "type": "group",
+      "icon": "💎",
+      "ownerId": "system",
+      "memberIds": [
+        "e2469417-b92a-46e3-801a-31bce1793904",
+        "0dc62c66-2939-4f4a-99d5-7ddb34469611",
+        "bec98ffd-8c0e-4227-884f-d3f9b6dec12a",
+        "41dc63b3-b893-4650-8dfe-a0da74da8e55",
+        "c55e67af-c971-426f-81d4-90e882961db8",
+        "1ae706e1-2edd-4c03-9200-ca65cdb2dcc5",
+        "d05f2e3f-8df1-497a-9949-8d1fe0fd3a65",
+        "dc91cb3a-0810-4c50-98b9-27a2c034829d",
+        "2ee30b86-9b41-4c2b-86f0-2d8dd7894659",
+        "dd6585a5-db80-45fe-8608-d12bfbd4ad38",
+        "cb2316dd-e237-44d3-a863-ed81007a6027",
+        "55b7773c-5e2f-490f-b567-55c7f9fa3525",
+        "7211dad3-fbff-43e1-8d90-5bbe04f8ad83",
+        "45342cd5-5371-4cf5-99fc-4c2cea08f547",
+        "3cbe729c-e00a-4cca-af8b-fee6eac51585",
+        "214385a2-783a-4bc6-8a23-bda1a8ac618b",
+        "001bf187-f437-4759-802f-266d17eba4c1"
+      ],
+      "isPublic": true,
+      "minTokenGate": 8000,
+      "createdAt": 1774596427080
+    }
+  ],
+  "messages": {
+    "room-general": [
+      {
+        "id": "353995ca-2ec4-4153-a449-c352ab294b7c",
+        "roomId": "room-general",
+        "userId": "e2469417-b92a-46e3-801a-31bce1793904",
+        "content": "hello from smoke test",
+        "type": "text",
+        "timestamp": 1774596641211,
+        "edited": false
+      },
+      {
+        "id": "04861598-6dbe-414f-a9c8-60dacec0a9d0",
+        "roomId": "room-general",
+        "userId": "0dc62c66-2939-4f4a-99d5-7ddb34469611",
+        "content": "updated",
+        "type": "text",
+        "timestamp": 1774597951810,
+        "edited": true
+      },
+      {
+        "id": "1a8b8412-b3d5-4c93-af48-2c2f38746327",
+        "roomId": "room-general",
+        "userId": "1ae706e1-2edd-4c03-9200-ca65cdb2dcc5",
+        "content": "你好",
+        "type": "text",
+        "timestamp": 1774619614472,
+        "edited": false
+      },
+      {
+        "id": "a9f755cc-4e8a-459f-8f27-eb1b6641a6f1",
+        "roomId": "room-general",
+        "userId": "1ae706e1-2edd-4c03-9200-ca65cdb2dcc5",
+        "content": "你好",
+        "type": "text",
+        "timestamp": 1774626420380,
+        "edited": false
+      },
+      {
+        "id": "d28b45ad-527d-46eb-b815-87c155a95eb0",
+        "roomId": "room-general",
+        "userId": "d05f2e3f-8df1-497a-9949-8d1fe0fd3a65",
+        "content": "测试红包",
+        "type": "redpacket",
+        "timestamp": 1774626701545,
+        "edited": true,
+        "metadata": {
+          "redPacketId": "9448b13d-1400-4301-947b-1c4b87fc893d",
+          "totalAmount": 10,
+          "remainingAmount": 0,
+          "totalCount": 3,
+          "remainingCount": 0,
+          "status": "refunded",
+          "greeting": "测试红包",
+          "senderId": "d05f2e3f-8df1-497a-9949-8d1fe0fd3a65",
+          "currency": "USDT",
+          "expiresAt": 1774713101545,
+          "refundedAmount": 6.67,
+          "claimRecords": []
+        }
+      },
+      {
+        "id": "c280cc94-c58a-436b-ae3e-793b3c43abe3",
+        "roomId": "room-general",
+        "userId": "2ee30b86-9b41-4c2b-86f0-2d8dd7894659",
+        "content": "测试完整版红包",
+        "type": "redpacket",
+        "timestamp": 1774628773381,
+        "edited": true,
+        "metadata": {
+          "redPacketId": "6a4c0439-a63f-474f-968b-363dfdf6cb8a",
+          "totalAmount": 12,
+          "remainingAmount": 0,
+          "totalCount": 4,
+          "remainingCount": 0,
+          "status": "refunded",
+          "greeting": "测试完整版红包",
+          "senderId": "2ee30b86-9b41-4c2b-86f0-2d8dd7894659",
+          "expiresAt": 1774715173382,
+          "refundedAmount": 6.53,
+          "claimRecords": [
+            {
+              "userId": "dd6585a5-db80-45fe-8608-d12bfbd4ad38",
+              "nickname": "B",
+              "amount": 5.37,
+              "claimedAt": 1774628773384
+            },
+            {
+              "userId": "cb2316dd-e237-44d3-a863-ed81007a6027",
+              "nickname": "C",
+              "amount": 0.1,
+              "claimedAt": 1774628773385
+            }
+          ],
+          "currency": "USDT"
+        }
+      },
+      {
+        "id": "1bcb9930-0ad2-4bdd-869e-9f607e557d4b",
+        "roomId": "room-general",
+        "userId": "2ee30b86-9b41-4c2b-86f0-2d8dd7894659",
+        "content": "测试完整版红包",
+        "type": "redpacket",
+        "timestamp": 1774629780718,
+        "edited": true,
+        "metadata": {
+          "redPacketId": "898f9b9f-b51e-4f51-a749-c4406c70b278",
+          "totalAmount": 12,
+          "remainingAmount": 0,
+          "totalCount": 4,
+          "remainingCount": 0,
+          "status": "refunded",
+          "greeting": "测试完整版红包",
+          "senderId": "2ee30b86-9b41-4c2b-86f0-2d8dd7894659",
+          "expiresAt": 1774629779722,
+          "refundedAmount": 3.22,
+          "claimRecords": [
+            {
+              "userId": "dd6585a5-db80-45fe-8608-d12bfbd4ad38",
+              "nickname": "B",
+              "amount": 2.9,
+              "claimedAt": 1774629780720
+            },
+            {
+              "userId": "cb2316dd-e237-44d3-a863-ed81007a6027",
+              "nickname": "C",
+              "amount": 5.88,
+              "claimedAt": 1774629780721
+            }
+          ]
+        }
+      },
+      {
+        "id": "9e049521-37cc-44fe-8021-4a37e002feb4",
+        "roomId": "room-general",
+        "userId": "214385a2-783a-4bc6-8a23-bda1a8ac618b",
+        "content": "有人么",
+        "type": "text",
+        "timestamp": 1774910357195,
+        "edited": false
+      },
+      {
+        "id": "5121c7b4-5c2e-4838-b213-962410775362",
+        "roomId": "room-general",
+        "userId": "001bf187-f437-4759-802f-266d17eba4c1",
+        "content": "有 😜",
+        "type": "text",
+        "timestamp": 1775019909693,
+        "edited": false
+      }
+    ],
+    "room-announcements": [],
+    "room-staking": [],
+    "room-trading": [],
+    "room-vip": []
+  },
+  "redPackets": {
+    "9448b13d-1400-4301-947b-1c4b87fc893d": {
+      "id": "9448b13d-1400-4301-947b-1c4b87fc893d",
+      "roomId": "room-general",
+      "senderId": "d05f2e3f-8df1-497a-9949-8d1fe0fd3a65",
+      "messageId": "d28b45ad-527d-46eb-b815-87c155a95eb0",
+      "totalAmount": 10,
+      "remainingAmount": 0,
+      "totalCount": 3,
+      "remainingCount": 0,
+      "amountsQueue": [],
+      "claimedBy": {
+        "dc91cb3a-0810-4c50-98b9-27a2c034829d": 3.33
+      },
+      "greeting": "测试红包",
+      "status": "refunded",
+      "createdAt": 1774626701545,
+      "claimRecords": [],
+      "expiresAt": 1774713101545,
+      "refundedAmount": 6.67,
+      "currency": "USDT"
+    },
+    "6a4c0439-a63f-474f-968b-363dfdf6cb8a": {
+      "id": "6a4c0439-a63f-474f-968b-363dfdf6cb8a",
+      "roomId": "room-general",
+      "senderId": "2ee30b86-9b41-4c2b-86f0-2d8dd7894659",
+      "messageId": "c280cc94-c58a-436b-ae3e-793b3c43abe3",
+      "totalAmount": 12,
+      "remainingAmount": 0,
+      "totalCount": 4,
+      "remainingCount": 0,
+      "amountsQueue": [],
+      "claimedBy": {
+        "dd6585a5-db80-45fe-8608-d12bfbd4ad38": 5.37,
+        "cb2316dd-e237-44d3-a863-ed81007a6027": 0.1
+      },
+      "claimRecords": [
+        {
+          "userId": "dd6585a5-db80-45fe-8608-d12bfbd4ad38",
+          "amount": 5.37,
+          "claimedAt": 1774628773384
+        },
+        {
+          "userId": "cb2316dd-e237-44d3-a863-ed81007a6027",
+          "amount": 0.1,
+          "claimedAt": 1774628773385
+        }
+      ],
+      "greeting": "测试完整版红包",
+      "status": "refunded",
+      "expiresAt": 1774715173382,
+      "refundedAmount": 6.53,
+      "createdAt": 1774628773382,
+      "currency": "USDT"
+    },
+    "898f9b9f-b51e-4f51-a749-c4406c70b278": {
+      "id": "898f9b9f-b51e-4f51-a749-c4406c70b278",
+      "roomId": "room-general",
+      "senderId": "2ee30b86-9b41-4c2b-86f0-2d8dd7894659",
+      "messageId": "1bcb9930-0ad2-4bdd-869e-9f607e557d4b",
+      "totalAmount": 12,
+      "remainingAmount": 0,
+      "totalCount": 4,
+      "remainingCount": 0,
+      "amountsQueue": [],
+      "claimedBy": {
+        "dd6585a5-db80-45fe-8608-d12bfbd4ad38": 2.9,
+        "cb2316dd-e237-44d3-a863-ed81007a6027": 5.88
+      },
+      "claimRecords": [
+        {
+          "userId": "dd6585a5-db80-45fe-8608-d12bfbd4ad38",
+          "amount": 2.9,
+          "claimedAt": 1774629780720
+        },
+        {
+          "userId": "cb2316dd-e237-44d3-a863-ed81007a6027",
+          "amount": 5.88,
+          "claimedAt": 1774629780721
+        }
+      ],
+      "greeting": "测试完整版红包",
+      "status": "refunded",
+      "expiresAt": 1774629779722,
+      "refundedAmount": 3.22,
+      "createdAt": 1774629780719,
+      "currency": "USDT"
+    }
+  },
+  "addressToUser": {
+    "guest_smoke01": "e2469417-b92a-46e3-801a-31bce1793904",
+    "guest_policy01": "0dc62c66-2939-4f4a-99d5-7ddb34469611",
+    "guest_policy02": "bec98ffd-8c0e-4227-884f-d3f9b6dec12a",
+    "0xabc123": "41dc63b3-b893-4650-8dfe-a0da74da8e55",
+    "guest_noadmin": "c55e67af-c971-426f-81d4-90e882961db8",
+    "0x5451e921ee3b568b20d530805b4809b23f7593d5": "1ae706e1-2edd-4c03-9200-ca65cdb2dcc5",
+    "guest_rp_test": "d05f2e3f-8df1-497a-9949-8d1fe0fd3a65",
+    "guest_rp_test2": "dc91cb3a-0810-4c50-98b9-27a2c034829d",
+    "0x1111111111111111111111111111111111111111": "2ee30b86-9b41-4c2b-86f0-2d8dd7894659",
+    "0x2222222222222222222222222222222222222222": "dd6585a5-db80-45fe-8608-d12bfbd4ad38",
+    "0x3333333333333333333333333333333333333333": "cb2316dd-e237-44d3-a863-ed81007a6027",
+    "0x152b416818bda6a9482e0de2c67f45a66e72ef8d": "55b7773c-5e2f-490f-b567-55c7f9fa3525",
+    "0x3e48ccf63bf57b3828d9394822907e209232d334": "7211dad3-fbff-43e1-8d90-5bbe04f8ad83",
+    "0x28458d2783cfb91988da88fa189b643686c48800": "45342cd5-5371-4cf5-99fc-4c2cea08f547",
+    "0xd4e17b7d1cc9f0ce8dd1cd3dc114e78748a494eb": "3cbe729c-e00a-4cca-af8b-fee6eac51585",
+    "guest_8x7sjb5i": "214385a2-783a-4bc6-8a23-bda1a8ac618b",
+    "0xcc1df640be6977c13097349acc7717f83f720f8a": "001bf187-f437-4759-802f-266d17eba4c1"
+  },
+  "userEscrowBalances": {},
+  "userWithdrawnBalances": {},
+  "poolReservedBalances": {
+    "USDT": 0,
+    "RWA": 0
+  }
+}

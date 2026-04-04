@@ -2,12 +2,14 @@ import { useAccount, useReadContract, useWriteContract } from 'wagmi'
 import { parseUnits, formatUnits } from 'viem'
 import { stakingContractABI } from '@/lib/contracts/stakingContractABI'
 import { CONTRACT_ADDRESSES } from '@/lib/contracts/addresses'
+import { useSwapContract } from './useSwapContract'
 
 export function useStakingContract() {
   const { address, chainId } = useAccount()
   const { writeContractAsync } = useWriteContract()
 
   const stakingAddress = chainId ? CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]?.stakingContract : undefined
+  const { swapStRWAToRWA } = useSwapContract()
 
   // Read user stake info
   const { data: userStakeInfo, refetch: refetchStakeInfo, isLoading: isLoadingStakeInfo } = useReadContract({
@@ -259,6 +261,11 @@ export function useStakingContract() {
     return hash
   }
 
+  async function withdrawStRWA(amount: string) {
+    if (!swapStRWAToRWA) throw new Error('Swap contract not found')
+    return await swapStRWAToRWA(amount)
+  }
+
   const formattedRWAStakeInfo = rwaStakeInfo ? {
     totalStakedRWA: formatUnits(rwaStakeInfo[0], 18),
     rwaPending: formatUnits(rwaStakeInfo[1], 18),
@@ -313,6 +320,7 @@ export function useStakingContract() {
     withdrawRWARewards,
     withdrawFlexibleRWAPrincipal,
     withdrawFlexibleUSDTPrincipal,
+    withdrawStRWA,
     withdrawUSDTPrincipal,
     emergencyWithdraw,
     

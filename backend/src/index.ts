@@ -131,7 +131,7 @@ class BackendService {
 
         // Daily Settlement Service (按秒精确计算)
         this.dailySettlementService = new DailySettlementService({
-            rpcUrl: process.env.BSC_RPC_URL || process.env.BSC_TESTNET_RPC_URL!,
+            rpcUrl: process.env.SETTLEMENT_RPC_URL || process.env.BSC_RPC_URL || process.env.BSC_TESTNET_RPC_URL!,
             stakingContractAddress: process.env.STAKING_CONTRACT_ADDRESS!,
             backendPrivateKey: process.env.BACKEND_PRIVATE_KEY!
         });

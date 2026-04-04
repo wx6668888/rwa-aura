@@ -55,10 +55,10 @@ function getYieldRate(lockPeriod: number): number {
 
 /**
  * 合约 50/50 进国库后，getRWALockedPrincipals / getUSDTLockedPrincipals 返回的是 principalAmount。
- * 与库表 stake_events 中「全额质押」口径对齐时，用 principal*2 近似全额（与 50/50 一致）。
+ * 直接使用本金金额进行收益计算（不再 * 2）。
  */
 function principalToFullStakeWei(principal: bigint): BigNumber {
-  return new BigNumber((principal * 2n).toString());
+  return new BigNumber(principal.toString());
 }
 
 /**

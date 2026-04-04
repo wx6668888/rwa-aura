@@ -304,12 +304,12 @@ export function StatCards() {
 
     {showStakeDetail && (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
-        style={{ height: '100dvh' }}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm px-4 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))]"
+        style={{ minHeight: '100dvh' }}
         onClick={() => setShowStakeDetail(false)}
       >
         <div
-          className="flex flex-col w-full max-w-2xl max-h-[85vh] rounded-2xl border border-[#00f5d420] bg-gradient-to-br from-[#0d0d14] to-[#13131e] shadow-xl overflow-hidden"
+          className="flex max-h-[min(85vh,calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem))] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#00f5d420] bg-gradient-to-br from-[#0d0d14] to-[#13131e] shadow-xl sm:max-h-[85vh]"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#00f5d420]/30">

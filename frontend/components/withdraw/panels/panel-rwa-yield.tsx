@@ -1,6 +1,6 @@
 'use client'
 
-import { TrendingUp, ArrowLeft, Info, Clock, Zap, CheckCircle2, Sparkles } from 'lucide-react'
+import { TrendingUp, ArrowLeft, Info, Clock, CheckCircle2, Sparkles } from 'lucide-react'
 import { useAccount } from 'wagmi'
 import { useState, useEffect } from 'react'
 import { useStakingContract } from '@/hooks/useStakingContract'
@@ -149,7 +149,7 @@ export function PanelRwaYield({ onMobileBack, data, embedded = false }: Props) {
   }
 
   return (
-    <div className="flex h-full flex-col bg-[#0a0a0f]/40">
+    <div className="flex h-full flex-col">
       {!embedded ? (
         <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/[0.06] bg-white/[0.03] backdrop-blur-xl">
           <button onClick={onMobileBack} className="lg:hidden flex items-center gap-2 text-white/50 hover:text-[#00f5d4] transition-colors">

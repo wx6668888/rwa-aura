@@ -145,6 +145,21 @@
   }
 }
 
+/*
+ * 首页三张卡横滑：须同时支持横向滑动与整页纵向滚动。
+ * 仅用 touch-action: pan-x 会吞掉纵向手势；此处用 pan-x + pan-y。
+ * 宽屏为三列平铺，恢复 touch-action: auto。
+ */
+.home-trust-cards-scroller {
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+@media (min-width: 1024px) {
+  .home-trust-cards-scroller {
+    touch-action: auto;
+  }
+}
+
 @keyframes dash-flow {
   to {
     stroke-dashoffset: -20;

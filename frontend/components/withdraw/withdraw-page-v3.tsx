@@ -63,11 +63,10 @@ export function WithdrawPageV3() {
   const [listBackHighlight, setListBackHighlight] = useState<WithdrawPanelId | null>(null)
   const listScrollYRef = useRef(0)
 
-  const animatedTotal = useCountUp({
-    end: parseFloat(String(data.totalUSD || '0').replace(/,/g, '')) || 0,
-    duration: 2000,
-    decimals: 2,
-  })
+  const totalUsd = useMemo(() => {
+    return parseFloat(String(data.totalUSD || '0').replace(/,/g, '')) || 0
+  }, [data.totalUSD])
+  const animatedTotal = useCountUp(totalUsd, { durationMs: 2000 })
 
   const goPanel = (id: WithdrawPanelId) => {
     if (id === 'quick') router.push('/withdraw', { scroll: false })
@@ -211,7 +210,11 @@ export function WithdrawPageV3() {
           filter: 'drop-shadow(0 0 30px rgba(0,255,200,0.35))',
         }}
       >
-        {data.loading ? '...' : isConnected ? `$${animatedTotal}` : '--'}
+        {data.loading
+          ? '...'
+          : isConnected
+            ? `$${animatedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : '--'}
       </div>
     </div>
   )
@@ -222,7 +225,7 @@ export function WithdrawPageV3() {
         <AssetTree activePanel={activePanel} onPanelSwitch={handleTreeSelect} data={data} />
       </div>
       <div
-        className={`${showMobilePanel ? 'block' : 'hidden lg:block'} bg-[#0a0a0f]/40 transition-all duration-300`}
+        className={`${showMobilePanel ? 'block' : 'hidden lg:block'} transition-all duration-300`}
       >
         <div className="animate-fadeIn">{renderPanels(activePanel)}</div>
       </div>
@@ -300,7 +303,11 @@ export function WithdrawPageV3() {
               filter: 'drop-shadow(0 0 28px rgba(0,255,200,0.28))',
             }}
           >
-            {data.loading ? '...' : isConnected ? `$${animatedTotal}` : '--'}
+            {data.loading
+              ? '...'
+              : isConnected
+                ? `$${animatedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                : '--'}
           </h1>
           <p className="hero-mobile-label text-sm font-medium tracking-wide text-white/50">
             可提取的总额
@@ -332,7 +339,7 @@ export function WithdrawPageV3() {
                       }}
                     />
                   ) : null}
-                  <div className="relative flex flex-col">
+                  <div className="relative flex min-h-[180px] flex-col">
                     <div className="mb-4 flex w-full items-start justify-between">
                       <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${item.gradient} p-0.5`}>
                         <div className="flex h-full w-full items-center justify-center rounded-xl bg-[#0a0a0f]">
@@ -343,11 +350,11 @@ export function WithdrawPageV3() {
                         <ArrowRight className="h-5 w-5 shrink-0" style={{ color: item.color }} />
                       ) : null}
                     </div>
-                    <div className="mb-4 text-center">
+                    <div className="mb-5">
                       <h3 className="mb-1 text-lg font-semibold text-white">{item.name}</h3>
                       <p className="text-xs leading-relaxed text-white/40">{item.desc}</p>
                     </div>
-                    <div className="flex items-baseline justify-center gap-2">
+                    <div className="mt-auto flex items-baseline justify-start gap-2">
                       <span className="font-mono text-2xl font-bold" style={{ color: item.color }}>
                         {isConnected ? item.amount : '--'}
                       </span>
@@ -361,7 +368,7 @@ export function WithdrawPageV3() {
         ) : null}
 
         {showMobilePanel ? (
-          <div className="rounded-2xl border border-white/10 bg-[#12141a]/80 p-4 shadow-2xl backdrop-blur-xl sm:p-6">
+          <div className="rounded-2xl border border-white/10 bg-transparent p-4 shadow-2xl backdrop-blur-xl sm:p-6">
             <div className="animate-fadeIn min-h-[min(70vh,640px)]">{renderPanels(mobileEffectivePanel)}</div>
           </div>
         ) : null}

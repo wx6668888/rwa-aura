@@ -72,18 +72,22 @@ export function useWithdrawData() {
             const apiYieldParsed = parseFloat(String(apiData.yieldAmount || '0')) || 0
             const yieldAmountNum = Math.max(chainYieldRwa, apiYieldParsed)
             const yieldAmountStr = formatYieldAmountString(yieldAmountNum)
+            const apiRwaPrincipal = parseFloat(String(apiData.rwaPrincipal || '0')) || 0
+            const apiUsdtPrincipal = parseFloat(String(apiData.usdtPrincipal || '0')) || 0
+            const rwaPrincipalNum = Math.max(flexRWA, apiRwaPrincipal)
+            const usdtPrincipalNum = Math.max(flexUSDT, apiUsdtPrincipal)
             const totalUSD = (
               yieldAmountNum * RWA_PRICE +
-              flexRWA * RWA_PRICE +
-              flexUSDT +
+              rwaPrincipalNum * RWA_PRICE +
+              usdtPrincipalNum +
               parseFloat(apiData.referralAmount || '0') +
               parseFloat(apiData.dividendAmount || '0') +
               parseFloat(apiData.strwaAmount || '0') * RWA_PRICE
             ).toFixed(2)
             setData({
               yieldAmount: yieldAmountStr,
-              rwaPrincipal: flexRWA.toFixed(2),
-              usdtPrincipal: flexUSDT.toFixed(2),
+              rwaPrincipal: rwaPrincipalNum.toFixed(2),
+              usdtPrincipal: usdtPrincipalNum.toFixed(2),
               referralAmount: apiData.referralAmount || '0',
               dividendAmount: apiData.dividendAmount || '0',
               strwaAmount: apiData.strwaAmount || '0',

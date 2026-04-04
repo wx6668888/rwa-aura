@@ -1,0 +1,8 @@
+---
+description: 前端上线默认走服务器脚本，不要求本地构建
+alwaysApply: true
+---
+
+- 用户部署前端到线上（如 https://rwa.lat/）时，在仓库所在服务器直接执行：`bash frontend/deploy-frontend.sh`（或 `bash /www/wwwroot/rwaprotocol.dpdns.org/frontend/deploy-frontend.sh`）。
+- 不要默认让用户在本地先 `npm run build`；脚本内已包含构建与 PM2 重启。
+- 若使用 Cloudflare 且静态资源异常，再提醒按需清缓存或 Nginx `/_next/static/` alias（见 BAOTA_DEPLOY.md）。

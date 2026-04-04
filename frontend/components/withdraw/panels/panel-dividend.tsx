@@ -3,7 +3,7 @@
 import { Gift, ArrowLeft, Info } from 'lucide-react'
 import { useAccount } from 'wagmi'
 import { useState, useEffect } from 'react'
-import { useStakingContract } from '@/hooks/useStakingContract'
+import { useTeamDividend } from '@/hooks/useTeamDividend'
 import { TransactionOverlay } from '../transaction-overlay'
 import { emitDataRefresh } from '@/lib/data-refresh'
 
@@ -30,7 +30,7 @@ function getNextDividendCountdown() {
 export function PanelDividend({ onMobileBack, data, embedded = false }: Props) {
   const { isConnected, address } = useAccount()
   const [amount, setAmount] = useState('')
-  const { withdrawDividend } = useStakingContract()
+  const { withdraw: withdrawDividend } = useTeamDividend()
   const [showOverlay, setShowOverlay] = useState(false)
   const [overlayStatus, setOverlayStatus] = useState<'waiting' | 'pending' | 'success' | 'error'>('waiting')
   const [loading, setLoading] = useState(false)
@@ -89,7 +89,7 @@ export function PanelDividend({ onMobileBack, data, embedded = false }: Props) {
   }
 
   return (
-    <div className="flex h-full flex-col bg-[#020617]/40">
+    <div className="flex h-full flex-col">
       {!embedded ? (
         <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/[0.06] bg-white/[0.03] backdrop-blur-xl">
           <button

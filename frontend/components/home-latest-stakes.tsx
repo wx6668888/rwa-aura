@@ -37,6 +37,7 @@ export function HomeLatestStakes() {
   const [rows, setRows] = useState<RecentStakeRow[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(false)
+  const [visibleItems, setVisibleItems] = useState<boolean[]>([])
 
   useEffect(() => {
     const el = sectionRef.current
@@ -84,6 +85,31 @@ export function HomeLatestStakes() {
     }
   }, [inView])
 
+  useEffect(() => {
+    setVisibleItems([])
+  }, [rows])
+
+  /** 进入视口后按条依次从左右滑入（比逐条 IntersectionObserver 更慢、更顺序） */
+  useEffect(() => {
+    if (!inView || rows.length === 0) return
+    if (reducedMotion) {
+      setVisibleItems(rows.map(() => true))
+      return
+    }
+    setVisibleItems(rows.map(() => false))
+    const staggerMs = 420
+    const timers = rows.map((_, i) =>
+      window.setTimeout(() => {
+        setVisibleItems((prev) => {
+          const next = prev.length === rows.length ? [...prev] : rows.map(() => false)
+          next[i] = true
+          return next
+        })
+      }, i * staggerMs)
+    )
+    return () => timers.forEach((id) => clearTimeout(id))
+  }, [inView, reducedMotion, rows])
+
   const accent = '#00ffc8'
 
   const timeLocale =
@@ -93,25 +119,26 @@ export function HomeLatestStakes() {
   const showList = inView && !loading && !error && rows.length > 0
 
   return (
-    <section ref={sectionRef} className="relative overflow-x-hidden border-y border-border-subtle py-10 lg:py-14">
+    <section ref={sectionRef} className="relative overflow-x-hidden py-10 lg:py-14">
       <div className="relative mx-auto max-w-3xl px-4 lg:px-8">
         <h2 className="mb-6 text-center font-[family-name:var(--font-space-grotesk)] text-xl font-bold tracking-tight text-white sm:mb-8 sm:text-2xl lg:text-left">
           {t('home.recentStakesTitle')}
         </h2>
 
+        <div className="rounded-3xl border border-[#1f2733] bg-[#0f1622]/65 p-4 backdrop-blur-[5px] sm:p-6">
         {showSkeleton ? (
           <div className="flex flex-col gap-5">
             {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={i}
-                className="h-[4.5rem] animate-pulse rounded-lg border border-white/[0.08] bg-white/[0.04] backdrop-blur-xl"
+                className="h-[4.5rem] animate-pulse rounded-lg border border-white/[0.06] bg-white/[0.03]"
               />
             ))}
           </div>
         ) : error && rows.length === 0 ? (
-          <p className="text-center text-sm text-white/45">{t('home.recentStakesError')}</p>
+          <p className="text-center text-sm text-white/60">{t('home.recentStakesError')}</p>
         ) : rows.length === 0 ? (
-          <p className="text-center text-sm text-white/45">{t('home.recentStakesEmpty')}</p>
+          <p className="text-center text-sm text-white/60">{t('home.recentStakesEmpty')}</p>
         ) : null}
 
         {showList ? (
@@ -121,10 +148,10 @@ export function HomeLatestStakes() {
               const slideOut = reducedMotion
                 ? 'translate-x-0'
                 : fromLeft
-                  ? '-translate-x-[28px] sm:-translate-x-10'
-                  : 'translate-x-[28px] sm:translate-x-10'
-              const visible = inView ? 'translate-x-0 opacity-100' : `${slideOut} opacity-0`
-              const delayMs = inView ? i * 280 : 0
+                  ? '-translate-x-10 sm:-translate-x-14'
+                  : 'translate-x-10 sm:translate-x-14'
+              const isVisible = reducedMotion || !!visibleItems[i]
+              const visible = isVisible ? 'translate-x-0 opacity-100' : `${slideOut} opacity-0`
               const ts = row.timestampMs > 0 ? new Date(row.timestampMs) : null
               const timeStr = ts
                 ? ts.toLocaleString(timeLocale, {
@@ -140,20 +167,14 @@ export function HomeLatestStakes() {
               return (
                 <article
                   key={`${row.txHash ?? 'nohash'}-${row.userAddress}-${i}-${row.timestampMs}`}
-                  className={`relative overflow-hidden rounded-lg border border-white/[0.12] bg-white/[0.05] py-3 backdrop-blur-xl transition-[transform,opacity] duration-[2000ms] ease-out ${visible}`}
-                  style={{
-                    transitionDelay: `${delayMs}ms`,
-                    boxShadow: inView
-                      ? '0 0 0 1px rgba(0,255,200,0.1), 0 0 28px rgba(0,255,200,0.18), 0 10px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)'
-                      : '0 8px 24px rgba(0,0,0,0.35)',
-                  }}
+                  className={`relative overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.03] py-3 transition-[transform,opacity] duration-[2000ms] ease-out ${visible}`}
                 >
                   {txUrl ? (
                     <a
                       href={txUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="absolute right-2.5 top-2 p-0.5 text-[#00ffc8]/65 transition hover:text-[#00ffc8]"
+                      className="absolute right-2.5 top-2 p-0.5 text-[#00ffc8]/70 transition hover:text-[#00ffc8]"
                       aria-label="BscScan"
                     >
                       <ArrowUpRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
@@ -161,10 +182,10 @@ export function HomeLatestStakes() {
                   ) : null}
 
                   <div className="flex flex-col items-center px-10 pb-6 pt-0.5 text-center">
-                    <span className="font-mono text-[13px] leading-tight tracking-tight text-white/90 sm:text-sm">
+                    <span className="font-mono text-[13px] leading-tight tracking-tight text-white/85 sm:text-sm">
                       {shortenAddr(row.userAddress)}
                     </span>
-                    <span className="mt-1 font-mono text-[11px] tabular-nums text-white/38">{timeStr}</span>
+                    <span className="mt-1 font-mono text-[11px] tabular-nums text-white/42">{timeStr}</span>
                   </div>
 
                   <div
@@ -178,6 +199,7 @@ export function HomeLatestStakes() {
             })}
           </div>
         ) : null}
+        </div>
       </div>
     </section>
   )
