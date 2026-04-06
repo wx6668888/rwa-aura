@@ -65,6 +65,9 @@ export interface Room {
   createdAt: number;
 }
 
+/** community=氛围组；admin_support=官方客服；group_owner=群主 */
+export type BotRole = 'community' | 'admin_support' | 'group_owner';
+
 export interface Bot {
   id: string;
   userId: string;            // linked User.id
@@ -75,6 +78,8 @@ export interface Bot {
   roomIds: string[];         // rooms the bot participates in
   schedule: BotSchedule;
   createdAt: number;
+  /** 未设置时视为 community（兼容旧数据） */
+  role?: BotRole;
 }
 
 export interface BotSchedule {
@@ -94,6 +99,8 @@ export interface AckSuccess<T> {
 export interface AckError {
   ok: false;
   error: string;
+  /** Machine-readable code for client i18n (e.g. OFF_PLATFORM_CONTACT) */
+  errorCode?: string;
 }
 
 export type Ack<T> = AckSuccess<T> | AckError;
@@ -110,7 +117,16 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
-  'message:send': (data: { roomId: string; content: string; replyTo?: string }, cb: (ack: Ack<Message>) => void) => void;
+  'message:send': (
+    data: {
+      roomId: string;
+      content: string;
+      replyTo?: string;
+      messageType?: 'text' | 'image';
+      metadata?: Record<string, unknown>;
+    },
+    cb: (ack: Ack<Message>) => void
+  ) => void;
   'message:edit': (data: { messageId: string; content: string }, cb: (ack: Ack<true>) => void) => void;
   'redpacket:create': (
     data: { roomId: string; totalAmount: number; totalCount: number; greeting?: string; currency: ChatCurrency },

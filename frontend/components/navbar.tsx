@@ -35,6 +35,7 @@ import {
   MessageCircle,
 } from 'lucide-react'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { warmConnectModal } from '@/lib/wallet-connect-preconnect'
 import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
 import { LanguageSwitcher } from '@/components/language-switcher'
@@ -79,7 +80,6 @@ const navGroups: NavGroup[] = [
     icon: Wallet,
     items: [
       { key: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard, description: 'nav.group.assets.desc.dashboard' },
-      { key: 'nav.stake', href: '/stake', icon: Coins, description: 'nav.group.assets.desc.stake' },
       { key: 'nav.withdraw', href: '/withdraw', icon: ArrowUpCircle, description: 'nav.group.assets.desc.withdraw' },
     ],
   },
@@ -89,8 +89,6 @@ const navGroups: NavGroup[] = [
     icon: TrendingUp,
     items: [
       { key: 'nav.market', href: '/market', icon: Store, description: 'nav.group.tradeDesc.market' },
-      { key: 'nav.swap', href: '/swap', icon: ArrowLeftRight, description: 'nav.group.tradeDesc.swap' },
-      { key: 'nav.emergency', href: '/emergency', danger: true, description: 'nav.group.tradeDesc.emergency' },
     ],
   },
   {
@@ -142,6 +140,20 @@ const navGroups: NavGroup[] = [
 /** 桌面端方案 D：仅 5 项，后 4 项收进「更多」 */
 const navGroupsDesktop: (NavGroup | NavGroupMore)[] = [
   navGroups[0], // 首页
+  {
+    key: 'stake-standalone',
+    label: 'nav.stake',
+    icon: Coins,
+    items: [{ key: 'nav.stake', href: '/stake' }],
+    standalone: true,
+  },
+  {
+    key: 'swap-standalone',
+    label: 'nav.swap',
+    icon: ArrowLeftRight,
+    items: [{ key: 'nav.swap', href: '/swap' }],
+    standalone: true,
+  },
   navGroups[1], // 我的资产
   navGroups[2], // 交易市场
   navGroups[3], // 抽奖
@@ -156,6 +168,32 @@ const navGroupsDesktop: (NavGroup | NavGroupMore)[] = [
       { label: 'nav.group.info', items: navGroups[7].items },
     ],
   },
+]
+
+/** 移动端菜单：将「质押」「兑换/购买」独立出来置顶 */
+const navGroupsMobile: NavGroup[] = [
+  navGroups[0], // 首页
+  {
+    key: 'stake-standalone',
+    label: 'nav.stake',
+    icon: Coins,
+    items: [{ key: 'nav.stake', href: '/stake' }],
+    standalone: true,
+  },
+  {
+    key: 'swap-standalone',
+    label: 'nav.swap',
+    icon: ArrowLeftRight,
+    items: [{ key: 'nav.swap', href: '/swap' }],
+    standalone: true,
+  },
+  navGroups[1], // 我的资产
+  navGroups[2], // 交易市场
+  navGroups[3], // 抽奖
+  navGroups[4], // 数据分析
+  navGroups[5], // 节点网络
+  navGroups[6], // 治理安全
+  navGroups[7], // 信息中心
 ]
 
 // 移动端菜单项组件
@@ -610,7 +648,10 @@ export function Navbar() {
                       if (!connected) {
                         return (
                           <button
-                            onClick={openConnectModal}
+                            onClick={() => {
+                              warmConnectModal()
+                              openConnectModal()
+                            }}
                             type="button"
                             className="rounded-full bg-[#00f5d4] px-5 py-2 font-[family-name:var(--font-space-grotesk)] text-sm font-semibold text-[#05050a] transition-all hover:scale-[1.02] hover:brightness-110"
                           >
@@ -722,7 +763,7 @@ export function Navbar() {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-1">
-              {navGroups.map((group) => (
+              {navGroupsMobile.map((group) => (
                 <MobileNavItem
                   key={group.key}
                   group={group}

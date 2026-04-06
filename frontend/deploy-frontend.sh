@@ -146,6 +146,14 @@ create_predeploy_backup
 log "Building frontend..."
 npm run build
 
+# 若本机已打过 release APK，同步到 public 供首页「安卓下载」使用（打新包：npm run android:release）
+if [[ -f "$PROJECT_DIR/android/app/build/outputs/apk/release/app-release.apk" ]]; then
+  mkdir -p "$PROJECT_DIR/public/downloads"
+  cp -f "$PROJECT_DIR/android/app/build/outputs/apk/release/app-release.apk" \
+    "$PROJECT_DIR/public/downloads/rwa-protocol-release.apk"
+  log "Synced APK -> public/downloads/rwa-protocol-release.apk"
+fi
+
 log "Restarting PM2 app: $APP_NAME"
 pm2 restart "$APP_NAME"
 

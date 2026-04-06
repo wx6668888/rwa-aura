@@ -189,7 +189,7 @@ export default function BotPanel() {
                 <button
                   type="button"
                   onClick={() => void triggerBot(bot.id)}
-                  className="flex-1 text-[10px] py-1 rounded-md font-mono bg-plasma-cyan/10 text-plasma-cyan border border-plasma-cyan/20 hover:bg-plasma-cyan/20 transition-all"
+                  className="flex-1 rounded-md border border-white/15 bg-[#0d9488] py-1 font-mono text-[10px] text-white transition-all hover:bg-[#0f766e]"
                 >
                   {t('chat.botTriggerShort')}
                 </button>

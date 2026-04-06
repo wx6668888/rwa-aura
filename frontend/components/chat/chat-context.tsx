@@ -1,8 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { useAccount } from 'wagmi';
 import { io, Socket } from 'socket.io-client';
 import { chatHttpUrl, chatSocketUrl, fetchChatAuthSigningMessage } from '@/lib/chat-api';
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
+import {
+  readPersistedChatAuth,
+  writePersistedChatAuth,
+  clearPersistedChatAuth,
+} from '@/lib/chat-auth-storage';
 
 // ─── Types ─────────────────────────────────────────────
 export type NodeLevel = 'L1' | 'L2' | 'L3' | 'L4' | 'L5' | 'L6' | 'L7' | 'L8' | 'L9';
@@ -45,6 +52,7 @@ export interface ChatMessage {
       amount: number;
       claimedAt: number;
     }>;
+    quickLink?: { path: string; label?: string };
   };
   user: ChatUser;
 }
@@ -81,7 +89,16 @@ interface ChatContextType {
   establishSession: (address: string, signature: string) => Promise<void>;
   logout: () => void;
   setActiveRoom: (roomId: string) => void;
-  sendMessage: (content: string, replyTo?: string) => void;
+  sendMessage: (
+    content: string,
+    replyTo?: string,
+    messageType?: 'text' | 'image',
+    opts?: { metadata?: Record<string, unknown> }
+  ) => void;
+  /** 发送带站内链接的卡片消息，成功后当前页跳转到 path */
+  sendQuickLink: (path: string, label: string) => void;
+  /** 相册图片上传 → 返回同源路径（如 /api/chat/uploads/xxx），失败返回 null */
+  uploadChatImage: (file: File) => Promise<string | null>;
   createRedPacket: (
     totalAmount: number,
     totalCount: number,
@@ -97,18 +114,13 @@ interface ChatContextType {
   createGroupRoom: (name: string, description: string) => Promise<ChatRoom>;
   fetchWalletBalances: () => Promise<void>;
   withdrawWallet: (currency: ChatCurrency, amount: number) => Promise<{ txHash: string }>;
+  updateMyNickname: (nickname: string) => Promise<ChatUser>;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
-const CHAT_AUTH_STORAGE_KEY = 'rwa_chat_auth_v1';
-
-type PersistedChatAuth = {
-  address: string;
-  signature: string;
-};
-
 export function ChatProvider({ children }: { children: React.ReactNode }) {
+  const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -134,7 +146,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // ─── Load rooms ────────────────────────────────────
   const loadRooms = useCallback(async () => {
     try {
-      const res = await fetch(chatHttpUrl('rooms'));
+      const res = await fetchWithTimeout(chatHttpUrl('rooms'), { timeoutMs: 22000 });
       const data = await res.json();
       setRooms(data.rooms || []);
     } catch (err) {
@@ -145,7 +157,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // ─── Load messages ─────────────────────────────────
   const loadMessages = useCallback(async (roomId: string) => {
     try {
-      const res = await fetch(chatHttpUrl(`rooms/${roomId}/messages?limit=50`));
+      const res = await fetchWithTimeout(chatHttpUrl(`rooms/${roomId}/messages?limit=50`), {
+        timeoutMs: 22000,
+      });
       const data = await res.json();
       setMessages(data.messages || []);
     } catch (err) {
@@ -153,14 +167,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const saveAuth = useCallback((auth: PersistedChatAuth) => {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(CHAT_AUTH_STORAGE_KEY, JSON.stringify(auth));
+  const saveAuth = useCallback((auth: { address: string; signature: string }) => {
+    writePersistedChatAuth(auth);
   }, []);
 
   const clearSavedAuth = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    localStorage.removeItem(CHAT_AUTH_STORAGE_KEY);
+    clearPersistedChatAuth();
   }, []);
 
   const connectWithSignature = useCallback(async (address: string, signature: string, persist: boolean) => {
@@ -182,12 +194,22 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       signatureRef.current = sig;
       addressRef.current = addr;
 
-      // Login
-      const loginRes = await fetch(chatHttpUrl('auth/login'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: addr, signature: sig }),
-      });
+      // Login（TP / 弱网下无超时会导致永久「连接中」）
+      let loginRes: Response;
+      try {
+        loginRes = await fetchWithTimeout(chatHttpUrl('auth/login'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address: addr, signature: sig }),
+          timeoutMs: 22000,
+        });
+      } catch (e: unknown) {
+        const name = e instanceof Error ? e.name : '';
+        if (name === 'AbortError') {
+          throw new Error('连接聊天服务超时，请检查网络或关闭 VPN 后重试。');
+        }
+        throw e;
+      }
       if (!loginRes.ok) {
         const err = await loginRes.json().catch(() => ({ error: 'Login failed' }));
         if (loginRes.status === 401) {
@@ -295,16 +317,67 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }, [socket, loadMessages]);
 
   // ─── Send message ─────────────────────────────────
-  const sendMessage = useCallback((content: string, replyTo?: string) => {
-    if (!socket || !activeRoomId || !content.trim()) return;
-    socket.emit('message:send', { roomId: activeRoomId, content, replyTo }, (ack: any) => {
-      if (!ack?.ok) {
-        setLastActionError(ack?.error || 'Send message failed');
-      } else {
-        setLastActionError(null);
-      }
-    });
-  }, [socket, activeRoomId]);
+  const sendMessage = useCallback(
+    (
+      content: string,
+      replyTo?: string,
+      messageType?: 'text' | 'image',
+      opts?: { metadata?: Record<string, unknown> }
+    ) => {
+      if (!socket || !activeRoomId || !content.trim()) return;
+      socket.emit(
+        'message:send',
+        {
+          roomId: activeRoomId,
+          content,
+          replyTo,
+          messageType: messageType === 'image' ? 'image' : undefined,
+          metadata: opts?.metadata,
+        },
+        (ack: any) => {
+          if (!ack?.ok) {
+            const code = ack?.errorCode;
+            setLastActionError(
+              code === 'OFF_PLATFORM_CONTACT'
+                ? 'OFF_PLATFORM_CONTACT'
+                : ack?.error || 'Send message failed'
+            );
+          } else {
+            setLastActionError(null);
+          }
+        }
+      );
+    },
+    [socket, activeRoomId]
+  );
+
+  const sendQuickLink = useCallback(
+    (path: string, label: string) => {
+      if (!socket || !activeRoomId || !label.trim()) return;
+      const content = label.trim();
+      socket.emit(
+        'message:send',
+        {
+          roomId: activeRoomId,
+          content,
+          metadata: { quickLink: { path, label: content } },
+        },
+        (ack: any) => {
+          if (!ack?.ok) {
+            const code = ack?.errorCode;
+            setLastActionError(
+              code === 'OFF_PLATFORM_CONTACT'
+                ? 'OFF_PLATFORM_CONTACT'
+                : ack?.error || 'Send failed'
+            );
+          } else {
+            setLastActionError(null);
+          }
+        }
+      );
+    },
+    [socket, activeRoomId]
+  );
 
   const createRedPacket = useCallback(
     (totalAmount: number, totalCount: number, greeting: string | undefined, currency: 'USDT' | 'RWA') => {
@@ -313,11 +386,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         'redpacket:create',
         { roomId: activeRoomId, totalAmount, totalCount, greeting, currency },
         (ack: any) => {
-      if (!ack?.ok) {
-        setLastActionError(ack?.error || 'Create red packet failed');
-      } else {
-        setLastActionError(null);
-      }
+          if (!ack?.ok) {
+            const code = ack?.errorCode;
+            setLastActionError(
+              code === 'OFF_PLATFORM_CONTACT'
+                ? 'OFF_PLATFORM_CONTACT'
+                : ack?.error || 'Create red packet failed'
+            );
+          } else {
+            setLastActionError(null);
+          }
         }
       );
     },
@@ -436,6 +514,47 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setLastActionError(null);
   }, []);
 
+  const uploadChatImage = useCallback(
+    async (file: File): Promise<string | null> => {
+      const headers = getAuthHeaders();
+      if (!headers['x-wallet-address'] || !headers['x-wallet-signature']) {
+        setLastActionError('Not authenticated');
+        return null;
+      }
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(typeof r.result === 'string' ? r.result : '');
+        r.onerror = () => reject(new Error('read failed'));
+        r.readAsDataURL(file);
+      });
+      if (!dataUrl.startsWith('data:image/')) {
+        setLastActionError('Please choose an image file');
+        return null;
+      }
+      try {
+        const res = await fetch(chatHttpUrl('upload/image'), {
+          method: 'POST',
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ imageBase64: dataUrl }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || typeof data?.url !== 'string') {
+          setLastActionError(typeof data?.error === 'string' ? data.error : 'Image upload failed');
+          return null;
+        }
+        setLastActionError(null);
+        return data.url as string;
+      } catch {
+        setLastActionError('Image upload failed');
+        return null;
+      }
+    },
+    [getAuthHeaders]
+  );
+
   const createGroupRoom = useCallback(
     async (name: string, description: string) => {
       const headers: Record<string, string> = {
@@ -469,6 +588,34 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [getAuthHeaders, loadRooms, setActiveRoom]
   );
 
+  const updateMyNickname = useCallback(
+    async (nickname: string) => {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      };
+      if (!headers['x-wallet-address'] || !headers['x-wallet-signature']) {
+        throw new Error('Not authenticated');
+      }
+      const res = await fetch(chatHttpUrl('me/nickname'), {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ nickname }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.user) {
+        throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to update nickname');
+      }
+      const next = data.user as ChatUser;
+      setCurrentUser(next);
+      setMessages((prev) =>
+        prev.map((m) => (m.userId === next.id ? { ...m, user: { ...m.user, nickname: next.nickname } } : m))
+      );
+      return next;
+    },
+    [getAuthHeaders]
+  );
+
   // Auto-select first room
   useEffect(() => {
     if (rooms.length > 0 && !activeRoomId) {
@@ -481,38 +628,69 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return () => { socket?.disconnect(); };
   }, [socket]);
 
-  // Auto-restore previous login
+  const logoutRef = useRef(logout);
+  logoutRef.current = logout;
+
+  /** 已连钱包与持久化会话地址不一致：清缓存并登出（访客 guest_ 不因连接钱包被踢） */
+  useEffect(() => {
+    if (!wagmiConnected || !wagmiAddress) return;
+    const p = readPersistedChatAuth();
+    if (!p) return;
+    if (p.address.toLowerCase().startsWith('guest_')) return;
+    if (p.address.toLowerCase() !== wagmiAddress.toLowerCase()) {
+      clearPersistedChatAuth();
+      logoutRef.current();
+    }
+  }, [wagmiConnected, wagmiAddress, clearPersistedChatAuth]);
+
+  /**
+   * 自动恢复会话：不依赖 wagmiConnected/wagmiAddress，避免 Hydration 与重连抖动导致反复
+   * connectWithSignature（整页闪烁）。若已与持久化地址建立会话则跳过。
+   */
   useEffect(() => {
     let cancelled = false;
+    const maxTimer = window.setTimeout(() => {
+      if (!cancelled) {
+        console.warn('[Chat] auth restore watchdog: timeout, leaving restore screen');
+        setIsAuthRestoring(false);
+      }
+    }, 28000);
     const run = async () => {
-      if (typeof window === 'undefined') {
-        if (!cancelled) setIsAuthRestoring(false);
-        return;
-      }
-      const raw = localStorage.getItem(CHAT_AUTH_STORAGE_KEY);
-      if (!raw) {
-        if (!cancelled) setIsAuthRestoring(false);
-        return;
-      }
-
       try {
-        const parsed = JSON.parse(raw) as PersistedChatAuth;
-        if (!parsed?.address || !parsed?.signature) {
-          clearSavedAuth();
-        } else {
-          await connectWithSignature(parsed.address, parsed.signature, false);
+        if (typeof window === 'undefined') {
+          if (!cancelled) setIsAuthRestoring(false);
+          return;
         }
-      } catch (e) {
-        console.warn('[Chat] auto-restore failed (network or server); keeping saved session for retry:', e);
-      } finally {
+        const parsed = readPersistedChatAuth();
+        if (!parsed?.address || !parsed?.signature) {
+          if (!cancelled) setIsAuthRestoring(false);
+          return;
+        }
+        if (
+          isAuthenticated &&
+          addressRef.current &&
+          addressRef.current.toLowerCase() === parsed.address.toLowerCase()
+        ) {
+          if (!cancelled) setIsAuthRestoring(false);
+          return;
+        }
+
+        try {
+          await connectWithSignature(parsed.address, parsed.signature, false);
+        } catch (e) {
+          console.warn('[Chat] auto-restore failed (network or server); keeping saved session for retry:', e);
+        }
         if (!cancelled) setIsAuthRestoring(false);
+      } finally {
+        window.clearTimeout(maxTimer);
       }
     };
-    run();
+    void run();
     return () => {
       cancelled = true;
+      window.clearTimeout(maxTimer);
     };
-  }, [clearSavedAuth, connectWithSignature]);
+  }, [connectWithSignature, isAuthenticated]);
 
   return (
     <ChatContext.Provider value={{
@@ -534,6 +712,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       logout,
       setActiveRoom,
       sendMessage,
+      sendQuickLink,
+      uploadChatImage,
       createRedPacket,
       claimRedPacket,
       getRedPacketRecords,
@@ -544,6 +724,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       getAuthHeaders,
       clearActionError,
       createGroupRoom,
+      updateMyNickname,
     }}>
       {children}
     </ChatContext.Provider>

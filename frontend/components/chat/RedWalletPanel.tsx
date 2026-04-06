@@ -97,8 +97,8 @@ export default function RedWalletPanel({ onClose, compact = false }: { onClose?:
               onClick={() => setCurrency('USDT')}
               className={`flex-1 py-2 rounded-lg text-[12px] font-medium transition-all border ${
                 currency === 'USDT'
-                  ? 'bg-plasma-cyan/15 text-plasma-cyan border-plasma-cyan/30'
-                  : 'bg-surface-2 text-text-secondary border-border-subtle hover:border-border-active'
+                  ? 'border border-white/20 bg-[#0d9488] text-white'
+                  : 'border border-border-subtle bg-surface-2 text-text-secondary hover:border-border-active'
               }`}
             >
               USDT
@@ -108,8 +108,8 @@ export default function RedWalletPanel({ onClose, compact = false }: { onClose?:
               onClick={() => setCurrency('RWA')}
               className={`flex-1 py-2 rounded-lg text-[12px] font-medium transition-all border ${
                 currency === 'RWA'
-                  ? 'bg-plasma-cyan/15 text-plasma-cyan border-plasma-cyan/30'
-                  : 'bg-surface-2 text-text-secondary border-border-subtle hover:border-border-active'
+                  ? 'border border-white/20 bg-[#0d9488] text-white'
+                  : 'border border-border-subtle bg-surface-2 text-text-secondary hover:border-border-active'
               }`}
             >
               RWA
@@ -134,7 +134,7 @@ export default function RedWalletPanel({ onClose, compact = false }: { onClose?:
             type="button"
             onClick={handleWithdraw}
             disabled={!canWithdraw || submitting}
-            className="w-full h-10 rounded-lg bg-plasma-cyan/20 hover:bg-plasma-cyan/30 border border-plasma-cyan/30 text-plasma-cyan disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-10 w-full rounded-lg border border-white/15 bg-[#0d9488] text-white hover:bg-[#0f766e] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? t('chat.connecting') : t('chat.redWalletWithdrawBtn')}
           </button>

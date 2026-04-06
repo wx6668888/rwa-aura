@@ -92,10 +92,13 @@ export function EarningsCard() {
   // RWA 价格（用于转换）
   const rwaPrice = 0.85 // 1 RWA ≈ 0.85 USDT
 
-  // RWA 待领取：完全与 /withdraw 页保持一致，只使用链上数据
-  const usdtRwaPending = userRewards?.rwaPending ? parseFloat(userRewards.rwaPending) : 0
-  const rwaRwaPending = rwaStakeInfo?.rwaPending ? parseFloat(rwaStakeInfo.rwaPending) : 0
-  const rwaPendingNum = usdtRwaPending + rwaRwaPending
+  // RWA 待领取：完全与 /withdraw 页保持一致，只使用链上数据（防 NaN，避免误判导致整块质押明细消失）
+  const rwaPendingNum = (() => {
+    const u = userRewards?.rwaPending != null ? parseFloat(String(userRewards.rwaPending)) : 0
+    const r = rwaStakeInfo?.rwaPending != null ? parseFloat(String(rwaStakeInfo.rwaPending)) : 0
+    const sum = (Number.isFinite(u) ? u : 0) + (Number.isFinite(r) ? r : 0)
+    return Number.isFinite(sum) ? sum : 0
+  })()
   
   // 质押金额：合并 USDT 和 RWA 质押
   const usdtStaked = parseFloat(userStakeInfo?.totalStaked || '0')
@@ -153,12 +156,11 @@ export function EarningsCard() {
       setTotalRwaEarning(rwaPendingNum)
       return
     }
-    
-    // 如果还在加载中，等待加载完成
-    if (stakesLoading) {
-      return
-    }
-    
+
+    // 不在此处因 stakesLoading 直接 return：否则 effect 依赖里缺少 stakes/stakesLoading 时，
+    // 列表加载完成后可能不会重跑，totalRwaEarning / unsettledEarning 会卡住，质押明细间歇消失。
+    // stakes 为空或尚未返回时，下方 calculateEarnings 会用合约汇总构造 fallback。
+
     // 计算每笔质押的收益
     const calculateEarnings = () => {
       const currentTime = Math.floor(Date.now() / 1000)
@@ -502,7 +504,27 @@ export function EarningsCard() {
       clearInterval(interval)
       clearInterval(refetchInterval)
     }
-  }, [isConnected, address, totalStakedNum, firstStakeTime, rwaPendingNum, refetchRewards, refetchRWAStakeInfo, refetchStakes, rwaStaked, usdtStaked, userStakeInfo?.firstStakeTime, rwaFlexiblePrincipal, usdtFlexiblePrincipal, apiData])
+  }, [
+    isConnected,
+    address,
+    totalStakedNum,
+    firstStakeTime,
+    rwaPendingNum,
+    refetchRewards,
+    refetchRWAStakeInfo,
+    refetchStakes,
+    rwaStaked,
+    usdtStaked,
+    userStakeInfo?.firstStakeTime,
+    rwaStakeInfo?.firstStakeTime,
+    rwaStakeInfo?.totalStakedRWA,
+    userStakeInfo?.totalStaked,
+    rwaFlexiblePrincipal,
+    usdtFlexiblePrincipal,
+    apiData,
+    stakes,
+    stakesLoading,
+  ])
   
   const rwaUsdtValue = (totalRwaEarning * 0.85).toFixed(2)
 
@@ -510,20 +532,23 @@ export function EarningsCard() {
   const usdtRewardsNum = referralRewards.matured + referralRewards.pending
 
   /**
-   * 质押明细卡片显示条件：
-   * - 过去依赖 !stakesLoading，导致接口刷新/偶发慢时整块闪烁消失。
-   * - 这里改为“任一有效信号即显示”，避免 0x5132... 这类地址出现间歇不显示。
+   * 质押明细卡片显示条件：任一「有质押/有收益/后端有账本」信号即显示。
+   * 含 /api/data/.../stakes 后备，避免链上读数瞬时为空且 stake-list 失败时整块被关掉。
    */
+  const apiStakedWei =
+    apiData != null
+      ? (Number(apiData.usdtStaked) || 0) + (Number(apiData.rwaStaked) || 0)
+      : 0
   const hasStakeRecords =
     isConnected &&
-    (
-      stakes.length > 0 ||
+    (stakes.length > 0 ||
       usdtStaked > 1e-9 ||
       rwaStaked > 1e-9 ||
       Number(firstStakeTime || 0) > 0 ||
       rwaPendingNum > 1e-9 ||
-      unsettledEarning > 1e-9
-    )
+      unsettledEarning > 1e-9 ||
+      apiStakedWei > 1e-9 ||
+      (stakesLoading && (usdtStaked > 1e-9 || rwaStaked > 1e-9 || rwaPendingNum > 1e-9)))
 
   return (
     <div

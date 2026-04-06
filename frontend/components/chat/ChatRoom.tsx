@@ -7,6 +7,8 @@ import ChatInput from './ChatInput';
 import { ChatToast, useToast } from './ChatToast';
 import { useLocale } from '@/components/locale-provider';
 import { useTranslation } from '@/lib/i18n';
+import { getBaseDisplayedMemberCount } from '@/lib/chat-member-display';
+import { ChatMembersModal } from './ChatMembersModal';
 
 /** Group consecutive messages from same user within 5 minutes */
 function groupMessages(messages: ChatMessage[]): { type: 'messages' | 'date'; data: any }[] {
@@ -47,7 +49,8 @@ function groupMessages(messages: ChatMessage[]): { type: 'messages' | 'date'; da
 }
 
 export default function ChatRoom() {
-  const { messages, activeRoomId, rooms, currentUser, typingUsers, isAuthenticated, loadMoreMessages } = useChat();
+  const { messages, activeRoomId, rooms, currentUser, typingUsers, isAuthenticated, loadMoreMessages, getAuthHeaders } =
+    useChat();
   const { locale } = useLocale();
   const { t } = useTranslation(locale);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -56,6 +59,28 @@ export default function ChatRoom() {
   const grouped = useMemo(() => groupMessages(messages), [messages]);
   const [loadingMore, setLoadingMore] = React.useState(false);
   const { toasts, addToast, removeToast } = useToast();
+  const [memberModalOpen, setMemberModalOpen] = React.useState(false);
+  const [mentionText, setMentionText] = React.useState('');
+  const baseMemberDisplay = useMemo(
+    () => getBaseDisplayedMemberCount(activeRoom),
+    [activeRoom?.id, activeRoom?.memberIds?.length]
+  );
+  const [memberDisplayBump, setMemberDisplayBump] = React.useState(0);
+
+  React.useEffect(() => {
+    setMemberDisplayBump(0);
+  }, [activeRoomId]);
+
+  React.useEffect(() => {
+    if (!activeRoomId || !isAuthenticated) return;
+    const tick = () => {
+      setMemberDisplayBump((b) => b + Math.floor(Math.random() * 5) + 1);
+    };
+    const id = window.setInterval(tick, 30_000);
+    return () => clearInterval(id);
+  }, [activeRoomId, isAuthenticated]);
+
+  const displayedMemberCount = baseMemberDisplay + memberDisplayBump;
 
   const getRoomDisplayName = (room: typeof activeRoom) => {
     if (!room) return '';
@@ -108,7 +133,9 @@ export default function ChatRoom() {
   // 滚动到顶部触发加载更多
   const handleScroll = React.useCallback(async () => {
     const el = scrollRef.current;
-    if (!el || loadingMore) return;
+    if (!el) return;
+
+    if (loadingMore) return;
     if (el.scrollTop < 60) {
       setLoadingMore(true);
       const prevHeight = el.scrollHeight;
@@ -170,17 +197,22 @@ export default function ChatRoom() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Member count */}
-          <div className="flex items-center gap-1.5 text-[10px] text-text-disabled font-mono">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <button
+            type="button"
+            onClick={() => setMemberModalOpen(true)}
+            className="flex items-center gap-1.5 text-[10px] text-text-disabled font-mono hover:text-text-secondary transition-colors rounded-md px-1 -mr-1 py-0.5 hover:bg-surface-2/80"
+            aria-label={t('chat.memberListOpenAria')}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
               <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
             </svg>
-            {activeRoom.memberIds?.length || 0}
-          </div>
+            {displayedMemberCount.toLocaleString(
+              locale === 'zh' ? 'zh-CN' : locale === 'ko' ? 'ko-KR' : 'en-US'
+            )}
+          </button>
 
-          {/* Pin icon */}
-          <button type="button" className="w-7 h-7 rounded-md hover:bg-surface-2 flex items-center justify-center text-text-disabled hover:text-text-secondary transition-colors">
+          <button type="button" className="w-7 h-7 rounded-md hover:bg-surface-2 flex items-center justify-center text-text-disabled hover:text-text-secondary transition-colors" aria-hidden>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
             </svg>
@@ -231,6 +263,11 @@ export default function ChatRoom() {
                 messages={msgs}
                 isOwn={msgs[0].userId === currentUser?.id}
                 onToast={addToast}
+                onMentionUser={(u) => {
+                  const target = (u.nickname || '').trim();
+                  if (!target) return;
+                  setMentionText(`@${target}`);
+                }}
               />
             );
           })}
@@ -250,12 +287,33 @@ export default function ChatRoom() {
         )}
       </div>
 
-      {/* Input */}
-      <ChatInput
-        onToast={addToast}
-        channelName={getRoomDisplayName(activeRoom)}
-      />
+      <div className="flex flex-shrink-0 flex-col border-t border-border-subtle/60 bg-void-black/95 backdrop-blur-sm">
+        <ChatInput
+          onToast={addToast}
+          channelName={getRoomDisplayName(activeRoom)}
+          mentionText={mentionText}
+          onMentionConsumed={() => setMentionText('')}
+        />
+      </div>
       <ChatToast toasts={toasts} onRemove={removeToast} />
+
+      {activeRoom && (
+        <ChatMembersModal
+          open={memberModalOpen}
+          onClose={() => setMemberModalOpen(false)}
+          roomId={activeRoom.id}
+          selfId={currentUser?.id}
+          getAuthHeaders={getAuthHeaders}
+          title={t('chat.memberListTitle', { channel: getRoomDisplayName(activeRoom) })}
+          labels={{
+            loading: t('chat.memberListLoading'),
+            empty: t('chat.memberListEmpty'),
+            you: t('chat.memberListYou'),
+            hint: t('chat.memberListHint'),
+            close: t('chat.memberListClose'),
+          }}
+        />
+      )}
     </div>
   );
 }

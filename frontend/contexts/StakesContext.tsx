@@ -44,36 +44,56 @@ export function StakesProvider({ children }: { children: ReactNode }) {
     }
 
     setLoading(true)
-    try {
-      const res = await fetch(`/api/data/${address}/stake-list`)
-      if (!res.ok) {
+    const maxAttempts = 3
+    let lastErr: unknown = null
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const res = await fetch(`/api/data/${address}/stake-list`)
+        if (!res.ok) {
+          lastErr = new Error(`HTTP ${res.status}`)
+          if (attempt < maxAttempts - 1) {
+            await new Promise((r) => setTimeout(r, 400 * (attempt + 1)))
+            continue
+          }
+          setStakes([])
+          break
+        }
+
+        const json = await res.json()
+        const stakesData = json?.data ?? []
+
+        const stakeList = stakesData.map((s: any) => ({
+          stakeId: s.stakeId,
+          amount: s.amount,
+          timestamp: s.timestamp,
+          lockPeriod: s.lockPeriod,
+          isRWAStake: s.assetType === 'RWA',
+          tokenDecimals: 18,
+          blockNumber:
+            typeof s.blockNumber === 'number' && Number.isFinite(s.blockNumber)
+              ? s.blockNumber
+              : undefined,
+        }))
+
+        setStakes(stakeList)
+        lastErr = null
+        break
+      } catch (err) {
+        lastErr = err
+        console.error('Failed to fetch stakes:', err)
+        if (attempt < maxAttempts - 1) {
+          await new Promise((r) => setTimeout(r, 400 * (attempt + 1)))
+          continue
+        }
         setStakes([])
-        return
       }
-      
-      const json = await res.json()
-      const stakesData = json?.data ?? []
-      
-      const stakeList = stakesData.map((s: any) => ({
-        stakeId: s.stakeId,
-        amount: s.amount,
-        timestamp: s.timestamp,
-        lockPeriod: s.lockPeriod,
-        isRWAStake: s.assetType === 'RWA',
-        tokenDecimals: 18,
-        blockNumber:
-          typeof s.blockNumber === 'number' && Number.isFinite(s.blockNumber)
-            ? s.blockNumber
-            : undefined,
-      }))
-      
-      setStakes(stakeList)
-    } catch (err) {
-      console.error('Failed to fetch stakes:', err)
-      setStakes([])
-    } finally {
-      setLoading(false)
     }
+
+    if (lastErr != null) {
+      console.warn('[StakesContext] stake-list failed after retries')
+    }
+    setLoading(false)
   }, [address])
 
   useEffect(() => {

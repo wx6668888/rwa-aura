@@ -42,9 +42,30 @@ export function useHomepageStats() {
       }
     }
 
-    fetchStats()
-    const interval = setInterval(fetchStats, 60000) // 每分钟更新
-    return () => clearInterval(interval)
+    /** 首屏不抢带宽：空闲后再拉统计，与背景视频错峰 */
+    const start = () => {
+      void fetchStats()
+    }
+    let idleHandle: number | undefined
+    let usedIdleCallback = false
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      usedIdleCallback = true
+      idleHandle = window.requestIdleCallback(start, { timeout: 2200 })
+    } else if (typeof window !== 'undefined') {
+      idleHandle = window.setTimeout(start, 500) as unknown as number
+    }
+
+    const interval = setInterval(fetchStats, 60000)
+    return () => {
+      if (idleHandle !== undefined && typeof window !== 'undefined') {
+        if (usedIdleCallback && 'cancelIdleCallback' in window) {
+          window.cancelIdleCallback(idleHandle)
+        } else {
+          window.clearTimeout(idleHandle)
+        }
+      }
+      clearInterval(interval)
+    }
   }, [])
 
   return stats

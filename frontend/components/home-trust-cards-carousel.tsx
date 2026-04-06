@@ -1,6 +1,8 @@
 'use client'
 
 import { useLayoutEffect, useRef } from 'react'
+import { useLocale } from '@/components/locale-provider'
+import { useTranslation } from '@/lib/i18n'
 import { KnowledgeHubCard } from '@/components/knowledge-hub-card'
 import { WithdrawCtaCard } from '@/components/withdraw-cta-card'
 import { SecurityTransparencyCard } from '@/components/security-transparency-card'
@@ -15,6 +17,8 @@ const SLIDE_CLASS =
  */
 export function HomeTrustCardsCarousel() {
   const scrollerRef = useRef<HTMLDivElement>(null)
+  const { locale } = useLocale()
+  const { t } = useTranslation(locale)
 
   useLayoutEffect(() => {
     const el = scrollerRef.current
@@ -34,7 +38,7 @@ export function HomeTrustCardsCarousel() {
   }, [])
 
   return (
-    <section className="mx-auto mt-2 w-full max-w-7xl px-4 pb-3 lg:px-8" aria-label="提现、安全与知识库">
+    <section className="mx-auto mt-2 w-full max-w-7xl px-4 pb-3 lg:px-8" aria-label={t('home.homeTrustCarouselAria')}>
       <div
         ref={scrollerRef}
         className="home-trust-cards-scroller flex items-stretch gap-2 overflow-x-auto scroll-smooth pb-1 [-ms-overflow-style:none] [scrollbar-width:thin] snap-x max-lg:snap-proximity sm:gap-3 lg:gap-4 lg:snap-none lg:overflow-x-visible lg:pb-0 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1f2733]"

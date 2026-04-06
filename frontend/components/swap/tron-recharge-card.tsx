@@ -35,6 +35,13 @@ export function TronRechargeCard() {
   const [remainingSeconds, setRemainingSeconds] = useState<number>(0)
   const [userMarkedPaid, setUserMarkedPaid] = useState(false)
 
+  const formatEvmAddress = (v: string, head = 6, tail = 4) => {
+    const s = String(v || '').trim()
+    if (!s) return s
+    if (s.length <= head + tail + 3) return s
+    return `${s.slice(0, head)}...${s.slice(-tail)}`
+  }
+
   const estimatedRwa = useMemo(() => {
     const n = Number(usdtAmount)
     if (!Number.isFinite(n) || n <= 0) return '0.00'
@@ -317,7 +324,7 @@ export function TronRechargeCard() {
                     <Wallet className="h-4 w-4 shrink-0 text-text-secondary" />
                     <div className="flex min-h-12 flex-1 items-center py-3 text-[13px] text-text-primary">
                       {isConnected && address ? (
-                        <span className="break-all font-mono">{address}</span>
+                        <span className="font-mono whitespace-nowrap">{formatEvmAddress(address)}</span>
                       ) : (
                         <span className="text-text-secondary">{(t('swap.connectFirst') || '请先连接钱包').trim() || '请先连接钱包'}</span>
                       )}

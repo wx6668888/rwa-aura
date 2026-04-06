@@ -22,6 +22,18 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 3000
       }
+    },
+    {
+      name: 'rwa-chat-server',
+      cwd: '/www/wwwroot/rwaprotocol.dpdns.org/chat-server',
+      script: 'npm',
+      args: 'run start',
+      exec_mode: 'fork',
+      instances: 1,
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3002
+      }
     }
   ]
 }

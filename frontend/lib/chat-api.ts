@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+
 /**
  * 聊天 HTTP / WebSocket 基址。
  * - 浏览器：默认走同源相对路径 `/api/chat/*`，由 next.config rewrites 反代到 chat-server（3002）。
@@ -14,6 +16,20 @@ export function chatHttpUrl(path: string): string {
   }
   const base = (process.env.NEXT_PUBLIC_CHAT_API || 'http://127.0.0.1:3002').replace(/\/$/, '');
   return `${base}${p}`;
+}
+
+/** 消息里存的相对路径（如 /api/chat/uploads/…）在浏览器中显示为图片时需拼上 NEXT_PUBLIC_CHAT_API */
+export function resolveChatMediaUrl(pathOrUrl: string): string {
+  if (!pathOrUrl) return pathOrUrl;
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+  const p = pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`;
+  if (typeof window !== 'undefined') {
+    const override = process.env.NEXT_PUBLIC_CHAT_API?.trim();
+    if (override) return `${override.replace(/\/$/, '')}${p}`;
+    return p;
+  }
+  const base = (process.env.NEXT_PUBLIC_CHAT_API || '').replace(/\/$/, '');
+  return base ? `${base}${p}` : p;
 }
 
 export function chatSocketUrl(): string {
@@ -33,7 +49,16 @@ export function chatSocketUrl(): string {
 /** GET /api/chat/auth/message — 校验响应，避免 message 为空时 signMessage(null) 触发 ethers INVALID_ARGUMENT */
 export async function fetchChatAuthSigningMessage(): Promise<string> {
   const url = chatHttpUrl('auth/message');
-  const res = await fetch(url);
+  let res: Response;
+  try {
+    res = await fetchWithTimeout(url, { timeoutMs: 22000 });
+  } catch (e: unknown) {
+    const name = e instanceof Error ? e.name : '';
+    if (name === 'AbortError') {
+      throw new Error('获取签名文案超时，请检查网络或 VPN 后重试。');
+    }
+    throw e;
+  }
   const text = await res.text();
   let data: { message?: unknown; error?: string };
   try {

@@ -45,6 +45,7 @@
   --text-disabled: #334155;
   /* iOS Safari / 刘海屏：浏览器与 PWA 均需；与 layout viewportFit=cover 配合 */
   --app-safe-top: env(safe-area-inset-top, 0px);
+  --app-safe-bottom: env(safe-area-inset-bottom, 0px);
   /* 固定顶栏总高度：导航行 h-16 + 顶部安全区 */
   --navbar-stack: calc(4rem + var(--app-safe-top));
 
@@ -75,7 +76,21 @@
   @media (display-mode: standalone) {
     :root {
       --app-safe-top: max(env(safe-area-inset-top, 0px), 44px);
+      /* 底部安全区：以系统 env 为准，避免过大常数在条带下再叠一条黑 */
+      --app-safe-bottom: env(safe-area-inset-bottom, 0px);
     }
+  }
+}
+
+/* PWA / 移动浏览器：避免 100vh 与动态工具栏导致底部漏底 */
+@media (display-mode: standalone) {
+  html {
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
+  }
+  body {
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
   }
 }
 
@@ -190,6 +205,244 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* 首页移动端推广卡：双机同时从视口左右外缘划入（无交错延迟，动效更明显） */
+@keyframes mobile-promo-from-left {
+  from {
+    transform: translate3d(-115vw, 0, 0) scale(0.96);
+    opacity: 0.55;
+  }
+  70% {
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes mobile-promo-from-right {
+  from {
+    transform: translate3d(115vw, 0, 0) scale(0.96);
+    opacity: 0.55;
+  }
+  70% {
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+.mobile-promo-slide-left-idle {
+  transform: translate3d(-115vw, 0, 0) scale(0.96);
+  opacity: 0.55;
+}
+
+.mobile-promo-slide-right-idle {
+  transform: translate3d(115vw, 0, 0) scale(0.96);
+  opacity: 0.55;
+}
+
+.mobile-promo-slide-left-run {
+  animation: mobile-promo-from-left 1.75s cubic-bezier(0.16, 1, 0.22, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.mobile-promo-slide-right-run {
+  animation: mobile-promo-from-right 1.75s cubic-bezier(0.16, 1, 0.22, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.mobile-promo-slide-static {
+  transform: translate3d(0, 0, 0);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-promo-slide-left-run,
+  .mobile-promo-slide-right-run {
+    animation: none;
+    animation-delay: 0s;
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+    will-change: auto;
+  }
+}
+
+/* 首页「最新质押」：流动光晕（plasma-cyan / void-purple / surface，与 :root 配色一致） */
+@keyframes home-stakes-blob-1 {
+  0%,
+  100% {
+    transform: translate(-10%, -6%) scale(1) rotate(0deg);
+    opacity: 0.42;
+  }
+  38% {
+    transform: translate(10%, 14%) scale(1.1) rotate(6deg);
+    opacity: 0.62;
+  }
+  72% {
+    transform: translate(12%, -8%) scale(1.04) rotate(-4deg);
+    opacity: 0.48;
+  }
+}
+
+@keyframes home-stakes-blob-2 {
+  0%,
+  100% {
+    transform: translate(8%, 16%) scale(1.06) rotate(0deg);
+    opacity: 0.32;
+  }
+  42% {
+    transform: translate(-12%, -2%) scale(1.14) rotate(-8deg);
+    opacity: 0.52;
+  }
+  78% {
+    transform: translate(2%, 10%) scale(1) rotate(5deg);
+    opacity: 0.38;
+  }
+}
+
+@keyframes home-stakes-sheen {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes home-stakes-accent-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: translate(-50%, 0) scale(1);
+  }
+  50% {
+    opacity: 0.82;
+    transform: translate(-50%, -6%) scale(1.07);
+  }
+}
+
+.home-recent-stakes-ambient {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.home-recent-stakes-ambient__base {
+  position: absolute;
+  inset: 0;
+  /* 与上下区块无硬分割线：长距离低对比度过渡 + 中部氛围 */
+  background:
+    linear-gradient(
+      180deg,
+      rgba(10, 10, 15, 0.42) 0%,
+      rgba(10, 10, 15, 0.12) 28%,
+      transparent 48%,
+      transparent 52%,
+      rgba(10, 10, 15, 0.12) 72%,
+      rgba(10, 10, 15, 0.42) 100%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-1) 42%, transparent) 0%,
+      transparent 40%,
+      transparent 60%,
+      color-mix(in srgb, var(--surface-2) 38%, transparent) 100%
+    );
+}
+
+.home-recent-stakes-ambient__blob-1 {
+  position: absolute;
+  top: -18%;
+  left: -16%;
+  width: min(118vw, 880px);
+  height: min(68vh, 500px);
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse 72% 58% at 50% 50%,
+    rgba(0, 245, 212, 0.24),
+    rgba(0, 245, 212, 0.06) 46%,
+    transparent 70%
+  );
+  filter: blur(52px);
+  animation: home-stakes-blob-1 21s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.home-recent-stakes-ambient__blob-2 {
+  position: absolute;
+  right: -20%;
+  bottom: -26%;
+  width: min(105vw, 760px);
+  height: min(62vh, 460px);
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse 64% 54% at 50% 50%,
+    rgba(139, 92, 246, 0.18),
+    rgba(139, 92, 246, 0.05) 48%,
+    transparent 72%
+  );
+  filter: blur(58px);
+  animation: home-stakes-blob-2 27s ease-in-out infinite;
+  animation-delay: -5s;
+  will-change: transform, opacity;
+}
+
+.home-recent-stakes-ambient__accent {
+  position: absolute;
+  top: 32%;
+  left: 50%;
+  width: min(90vw, 520px);
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse 80% 100% at 50% 50%,
+    rgba(245, 158, 11, 0.1),
+    transparent 68%
+  );
+  filter: blur(42px);
+  animation: home-stakes-accent-pulse 18s ease-in-out infinite;
+  animation-delay: -3s;
+  will-change: transform, opacity;
+}
+
+.home-recent-stakes-ambient__sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(0, 245, 212, 0.07) 40%,
+    rgba(139, 92, 246, 0.06) 55%,
+    transparent 100%
+  );
+  background-size: 240% 100%;
+  opacity: 0.75;
+  animation: home-stakes-sheen 14s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-recent-stakes-ambient__blob-1,
+  .home-recent-stakes-ambient__blob-2,
+  .home-recent-stakes-ambient__accent {
+    animation: none;
+    transform: translate(-50%, 0);
+    opacity: 0.5;
+  }
+
+  .home-recent-stakes-ambient__sheen {
+    animation: none;
+    background-position: 50% 50%;
   }
 }
 

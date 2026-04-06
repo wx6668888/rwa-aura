@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { ethers } from 'ethers';
 import app from './app';
@@ -31,7 +32,27 @@ const NODE_LEVEL_STAKING_ABI = [
 // IMPORTANT: do NOT override existing process env (PM2 / systemd secrets).
 // We keep secrets (RELAYER_PRIVATE_KEY / BACKEND_PRIVATE_KEY etc.) out of the repo .env,
 // and supply them via runtime environment variables instead.
-dotenv.config({ path: resolve(__dirname, '../.env'), override: false });
+const BACKEND_ENV_PATH = resolve(__dirname, '../.env');
+dotenv.config({ path: BACKEND_ENV_PATH, override: false });
+
+/**
+ * 宝塔/PM2 若注入了空的 SETTLEMENT_RPC_URL=，dotenv 因 override:false 不会用 .env 里的 QuickNode 覆盖，
+ * 日结会误回退到 BSC_RPC_URL（公共节点，历史 eth_call 易失败）。此处仅在「进程里为空」时从 .env 文件再读一次。
+ */
+function applySettlementRpcFromFileIfEmpty(): void {
+  if (process.env.SETTLEMENT_RPC_URL?.trim()) return;
+  try {
+    const parsed = dotenv.parse(readFileSync(BACKEND_ENV_PATH, 'utf8'));
+    const v = parsed.SETTLEMENT_RPC_URL?.trim();
+    if (v) {
+      process.env.SETTLEMENT_RPC_URL = v;
+      logger.info('[Env] SETTLEMENT_RPC_URL 已从 .env 文件补足（进程环境原为未设置或空，避免日结误用 BSC_RPC_URL）');
+    }
+  } catch {
+    /* .env 不存在或不可读 */
+  }
+}
+applySettlementRpcFromFileIfEmpty();
 
 /**
  * RWA Protocol Backend Service
@@ -129,12 +150,25 @@ class BackendService {
             priceChangeThreshold: 0.2 // 20%
         });
 
-        // Daily Settlement Service (按秒精确计算)
+        // Daily Settlement Service（优先 SETTLEMENT_RPC_URL，避免与全站 BSC_RPC_URL 公共节点混用）
+        const settlementRpcUrl =
+            (process.env.SETTLEMENT_RPC_URL && process.env.SETTLEMENT_RPC_URL.trim()) ||
+            (process.env.BSC_RPC_URL && process.env.BSC_RPC_URL.trim()) ||
+            process.env.BSC_TESTNET_RPC_URL!;
         this.dailySettlementService = new DailySettlementService({
-            rpcUrl: process.env.SETTLEMENT_RPC_URL || process.env.BSC_RPC_URL || process.env.BSC_TESTNET_RPC_URL!,
+            rpcUrl: settlementRpcUrl,
             stakingContractAddress: process.env.STAKING_CONTRACT_ADDRESS!,
             backendPrivateKey: process.env.BACKEND_PRIVATE_KEY!
         });
+        try {
+            const host = new URL(settlementRpcUrl).host;
+            const usedDedicated = !!(process.env.SETTLEMENT_RPC_URL && process.env.SETTLEMENT_RPC_URL.trim());
+            logger.info(
+                `[DailySettlement] 结算 RPC 主机=${host}；来源=${usedDedicated ? 'SETTLEMENT_RPC_URL' : '回退 BSC_RPC_URL（未配置或为空）'}`
+            );
+        } catch {
+            logger.warn('[DailySettlement] 结算 RPC URL 无法解析，请检查 SETTLEMENT_RPC_URL / BSC_RPC_URL');
+        }
 
         // Node Level Service (provider + wallet from env)
         const rpcUrl = process.env.BSC_RPC_URL || process.env.BSC_TESTNET_RPC_URL!;

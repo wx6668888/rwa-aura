@@ -1,6 +1,8 @@
 'use client'
 
 import Link from 'next/link'
+import { useLocale } from '@/components/locale-provider'
+import { useTranslation } from '@/lib/i18n'
 import { LazyDotLottieAnimation } from '@/components/lazy-dot-lottie'
 import { TrustHighlightCardShell } from '@/components/trust-highlight-card-shell'
 import {
@@ -17,9 +19,14 @@ import {
 
 /** 与「安全可靠」「随时提现」同结构的引导卡，链至知识库 */
 export function KnowledgeHubCard({ className }: { className?: string }) {
+  const { locale } = useLocale()
+  const { t } = useTranslation(locale)
+
   return (
     <TrustHighlightCardShell className={className}>
-      <h3 className="shrink-0 text-left text-2xl font-extrabold text-white sm:text-3xl">知识库，随查随用</h3>
+      <h3 className="shrink-0 text-left text-2xl font-extrabold text-white sm:text-3xl">
+        {t('home.homeKnowledgeCardTitle')}
+      </h3>
 
       <div className={TRUST_CARD_BODY_GRID}>
         <div className={TRUST_TEXT_COL}>
@@ -27,22 +34,22 @@ export function KnowledgeHubCard({ className }: { className?: string }) {
             <ul className={TRUST_BULLET_UL}>
               <li className={TRUST_BULLET_LI}>
                 <span className={TRUST_BULLET_MARK} aria-hidden />
-                <span className="min-w-0 break-words">教程与常见问题</span>
+                <span className="min-w-0 break-words">{t('home.homeKnowledgeBullet1')}</span>
               </li>
               <li className={TRUST_BULLET_LI}>
                 <span className={TRUST_BULLET_MARK} aria-hidden />
-                <span className="min-w-0 break-words">质押、提现与节点说明</span>
+                <span className="min-w-0 break-words">{t('home.homeKnowledgeBullet2')}</span>
               </li>
               <li className={TRUST_BULLET_LI}>
                 <span className={TRUST_BULLET_MARK} aria-hidden />
-                <span className="min-w-0 break-words">安全提示与自助排错</span>
+                <span className="min-w-0 break-words">{t('home.homeKnowledgeBullet3')}</span>
               </li>
             </ul>
           </div>
 
           <div className="flex shrink-0 justify-start">
             <Link href="/knowledge" className={TRUST_CARD_HERO_CTA_CLASS}>
-              去知识库
+              {t('home.homeKnowledgeCta')}
             </Link>
           </div>
         </div>

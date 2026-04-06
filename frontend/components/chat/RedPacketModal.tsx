@@ -69,8 +69,8 @@ export function RedPacketModal({ onConfirm, onClose }: RedPacketModalProps) {
                 }}
                 className={`flex-1 py-2 rounded-lg text-[12px] font-medium transition-all border ${
                   currency === 'USDT'
-                    ? 'bg-plasma-cyan/15 text-plasma-cyan border-plasma-cyan/30'
-                    : 'bg-surface-2 text-text-secondary border-border-subtle hover:border-border-active'
+                    ? 'border border-white/20 bg-[#0d9488] text-white'
+                    : 'border border-border-subtle bg-surface-2 text-text-secondary hover:border-border-active'
                 }`}
               >
                 USDT
@@ -83,8 +83,8 @@ export function RedPacketModal({ onConfirm, onClose }: RedPacketModalProps) {
                 }}
                 className={`flex-1 py-2 rounded-lg text-[12px] font-medium transition-all border ${
                   currency === 'RWA'
-                    ? 'bg-plasma-cyan/15 text-plasma-cyan border-plasma-cyan/30'
-                    : 'bg-surface-2 text-text-secondary border-border-subtle hover:border-border-active'
+                    ? 'border border-white/20 bg-[#0d9488] text-white'
+                    : 'border border-border-subtle bg-surface-2 text-text-secondary hover:border-border-active'
                 }`}
               >
                 RWA

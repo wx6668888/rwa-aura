@@ -6,6 +6,9 @@ const __dirname = path.dirname(__filename)
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -44,22 +47,29 @@ const nextConfig = {
       },
     ]
   },
-  // 允许 unsafe-eval 用于开发环境（某些库需要）
-  // 注意：Next.js 16 中 headers 配置可能需要不同的方式
-  // 如果仍有问题，可以暂时注释掉这部分
-  // async headers() {
-  //   return [
-  //     {
-  //       source: '/:path*',
-  //       headers: [
-  //         {
-  //           key: 'Content-Security-Policy',
-  //           value: "script-src 'self' 'unsafe-eval' 'unsafe-inline' https:; object-src 'none';",
-  //         },
-  //       ],
-  //     },
-  //   ]
-  // },
+  // 推广图 / Lottie 海报：长缓存（更新资源时请换文件名或 ?v= 并清 CDN）
+  async headers() {
+    return [
+      {
+        source: '/images/promo-phones/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/lottie-posters/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ]
+  },
 }
 
 export default nextConfig

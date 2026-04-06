@@ -13,6 +13,11 @@ const StatsBar = dynamic(() => import('@/components/stats-bar').then((m) => ({ d
   loading: () => <BarPulse className="mx-auto mt-1 h-[4.5rem] max-w-7xl" />,
 })
 
+const HomeMobilePromoCard = dynamic(
+  () => import('@/components/home-mobile-promo-card').then((m) => ({ default: m.HomeMobilePromoCard })),
+  { ssr: false, loading: () => <BarPulse className="min-h-[22rem] w-full" /> }
+)
+
 const HomeLatestStakes = dynamic(
   () => import('@/components/home-latest-stakes').then((m) => ({ default: m.HomeLatestStakes })),
   { ssr: false, loading: () => <BarPulse className="min-h-[28rem] w-full" /> }
@@ -40,7 +45,7 @@ const HomeTrustedBy = dynamic(
 
 const FooterSection = dynamic(
   () => import('@/components/footer-section').then((m) => ({ default: m.FooterSection })),
-  { ssr: false, loading: () => <BarPulse className="min-h-[16rem] w-full rounded-none" /> }
+  { ssr: false, loading: () => <BarPulse className="min-h-[30rem] w-full rounded-none" /> }
 )
 
 /** 首屏下方：按视口分段挂载，减轻首包与同时进行的请求/动画 */
@@ -49,6 +54,10 @@ export function HomeBelowFold() {
     <>
       <HomeVisibleSection minHeight="5.5rem" className="w-full">
         <StatsBar />
+      </HomeVisibleSection>
+
+      <HomeVisibleSection minHeight="22rem" className="w-full">
+        <HomeMobilePromoCard />
       </HomeVisibleSection>
 
       <HomeVisibleSection minHeight="28rem" className="w-full">
@@ -79,7 +88,7 @@ export function HomeBelowFold() {
         </HomeSlideReveal>
       </HomeVisibleSection>
 
-      <HomeVisibleSection minHeight="18rem" className="w-full">
+      <HomeVisibleSection minHeight="30rem" className="w-full">
         <HomeSlideReveal from="left">
           <FooterSection />
         </HomeSlideReveal>

@@ -1,4 +1,5 @@
-import type { Metadata, Viewport } from 'next';
+import type { Metadata, Viewport } from 'next'
+import { ChatViewportShell } from '@/components/chat/chat-viewport-shell'
 
 export const metadata: Metadata = {
   title: 'Chat | RWA Aura',
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
     statusBarStyle: 'black-translucent',
     title: 'RWA Chat',
   },
-};
+}
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -17,12 +18,9 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   themeColor: '#05050a',
-};
+  viewportFit: 'cover',
+}
 
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="h-[100dvh] max-h-[100dvh] overflow-hidden overscroll-none bg-void-black flex flex-col min-h-0">
-      {children}
-    </div>
-  );
+  return <ChatViewportShell>{children}</ChatViewportShell>
 }

@@ -161,6 +161,18 @@ export const announcements: Announcement[] = [
     views: 6789,
     tags: ['ama', 'community', 'q&a'],
   },
+  {
+    id: '13',
+    slug: 'account-funding-staking-guide',
+    category: 'update',
+    isPinned: true,
+    isNew: true,
+    date: '2026-04-06',
+    author: 'RWA Team',
+    readTime: 6,
+    views: 1260,
+    tags: ['guide', 'login', 'funding', 'staking'],
+  },
 ]
 
 export function getAnnouncementBySlug(slug: string): Announcement | undefined {

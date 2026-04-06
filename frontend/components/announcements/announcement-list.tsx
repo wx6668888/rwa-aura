@@ -4,6 +4,7 @@ import { useTranslation, Locale } from '@/lib/i18n'
 import { Eye, ArrowRight, Pin } from 'lucide-react'
 import Link from 'next/link'
 import { announcements, getAnnouncementsByCategory } from '@/lib/announcements-data'
+import { getLocalizedAnnouncementMeta } from '@/lib/announcements-localized'
 
 interface AnnouncementListProps {
   selectedCategory: string
@@ -28,8 +29,12 @@ export default function AnnouncementList({
 
   const filteredAnnouncements = getAnnouncementsByCategory(selectedCategory).filter((ann) => {
     if (!searchQuery) return true
-    const title = t(`announce.detail.${ann.slug}.title`).toLowerCase()
-    return title.includes(searchQuery.toLowerCase())
+    const { title } = getLocalizedAnnouncementMeta(ann.slug, locale, t)
+    const titleNorm = title.toLowerCase()
+    const queryNorm = searchQuery.toLowerCase()
+    const slugNorm = ann.slug.toLowerCase()
+    const tagsNorm = ann.tags.join(' ').toLowerCase()
+    return titleNorm.includes(queryNorm) || slugNorm.includes(queryNorm) || tagsNorm.includes(queryNorm)
   })
 
   const pinnedAnnouncement = filteredAnnouncements.find((ann) => ann.isPinned)
@@ -39,6 +44,9 @@ export default function AnnouncementList({
     <div>
       {/* Pinned Announcement */}
       {pinnedAnnouncement && (
+        (() => {
+          const meta = getLocalizedAnnouncementMeta(pinnedAnnouncement.slug, locale, t)
+          return (
         <div className="relative mb-4 p-6 bg-surface-1 border border-plasma-cyan rounded-2xl shadow-[0_0_30px_rgba(0,245,212,0.15)] hover:-translate-y-1 transition-all duration-200">
           {/* Pin Indicator */}
           <div className="absolute top-0 right-0 bg-surface-2 rounded-bl-xl px-3 py-1.5 flex items-center gap-1.5">
@@ -57,13 +65,13 @@ export default function AnnouncementList({
           {/* Title */}
           <Link href={`/announcements/${pinnedAnnouncement.slug}`}>
             <h3 className="text-[22px] font-bold text-text-primary hover:text-plasma-cyan transition-colors cursor-pointer font-space-grotesk">
-              {t(`announce.detail.${pinnedAnnouncement.slug}.title`)}
+              {meta.title}
             </h3>
           </Link>
 
           {/* Preview */}
           <p className="mt-2 text-[14px] text-text-secondary leading-relaxed line-clamp-3">
-            {t(`announce.detail.${pinnedAnnouncement.slug}.preview`)}
+            {meta.preview}
           </p>
 
           {/* Footer */}
@@ -89,6 +97,8 @@ export default function AnnouncementList({
             </div>
           </div>
         </div>
+          )
+        })()
       )}
 
       {/* Regular Announcements */}
@@ -96,6 +106,7 @@ export default function AnnouncementList({
         {regularAnnouncements.map((ann) => {
           const colors = categoryColors[ann.category]
           const isSecurityAlert = ann.category === 'security'
+          const meta = getLocalizedAnnouncementMeta(ann.slug, locale, t)
 
           return (
             <div
@@ -120,13 +131,13 @@ export default function AnnouncementList({
               {/* Title */}
               <Link href={`/announcements/${ann.slug}`}>
                 <h3 className="mt-3 text-[17px] font-bold text-text-primary hover:text-plasma-cyan transition-colors cursor-pointer font-space-grotesk">
-                  {t(`announce.detail.${ann.slug}.title`)}
+                  {meta.title}
                 </h3>
               </Link>
 
               {/* Preview */}
               <p className="mt-2 text-[13px] text-text-secondary leading-relaxed line-clamp-2">
-                {t(`announce.detail.${ann.slug}.preview`)}
+                {meta.preview}
               </p>
 
               {/* Footer */}

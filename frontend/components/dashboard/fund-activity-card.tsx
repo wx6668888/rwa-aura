@@ -370,7 +370,27 @@ async function fetchStakesFromApi(
         summaryType = 'stake'
         typeVariant = isRwa ? 'purple' : 'cyan'
       }
-      
+
+      const amountForRow = (): { amount: string; amountColor: string } => {
+        if (typeKey === 'rewardRWA') {
+          return { amount: `+${amt} RWA`, amountColor: '#10b981' }
+        }
+        if (isReferralReward || typeKey === 'rewardReferral') {
+          return { amount: `+${amt} USDT`, amountColor: '#84cc16' }
+        }
+        if (isWithdraw) {
+          return {
+            amount: isRwa ? `-${amt} RWA` : `-${amt} USDT`,
+            amountColor: '#f97316',
+          }
+        }
+        return {
+          amount: isRwa ? `+${amt} RWA` : `+${amt} USDT`,
+          amountColor: isRwa ? '#8b5cf6' : '#00f5d4',
+        }
+      }
+      const { amount, amountColor } = amountForRow()
+
       return {
         blockNumber: BigInt(s.block_number ?? 0),
         logIndex: 0,
@@ -378,12 +398,8 @@ async function fetchStakesFromApi(
         typeKey,
         summaryType,
         typeVariant,
-        amount: isReferralReward
-          ? `+${amt} USDT`
-          : isWithdraw 
-          ? (isRwa ? `-${amt} RWA` : `-${amt} USDT`)
-          : (isRwa ? `+${amt} RWA` : `+${amt} USDT`),
-        amountColor: isReferralReward ? '#84cc16' : (isWithdraw ? '#f97316' : (isRwa ? '#8b5cf6' : '#00f5d4')),
+        amount,
+        amountColor,
         txHash: s.tx_hash as `0x${string}` | undefined,
       }
     })
@@ -723,7 +739,7 @@ export function FundActivityCard() {
       {/* 查看全部 - 弹窗：整页全屏，风格与仪表盘一致 */}
       {showModal && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-[9999] flex flex-col sm:items-center sm:justify-center sm:p-4 pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]"
+          className="fixed inset-0 z-[9999] flex flex-col items-stretch justify-start sm:items-center sm:justify-center sm:p-4 pt-[max(12px,env(safe-area-inset-top,24px))] pb-[max(12px,env(safe-area-inset-bottom,20px))] pl-[max(0px,env(safe-area-inset-left,0px))] pr-[max(0px,env(safe-area-inset-right,0px))]"
           style={{
             width: '100%',
             minHeight: '100dvh',
@@ -732,7 +748,7 @@ export function FundActivityCard() {
           }}
         >
           <div
-            className="flex min-h-0 w-full flex-1 flex-col overflow-hidden sm:h-auto sm:max-h-[88vh] sm:w-full sm:max-w-4xl sm:flex-none sm:rounded-2xl"
+            className="flex w-full min-h-[45dvh] flex-1 flex-col overflow-hidden sm:h-auto sm:min-h-0 sm:max-h-[88vh] sm:w-full sm:max-w-4xl sm:flex-none sm:rounded-2xl"
             style={{
               background: 'linear-gradient(165deg, #0d0d14 0%, #0a0a10 50%, #0d0d14 100%)',
               boxShadow: '0 0 0 1px rgba(0,245,212,0.08), 0 24px 48px -12px rgba(0,0,0,0.6), 0 0 80px -20px rgba(0,245,212,0.12)',

@@ -6,15 +6,30 @@ import { v4 as uuid } from 'uuid';
 import fs from 'fs';
 import path from 'path';
 import { ethers } from 'ethers';
+import { normalizeUtteranceKey } from '../utils/utterance-dedupe';
 import { User, Message, Room, NodeLevel, RedPacket, ChatCurrency } from '../models/types';
 
+const USER_AVATAR_POOL = 50;
+
+/** 与机器人同款图标池：按地址确定性分配，登录多次不变 */
+export function pickDeterministicUserAvatar(address: string): string {
+  const h = BigInt(ethers.id(address.toLowerCase()));
+  const idx = Number((h % BigInt(USER_AVATAR_POOL)) + BigInt(1));
+  return `/chat-bot-icons/${String(idx).padStart(2, '0')}.svg`;
+}
+
 class ChatService {
+  private static readonly SYSTEM_ANNOUNCER_ID = 'system-announcer';
+  private static readonly SYSTEM_ANNOUNCER_ADDRESS = 'system-announcer';
+  private static readonly BOOTSTRAP_ANNOUNCEMENT_VERSION = '20260406-guide-v1';
   private users = new Map<string, User>();
   private rooms = new Map<string, Room>();
   private messages = new Map<string, Message[]>(); // roomId -> messages
   private redPackets = new Map<string, RedPacket>(); // redPacketId -> red packet
   private addressToUser = new Map<string, string>(); // address -> userId
   private messageRateLimits = new Map<string, number[]>(); // userId -> timestamps
+  /** 房间内最后一条真人（非机器人）文本/图片消息时间，用于机器人仅在「安静」时主动发言 */
+  private roomLastHumanMessageAt = new Map<string, number>();
   private readonly dataFilePath = process.env.CHAT_DATA_FILE
     ? path.resolve(process.env.CHAT_DATA_FILE)
     : path.resolve(process.cwd(), 'data', 'chat-data.json');
@@ -57,8 +72,84 @@ class ChatService {
     const restored = this.loadFromDisk();
     if (!restored) {
       this.createDefaultRooms();
-      this.persistToDisk();
     }
+    this.ensureAnnouncementFeedSeeded();
+  }
+
+  private ensureAnnouncementFeedSeeded() {
+    const room = this.rooms.get('room-announcements');
+    if (!room) return;
+
+    // Ensure a concrete sender exists so frontend always has a valid user object.
+    const now = Date.now();
+    let changed = false;
+    let announcer = this.users.get(ChatService.SYSTEM_ANNOUNCER_ID);
+    if (!announcer) {
+      announcer = {
+        id: ChatService.SYSTEM_ANNOUNCER_ID,
+        address: ChatService.SYSTEM_ANNOUNCER_ADDRESS,
+        nickname: '📢 官方公告',
+        avatar: '/chat-bot-icons/01.svg',
+        nodeLevel: 'L9',
+        isBot: true,
+        isAdmin: true,
+        isOnline: true,
+        lastSeen: now,
+        createdAt: now,
+      };
+      this.users.set(announcer.id, announcer);
+      this.addressToUser.set(announcer.address, announcer.id);
+      changed = true;
+    }
+
+    const roomMsgs = this.messages.get(room.id) || [];
+    if (!this.messages.has(room.id)) {
+      this.messages.set(room.id, roomMsgs);
+      changed = true;
+    }
+    const alreadySeeded = roomMsgs.some(
+      (m) => m.metadata?.seedKey === ChatService.BOOTSTRAP_ANNOUNCEMENT_VERSION
+    );
+    if (alreadySeeded) {
+      if (changed) this.persistToDisk();
+      return;
+    }
+
+    const guidePath = '/announcements/account-funding-staking-guide';
+    const guideLabel = '新手指南：登录 / 充值 / 质押 / 提现';
+    const payloads: Array<{ content: string; metadata?: Record<string, any> }> = [
+      {
+        content:
+          '欢迎来到公告栏。这里会固定发布官方操作指引与安全提醒，普通成员只读。',
+      },
+      {
+        content:
+          '新手请先看这篇：登录、充值、质押、提现、FAQ 一站式说明。',
+        metadata: { quickLink: { path: guidePath, label: guideLabel } },
+      },
+      {
+        content:
+          '重要提醒：请勿向任何人泄露私钥或助记词。官方不会私聊索要这些信息。',
+      },
+    ];
+
+    payloads.forEach((p, idx) => {
+      roomMsgs.push({
+        id: uuid(),
+        roomId: room.id,
+        userId: announcer!.id,
+        content: p.content,
+        type: p.metadata?.quickLink ? 'text' : 'system',
+        timestamp: now + idx,
+        edited: false,
+        metadata: {
+          ...(p.metadata || {}),
+          seedKey: ChatService.BOOTSTRAP_ANNOUNCEMENT_VERSION,
+        },
+      });
+    });
+    this.messages.set(room.id, roomMsgs);
+    this.persistToDisk();
   }
 
   private loadFromDisk(): boolean {
@@ -82,6 +173,19 @@ class ChatService {
       this.users = new Map((data.users || []).map((u) => [u.id, u]));
       this.rooms = new Map((data.rooms || []).map((r) => [r.id, r]));
       this.messages = new Map(Object.entries(data.messages || {}));
+
+      this.roomLastHumanMessageAt.clear();
+      for (const [roomId, msgs] of this.messages.entries()) {
+        for (let i = msgs.length - 1; i >= 0; i--) {
+          const m = msgs[i]!;
+          if (m.type !== 'text' && m.type !== 'image') continue;
+          const u = this.users.get(m.userId);
+          if (u && !u.isBot) {
+            this.roomLastHumanMessageAt.set(roomId, m.timestamp);
+            break;
+          }
+        }
+      }
       this.redPackets = new Map(
         Object.entries(data.redPackets || {}).map(([id, packet]) => {
           const p = packet as RedPacket;
@@ -110,6 +214,26 @@ class ChatService {
         USDT: Number(pool.USDT || 0),
         RWA: Number(pool.RWA || 0),
       };
+
+      let avatarBackfill = false;
+      for (const u of this.users.values()) {
+        if (u.isBot) continue;
+        if (!u.avatar) {
+          u.avatar = pickDeterministicUserAvatar(u.address);
+          avatarBackfill = true;
+        }
+      }
+
+      let roomGeneralRenamed = false;
+      const genRoom = this.rooms.get('room-general');
+      if (genRoom && /general|常规/i.test(genRoom.name)) {
+        genRoom.name = '🌐 官方群';
+        genRoom.description = 'RWA Aura official community';
+        roomGeneralRenamed = true;
+      }
+
+      if (avatarBackfill || roomGeneralRenamed) this.persistToDisk();
+
       return this.rooms.size > 0;
     } catch (err) {
       console.error('[ChatService] Failed to load persisted data:', err);
@@ -179,8 +303,8 @@ class ChatService {
   private createDefaultRooms() {
     const general: Room = {
       id: 'room-general',
-      name: '🌐 General',
-      description: 'Welcome to RWA Aura community',
+      name: '🌐 官方群',
+      description: 'RWA Aura official community',
       type: 'group',
       icon: '🌐',
       ownerId: 'system',
@@ -256,14 +380,19 @@ class ChatService {
       user.isOnline = true;
       user.lastSeen = Date.now();
       if (nodeLevel) user.nodeLevel = nodeLevel;
+      if (!user.isBot && !user.avatar) {
+        user.avatar = pickDeterministicUserAvatar(user.address);
+      }
       this.persistToDisk();
       return user;
     }
 
+    const addrLower = address.toLowerCase();
     const user: User = {
       id: uuid(),
-      address: address.toLowerCase(),
+      address: addrLower,
       nickname: nickname || `${address.slice(0, 6)}...${address.slice(-4)}`,
+      avatar: pickDeterministicUserAvatar(addrLower),
       nodeLevel: nodeLevel || 'L1',
       isBot: false,
       isAdmin: this.adminAddresses.has(address.toLowerCase()),
@@ -288,6 +417,22 @@ class ChatService {
 
   getUser(userId: string): User | undefined {
     return this.users.get(userId);
+  }
+
+  updateUserNickname(userId: string, nickname: string): User | null {
+    const user = this.users.get(userId);
+    if (!user) return null;
+    if (user.isBot) return null;
+    const next = String(nickname || '').trim().slice(0, 32);
+    if (!next) return null;
+    user.nickname = next;
+    this.persistToDisk();
+    return user;
+  }
+
+  /** 供机器人批量 bootstrap 后立刻落盘 isBot/avatar 等内存改动 */
+  persistChatState(): void {
+    this.persistToDisk();
   }
 
   getUserByAddress(address: string): User | undefined {
@@ -336,6 +481,18 @@ class ChatService {
 
   getRoom(roomId: string): Room | undefined {
     return this.rooms.get(roomId);
+  }
+
+  /** All users currently in room.memberIds (for member list UI). */
+  getRoomMemberUsers(roomId: string): User[] {
+    const room = this.rooms.get(roomId);
+    if (!room) return [];
+    const out: User[] = [];
+    for (const id of room.memberIds) {
+      const u = this.users.get(id);
+      if (u) out.push(u);
+    }
+    return out;
   }
 
   createRoom(name: string, description: string, ownerId: string, type: Room['type'] = 'group'): Room {
@@ -429,14 +586,48 @@ class ChatService {
     }
     this.messages.set(roomId, roomMessages);
 
+    const author = this.users.get(userId);
+    if (author && !author.isBot && (type === 'text' || type === 'image')) {
+      this.roomLastHumanMessageAt.set(roomId, Date.now());
+    }
+
     this.persistToDisk();
     return msg;
+  }
+
+  /** 距该房间最后真人发言的毫秒数；从未有真人发过则返回 Infinity（允许机器人主动暖场） */
+  getMsSinceLastHumanMessage(roomId: string): number {
+    const t = this.roomLastHumanMessageAt.get(roomId);
+    if (t == null) return Number.POSITIVE_INFINITY;
+    return Date.now() - t;
   }
 
   getMessages(roomId: string, limit = 50, before?: number): Message[] {
     const msgs = this.messages.get(roomId) || [];
     let filtered = before ? msgs.filter((m) => m.timestamp < before) : msgs;
     return filtered.slice(-limit);
+  }
+
+  findMessageById(messageId: string): { roomId: string; message: Message } | null {
+    for (const [roomId, msgs] of this.messages.entries()) {
+      const m = msgs.find((x) => x.id === messageId);
+      if (m) return { roomId, message: m };
+    }
+    return null;
+  }
+
+  /** 机器人当日去重：收集自 sinceMs（含）起的文本消息归一化键 */
+  collectBotUtteranceKeysSince(sinceMs: number): Set<string> {
+    const set = new Set<string>();
+    for (const msgs of this.messages.values()) {
+      for (const m of msgs) {
+        if ((m.type !== 'text' && m.type !== 'image') || m.timestamp < sinceMs) continue;
+        const u = this.users.get(m.userId);
+        if (!u?.isBot) continue;
+        set.add(normalizeUtteranceKey(m.content));
+      }
+    }
+    return set;
   }
 
   editMessage(messageId: string, roomId: string, newContent: string, editorUserId: string): Message | null {

@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { UserAvatar } from './UserBadge';
 import UserBadge from './UserBadge';
 import { ChatMessage, useChat } from './chat-context';
 import { useLocale } from '@/components/locale-provider';
 import { useTranslation } from '@/lib/i18n';
+import { resolveChatMediaUrl } from '@/lib/chat-api';
 
 function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -25,10 +27,11 @@ interface MessageGroupProps {
   messages: ChatMessage[];
   isOwn: boolean;
   onToast?: (message: string, type: 'success' | 'error' | 'info') => void;
+  onMentionUser?: (user: ChatMessage['user']) => void;
 }
 
 /** Grouped messages from same user within short timeframe */
-export function MessageGroup({ messages, isOwn, onToast }: MessageGroupProps) {
+export function MessageGroup({ messages, isOwn, onToast, onMentionUser }: MessageGroupProps) {
   const { locale } = useLocale();
   const { t } = useTranslation(locale);
   const { claimRedPacket, getRedPacketRecords, fetchWalletBalances } = useChat();
@@ -38,41 +41,80 @@ export function MessageGroup({ messages, isOwn, onToast }: MessageGroupProps) {
   if (!messages.length) return null;
   const user = messages[0].user;
 
-  return (
-    <div className={`group flex gap-3 px-4 py-1 hover:bg-white/[0.02] transition-colors ${isOwn ? '' : ''}`}>
-      {/* Avatar - only show for first message */}
-      <div className="w-10 flex-shrink-0 pt-0.5">
-        <UserAvatar user={user} size={40} />
-      </div>
+  const ownBubble =
+    'rounded-2xl px-3 py-2 my-0.5 text-left inline-block max-w-full ' +
+    'border border-white/20 bg-[#0f766e] text-white';
 
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        {/* Header: name + badge + time */}
-        <div className="flex items-center gap-2 mb-1">
-          <UserBadge user={user} size="sm" />
-          <span className="text-[10px] text-text-secondary font-mono opacity-0 group-hover:opacity-100 transition-opacity">
-            {formatTime(messages[0].timestamp)}
-          </span>
+  return (
+    <div
+      className={`group flex w-full px-4 py-1.5 hover:bg-white/[0.02] transition-colors ${
+        isOwn ? 'justify-end' : 'justify-start'
+      }`}
+    >
+      <div
+        className={`flex gap-2 max-w-[min(560px,92vw)] ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}
+      >
+        <div className="w-10 flex-shrink-0 pt-0.5">
+          <UserAvatar user={user} size={40} />
         </div>
 
-        {/* Messages */}
+        <div className={`flex-1 min-w-0 overflow-hidden ${isOwn ? 'text-right' : 'text-left'}`}>
+          <div
+            className={`flex items-center gap-2 mb-1 ${isOwn ? 'flex-row-reverse justify-end' : 'flex-row justify-start'}`}
+          >
+            <button
+              type="button"
+              onClick={() => !isOwn && onMentionUser?.(user)}
+              className={`rounded-md ${isOwn ? 'cursor-default' : 'hover:bg-surface-2/70'} px-1 py-0.5`}
+            >
+              <UserBadge user={user} size="sm" />
+            </button>
+            <span className="text-[10px] text-text-secondary font-mono opacity-80">
+              {formatTime(messages[0].timestamp)}
+            </span>
+          </div>
+
         {messages.map((msg) => (
-          <div key={msg.id} className="group/msg relative">
+          <div
+            key={msg.id}
+            className={`group/msg relative ${isOwn ? 'flex flex-col items-end' : 'flex flex-col items-start'}`}
+          >
             {msg.type === 'system' ? (
-              <div className="text-[11px] text-text-secondary italic py-0.5">{msg.content}</div>
+              <div className="text-[11px] text-text-secondary italic py-0.5 w-full text-center">
+                {msg.content}
+              </div>
             ) : msg.type === 'chain-event' ? (
-              <div className="inline-flex items-center gap-1.5 text-[11px] py-1 px-2.5 my-0.5 rounded-md"
-                style={{ background: '#00f5d410', color: '#00f5d4', border: '1px solid #00f5d420' }}>
+              <div
+                className="my-0.5 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] text-white"
+                style={{ background: '#0d9488', border: '1px solid rgba(255,255,255,0.2)' }}
+              >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
                   <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
                 </svg>
                 {msg.content}
               </div>
+            ) : msg.type === 'image' ? (
+              <div className={`my-1 ${isOwn ? ownBubble + ' p-1' : ''}`}>
+                <a
+                  href={resolveChatMediaUrl(msg.content)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block rounded-xl overflow-hidden border border-border-subtle/80 bg-surface-2 shadow-sm"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={resolveChatMediaUrl(msg.content)}
+                    alt=""
+                    className="max-w-[min(280px,78vw)] max-h-[280px] w-auto h-auto object-contain block"
+                    loading="lazy"
+                  />
+                </a>
+              </div>
             ) : (
               msg.type === 'redpacket' ? (
                 <div
-                  className="rounded-md px-3 py-2 my-1 border"
+                  className={`rounded-md px-3 py-2 my-1 border ${isOwn ? 'text-left' : ''}`}
                   style={{ background: '#dc262615', borderColor: '#dc262640' }}
                 >
                   <div className="text-[12px] text-danger font-semibold mb-1">🧧 {t('chat.redPacketTitle')}</div>
@@ -141,15 +183,60 @@ export function MessageGroup({ messages, isOwn, onToast }: MessageGroupProps) {
                     </button>
                   </div>
                 </div>
+              ) : msg.metadata?.quickLink?.path ? (
+                <div
+                  className={`my-0.5 inline-block max-w-full text-left rounded-2xl px-3 py-2 border ${
+                    isOwn
+                      ? ownBubble
+                      : 'bg-surface-2/90 border-border-subtle text-text-primary'
+                  }`}
+                >
+                  <div
+                    className={`mb-1 font-mono text-[10px] ${isOwn ? 'text-white/60' : 'text-text-disabled'}`}
+                  >
+                    {t('chat.quickLinkCardHint')}
+                  </div>
+                  <Link
+                    href={msg.metadata.quickLink.path}
+                    className="break-words text-[13px] font-medium text-white hover:underline"
+                  >
+                    {msg.metadata.quickLink.label || msg.content}
+                  </Link>
+                  <div className="mt-1.5">
+                    <Link
+                      href={msg.metadata.quickLink.path}
+                      className="inline-flex rounded-md border border-white/15 bg-[#0d9488] px-2 py-1 text-[11px] text-white hover:bg-[#0f766e]"
+                    >
+                      {t('chat.quickLinkOpen')} →
+                    </Link>
+                  </div>
+                  {msg.edited && (
+                    <span className={`ml-1 text-[9px] ${isOwn ? 'text-white/55' : 'text-text-disabled'}`}>
+                      {t('chat.edited')}
+                    </span>
+                  )}
+                </div>
               ) : (
-                <div className="text-[13px] text-text-primary leading-[1.45] py-[1px] break-words">
+                <div
+                  className={`break-words py-[1px] text-[13px] leading-[1.45] ${
+                    isOwn ? ownBubble : 'text-text-primary'
+                  }`}
+                >
                   {msg.content}
-                  {msg.edited && <span className="text-[9px] text-text-disabled ml-1">{t('chat.edited')}</span>}
+                  {msg.edited && (
+                    <span className={`ml-1 text-[9px] ${isOwn ? 'text-white/55' : 'text-text-disabled'}`}>
+                      {t('chat.edited')}
+                    </span>
+                  )}
                 </div>
               )
             )}
+            <span className={`mt-0.5 text-[10px] font-mono text-text-disabled ${isOwn ? 'pr-1' : 'pl-1'}`}>
+              {formatTime(msg.timestamp)}
+            </span>
           </div>
         ))}
+        </div>
       </div>
       {recordsOpenFor && (
         <div className="fixed inset-0 z-40 bg-black/60 flex items-center justify-center p-4">

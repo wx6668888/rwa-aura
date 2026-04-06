@@ -3,9 +3,15 @@
 // ============================================================
 
 import { Router, Request, Response } from 'express';
+import fs from 'fs';
+import path from 'path';
+import { v4 as uuid } from 'uuid';
 import { chatService } from '../services/chat-service';
 import { botService } from '../services/bot-service';
+import { toPublicChatUser } from '../utils/public-chat-user';
 import { authMiddleware, getAuthMessage, verifySignature, isGuestAuth, requireAdmin } from '../middleware/auth';
+import { textContainsOffPlatformContactSolicitation } from '../utils/contact-solicitation';
+import { CHAT_UPLOAD_DIR } from '../config/paths';
 import { NodeLevel, ChatCurrency } from '../models/types';
 
 const router = Router();
@@ -33,6 +39,48 @@ router.post('/auth/login', (req: Request, res: Response) => {
   res.json({ user });
 });
 
+router.put('/me/nickname', authMiddleware, (req: Request, res: Response) => {
+  const userId = (req as any).userId as string | undefined;
+  if (!userId) return res.status(401).json({ error: 'Authentication required' });
+  const nickname = typeof req.body?.nickname === 'string' ? req.body.nickname.trim() : '';
+  if (!nickname) return res.status(400).json({ error: 'nickname required' });
+  const user = chatService.updateUserNickname(userId, nickname);
+  if (!user) return res.status(400).json({ error: 'Failed to update nickname' });
+  return res.json({ user: toPublicChatUser(user) });
+});
+
+/** 相册图片：前端 data URL → 落盘 → 返回同源路径（供 messageType:image 使用） */
+router.post('/upload/image', authMiddleware, (req: Request, res: Response) => {
+  const userId = (req as any).userId as string | undefined;
+  if (!userId) return res.status(401).json({ error: 'Login to chat first' });
+
+  const raw = req.body?.imageBase64;
+  if (typeof raw !== 'string') {
+    return res.status(400).json({ error: 'imageBase64 (data URL) required' });
+  }
+  const trimmed = raw.trim();
+  const m = /^data:(image\/(?:jpeg|jpg|png|gif|webp));base64,([\s\S]+)$/i.exec(trimmed);
+  if (!m) {
+    return res.status(400).json({ error: 'expected data:image/jpeg|png|gif|webp;base64,...' });
+  }
+  const mime = m[1].toLowerCase();
+  const b64 = m[2].replace(/\s/g, '');
+  let buf: Buffer;
+  try {
+    buf = Buffer.from(b64, 'base64');
+  } catch {
+    return res.status(400).json({ error: 'invalid base64' });
+  }
+  if (buf.length < 32) return res.status(400).json({ error: 'image too small' });
+  if (buf.length > 4 * 1024 * 1024) return res.status(400).json({ error: 'max 4MB' });
+
+  const ext = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : mime.includes('gif') ? 'gif' : 'jpg';
+  fs.mkdirSync(CHAT_UPLOAD_DIR, { recursive: true });
+  const name = `${uuid()}.${ext}`;
+  fs.writeFileSync(path.join(CHAT_UPLOAD_DIR, name), buf);
+  res.json({ url: `/api/chat/uploads/${name}` });
+});
+
 // ─── Rooms ─────────────────────────────────────────────
 router.get('/rooms', (_req: Request, res: Response) => {
   const rooms = chatService.getRooms();
@@ -43,6 +91,16 @@ router.get('/rooms/:roomId', (req: Request, res: Response) => {
   const room = chatService.getRoom(req.params.roomId as string);
   if (!room) return res.status(404).json({ error: 'Room not found' });
   res.json({ room });
+});
+
+/** Member roster for modal (nickname + address); requires chat auth */
+router.get('/rooms/:roomId/members', authMiddleware, (req: Request, res: Response) => {
+  const roomId = req.params.roomId as string;
+  if (!chatService.getRoom(roomId)) return res.status(404).json({ error: 'Room not found' });
+  const users = chatService.getRoomMemberUsers(roomId);
+  res.json({
+    members: users.map((u) => toPublicChatUser(u)),
+  });
 });
 
 router.post('/rooms', authMiddleware, (req: Request, res: Response) => {
@@ -61,10 +119,13 @@ router.get('/rooms/:roomId/messages', (req: Request, res: Response) => {
   const messages = chatService.getMessages(req.params.roomId as string, limit, before);
 
   // Enrich with user data
-  const enriched = messages.map((msg) => ({
-    ...msg,
-    user: chatService.getUser(msg.userId),
-  }));
+  const enriched = messages.map((msg) => {
+    const u = chatService.getUser(msg.userId);
+    return {
+      ...msg,
+      user: u ? toPublicChatUser(u) : undefined,
+    };
+  });
 
   res.json({ messages: enriched });
 });
@@ -73,6 +134,10 @@ router.post('/rooms/:roomId/redpackets', authMiddleware, async (req: Request, re
   const userId = (req as any).userId as string;
   const roomId = req.params.roomId as string;
   const { totalAmount, totalCount, greeting, currency } = req.body || {};
+  const greet = typeof greeting === 'string' ? greeting.trim() : '';
+  if (greet && textContainsOffPlatformContactSolicitation(greet)) {
+    return res.status(400).json({ error: 'Off-platform contact solicitation is not allowed', errorCode: 'OFF_PLATFORM_CONTACT' });
+  }
 
   const cur = (String(currency || 'USDT').toUpperCase() as ChatCurrency) || 'USDT';
   if (cur !== 'USDT' && cur !== 'RWA') {
@@ -103,7 +168,10 @@ router.post('/rooms/:roomId/redpackets', authMiddleware, async (req: Request, re
   }
   if (!result) return res.status(400).json({ error: 'Invalid red packet parameters' });
   const user = chatService.getUser(userId);
-  res.json({ packet: result.packet, message: { ...result.message, user } });
+  res.json({
+    packet: result.packet,
+    message: { ...result.message, user: user ? toPublicChatUser(user) : undefined },
+  });
 });
 
 router.post('/redpackets/:packetId/claim', authMiddleware, (req: Request, res: Response) => {
@@ -219,6 +287,24 @@ router.post('/bots/:botId/trigger', authMiddleware, requireAdmin, async (req: Re
   const msg = await botService.triggerBotMessage(req.params.botId as string, roomId);
   if (!msg) return res.status(500).json({ error: 'Failed to generate message' });
   res.json({ message: msg });
+});
+
+/** 仅本机：连发机器人消息做现场测试（跳过真人静默与房间节流） */
+function isLocalhostChatReq(req: Request): boolean {
+  const raw = req.socket.remoteAddress || '';
+  const ip = raw.replace(/^::ffff:/, '');
+  return ip === '127.0.0.1' || ip === '::1';
+}
+
+router.post('/internal/trigger-bot-burst', async (req: Request, res: Response) => {
+  if (!isLocalhostChatReq(req)) {
+    return res.status(403).json({ error: 'localhost only' });
+  }
+  const roomId = typeof req.body?.roomId === 'string' ? req.body.roomId.trim() : 'room-general';
+  const maxBots = Number(req.body?.maxBots);
+  const cap = Number.isFinite(maxBots) && maxBots > 0 && maxBots <= 50 ? Math.floor(maxBots) : 15;
+  const out = await botService.triggerBotBurst(roomId, cap);
+  res.json({ ok: true, roomId, ...out });
 });
 
 export default router;

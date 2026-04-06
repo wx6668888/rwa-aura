@@ -9,6 +9,7 @@ import { useLocale } from '@/components/locale-provider'
 import { Navbar } from '@/components/navbar'
 import { BackgroundEffects } from '@/components/background-effects'
 import { getAnnouncementBySlug, announcements } from '@/lib/announcements-data'
+import { getLocalizedAnnouncementMeta } from '@/lib/announcements-localized'
 import AnnouncementContent from '@/components/announcements/announcement-content'
 
 export default function AnnouncementDetailPage() {
@@ -19,6 +20,9 @@ export default function AnnouncementDetailPage() {
   const [copied, setCopied] = useState(false)
 
   const announcement = getAnnouncementBySlug(slug)
+  const announcementMeta = announcement
+    ? getLocalizedAnnouncementMeta(announcement.slug, locale as Locale, t)
+    : null
   
   if (!announcement) {
     return (
@@ -62,7 +66,7 @@ export default function AnnouncementDetailPage() {
 
   const handleShare = (platform: 'twitter' | 'telegram') => {
     const url = window.location.href
-    const title = t(`announce.detail.${announcement.slug}.title`)
+    const title = announcementMeta?.title || announcement?.slug || ''
     
     if (platform === 'twitter') {
       window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`, '_blank')
@@ -103,7 +107,7 @@ export default function AnnouncementDetailPage() {
 
             {/* Title */}
             <h1 className="text-4xl font-[800] text-text-primary leading-tight font-space-grotesk">
-              {t(`announce.detail.${announcement.slug}.title`)}
+              {announcementMeta?.title}
             </h1>
 
             {/* Meta Row */}
@@ -183,7 +187,7 @@ export default function AnnouncementDetailPage() {
                 >
                   <div className="text-xs text-text-disabled mb-2">← {t('announce.previous')}</div>
                   <div className="text-sm font-semibold text-text-primary group-hover:text-plasma-cyan transition-colors line-clamp-2">
-                    {t(`announce.detail.${prevAnnouncement.slug}.title`)}
+                    {getLocalizedAnnouncementMeta(prevAnnouncement.slug, locale as Locale, t).title}
                   </div>
                 </Link>
               )}
@@ -194,7 +198,7 @@ export default function AnnouncementDetailPage() {
                 >
                   <div className="text-xs text-text-disabled mb-2">{t('announce.next')} →</div>
                   <div className="text-sm font-semibold text-text-primary group-hover:text-plasma-cyan transition-colors line-clamp-2">
-                    {t(`announce.detail.${nextAnnouncement.slug}.title`)}
+                    {getLocalizedAnnouncementMeta(nextAnnouncement.slug, locale as Locale, t).title}
                   </div>
                 </Link>
               )}

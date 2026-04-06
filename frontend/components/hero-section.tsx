@@ -99,7 +99,7 @@ export function HeroSection() {
           <div className="mt-5 grid w-full max-w-[15rem] grid-cols-2 gap-x-3 gap-y-1 text-left sm:mt-6 sm:max-w-[17rem] sm:gap-x-4">
             <div className="flex flex-col items-start gap-1">
               <span className="font-[family-name:var(--font-jetbrains-mono)] text-[clamp(1.35rem,5vw,1.75rem)] font-semibold leading-none tabular-nums text-white sm:text-3xl">
-                0.8%
+                {t('hero.dailyRatePercent')}
               </span>
               <span className="text-[12px] font-medium text-[#9fb0c9] sm:text-sm">{t('hero.pillDailyLabel')}</span>
             </div>

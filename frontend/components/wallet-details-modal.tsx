@@ -29,6 +29,7 @@ export function WalletDetailsModal({ open, isOpen, onClose, onOpenChainModal }: 
   const { disconnect } = useDisconnect()
   const [tab, setTab] = useState<TabKey>('assets')
   const [copied, setCopied] = useState(false)
+  const [viewportH, setViewportH] = useState<number>(760)
 
   const rows = useMemo(() => getWalletAssetRows(chainId), [chainId])
 
@@ -65,9 +66,29 @@ export function WalletDetailsModal({ open, isOpen, onClose, onOpenChainModal }: 
     if (!modalOpen) setTab('assets')
   }, [modalOpen])
 
+  useEffect(() => {
+    if (!modalOpen) return
+    const calc = () => {
+      const vv = window.visualViewport?.height
+      const inner = window.innerHeight
+      const h = Math.floor((Number.isFinite(vv) ? Number(vv) : inner) || inner || 760)
+      setViewportH(Math.max(520, h))
+    }
+    calc()
+    window.addEventListener('resize', calc)
+    window.visualViewport?.addEventListener('resize', calc)
+    return () => {
+      window.removeEventListener('resize', calc)
+      window.visualViewport?.removeEventListener('resize', calc)
+    }
+  }, [modalOpen])
+
   if (!modalOpen || !isConnected || !address) return null
 
-  const modalHeight = tab === 'network' ? 'min(50dvh, 50vh)' : 'min(75dvh, 75vh)'
+  // Android wallet WebView (e.g. Honor/TP/Binance) may misreport vh/dvh.
+  // Use real visual viewport height for stable bottom-sheet sizing.
+  const mobileMaxH = tab === 'network' ? Math.floor(viewportH * 0.58) : Math.floor(viewportH * 0.84)
+  const modalHeight = `${Math.max(tab === 'network' ? 360 : 460, mobileMaxH)}px`
 
   const assetRows = rows.map((r) => {
     // 直接从已经查询成功的 balancesMap 中获取余额
@@ -92,7 +113,7 @@ export function WalletDetailsModal({ open, isOpen, onClose, onOpenChainModal }: 
       onClick={onClose}
     >
       <div
-        className="relative z-[141] flex w-full max-w-[420px] flex-col self-end overflow-hidden rounded-t-3xl border border-[#27262c] bg-[#111318]/95 shadow-[0_-12px_60px_rgba(0,0,0,0.55)] transition-[height,max-height] duration-300 ease-out sm:rounded-3xl"
+        className="relative z-[141] flex w-full max-w-[420px] flex-col self-end overflow-hidden rounded-t-3xl border border-[#27262c] bg-[#111318]/95 shadow-[0_-12px_60px_rgba(0,0,0,0.55)] transition-[height,max-height] duration-300 ease-out sm:rounded-3xl sm:h-[min(75dvh,75vh)] sm:max-h-[min(75dvh,75vh)]"
         style={{ height: modalHeight, maxHeight: modalHeight }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -136,7 +157,7 @@ export function WalletDetailsModal({ open, isOpen, onClose, onOpenChainModal }: 
           ))}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 [overscroll-behavior:contain] [-webkit-overflow-scrolling:touch]">
           {tab === 'network' && (
             <div className="space-y-3">
               <div className="rounded-xl border border-[#223043] bg-[#111826] p-3">
@@ -215,8 +236,11 @@ export function WalletDetailsModal({ open, isOpen, onClose, onOpenChainModal }: 
               onClose()
             }}
             className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-rose-500/10 py-3 text-[14px] font-semibold text-rose-500 hover:bg-rose-500/20 transition-colors"
+            aria-label="断开连接"
+            title="断开连接"
           >
-            断开连接
+            <span className="hidden sm:inline">断开连接</span>
+            <span className="inline sm:hidden">断开</span>
           </button>
         </div>
       </div>

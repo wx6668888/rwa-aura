@@ -10,7 +10,8 @@ import ChatRoom from '@/components/chat/ChatRoom';
 import RedWalletPanel from '@/components/chat/RedWalletPanel';
 import { useLocale } from '@/components/locale-provider';
 import { useTranslation } from '@/lib/i18n';
-import { fetchChatAuthSigningMessage } from '@/lib/chat-api';
+import { ensureChatCredentials } from '@/lib/ensure-chat-credentials';
+import { warmConnectModal } from '@/lib/wallet-connect-preconnect';
 
 // Error boundary to catch extension injection errors (TronLink etc.)
 class ChatErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
@@ -25,7 +26,7 @@ class ChatErrorBoundary extends React.Component<{ children: React.ReactNode }, {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-void-black flex items-center justify-center">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center bg-void-black">
           <div className="text-center">
             <p className="text-text-primary mb-2">发生错误</p>
             <button onClick={() => this.setState({ hasError: false })}
@@ -96,12 +97,11 @@ function ChatApp() {
     if (!address) {
       throw new Error(t('chat.installWallet'));
     }
-    const message = await fetchChatAuthSigningMessage();
-    const signature = await signMessageAsync({ message, account: address as `0x${string}` });
-    if (typeof signature !== 'string' || !signature.startsWith('0x')) {
+    const auth = await ensureChatCredentials(address, signMessageAsync);
+    if (!auth) {
       throw new Error(t('chat.failedToConnect'));
     }
-    await establishSession(address, signature);
+    await establishSession(auth.address, auth.signature);
   }, [address, establishSession, signMessageAsync, t]);
 
   /** RainbowKit 连接完成后自动走签名，避免「连一次钱包再点一次」 */
@@ -168,6 +168,7 @@ function ChatApp() {
       }
       connectThenSignRef.current = true;
       if (openConnectModal) {
+        warmConnectModal();
         openConnectModal();
       } else {
         connectThenSignRef.current = false;
@@ -186,7 +187,7 @@ function ChatApp() {
 
   if (isAuthRestoring) {
     return (
-      <div className="h-[100dvh] max-h-[100dvh] overflow-hidden bg-void-black flex items-center justify-center p-4">
+      <div className="flex h-full min-h-0 flex-1 flex-col items-center justify-center overflow-hidden bg-void-black p-4">
         <div className="flex items-center gap-3 text-text-secondary">
           <div className="w-4 h-4 border-2 border-plasma-cyan/30 border-t-plasma-cyan rounded-full animate-spin" />
           <span className="text-[12px] font-mono">{t('chat.connecting')}</span>
@@ -199,7 +200,7 @@ function ChatApp() {
   if (!isAuthenticated) {
     const shouldAutoSigning = wagmiConnected && address && !isAuthRestoring;
     return (
-      <div className="h-[100dvh] max-h-[100dvh] overflow-y-auto overscroll-y-contain bg-void-black flex items-center justify-center p-4 relative">
+      <div className="relative flex h-full min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto overscroll-y-contain bg-void-black p-4">
         {/* Background grid */}
         <div className="absolute inset-0 opacity-[0.03]"
           style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
@@ -267,13 +268,20 @@ function ChatApp() {
 
               {/* Connect Wallet Button */}
               <button type="button" onClick={handleConnect} disabled={isConnecting || shouldAutoSigning}
-                className="w-full py-3.5 rounded-xl font-heading font-semibold text-[14px] transition-all duration-300 relative group overflow-hidden disabled:opacity-60"
-                style={{ background: 'linear-gradient(135deg, #00f5d418, #00f5d410)', color: '#00f5d4', border: '1px solid #00f5d435' }}>
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                  style={{ background: 'linear-gradient(135deg, #00f5d425, #00f5d418)' }} />
+                className="group relative w-full overflow-hidden rounded-xl py-3.5 font-heading text-[14px] font-semibold transition-all duration-300 disabled:opacity-60"
+                style={{
+                  background: 'linear-gradient(135deg, #0d9488, #0f766e)',
+                  color: '#ffffff',
+                  border: '1px solid rgba(255,255,255,0.22)',
+                }}
+              >
+                <div
+                  className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                  style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
+                />
                 <span className="relative z-10 flex items-center justify-center gap-2.5">
                   {isConnecting ? (
-                    <div className="w-4 h-4 border-2 border-plasma-cyan/30 border-t-plasma-cyan rounded-full animate-spin" />
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white" />
                   ) : (
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                       <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>
@@ -354,7 +362,7 @@ function ChatApp() {
 
   // ========== Main Chat ==========
   return (
-    <div className="h-[100dvh] max-h-[100dvh] overflow-hidden bg-void-black flex flex-col min-h-0 touch-manipulation">
+    <div className="flex h-full min-h-0 flex-1 touch-manipulation flex-col overflow-hidden bg-void-black">
       {/* Top bar */}
       <div className="pt-[env(safe-area-inset-top)]">
         <div className="h-12 border-b border-border-subtle bg-surface-1/80 backdrop-blur-sm flex items-center justify-between px-4 flex-shrink-0">
@@ -390,14 +398,14 @@ function ChatApp() {
               <button
                 type="button"
                 onClick={() => setLocale('zh')}
-                className={`px-2 py-1 rounded-md text-[10px] font-mono transition-colors ${locale === 'zh' ? 'bg-plasma-cyan/15 text-plasma-cyan' : 'text-text-disabled hover:text-text-secondary'}`}
+                className={`rounded-md px-2 py-1 font-mono text-[10px] transition-colors ${locale === 'zh' ? 'bg-[#0d9488] text-white' : 'text-text-disabled hover:text-text-secondary'}`}
               >
                 {t('chat.langZh')}
               </button>
               <button
                 type="button"
                 onClick={() => setLocale('en')}
-                className={`px-2 py-1 rounded-md text-[10px] font-mono transition-colors ${locale === 'en' ? 'bg-plasma-cyan/15 text-plasma-cyan' : 'text-text-disabled hover:text-text-secondary'}`}
+                className={`rounded-md px-2 py-1 font-mono text-[10px] transition-colors ${locale === 'en' ? 'bg-[#0d9488] text-white' : 'text-text-disabled hover:text-text-secondary'}`}
               >
                 {t('chat.langEn')}
               </button>

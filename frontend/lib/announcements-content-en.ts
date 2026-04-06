@@ -48,4 +48,9 @@ export const announcementsContentEn = {
     title: 'Community AMA Highlights',
     preview: 'Last week\'s community AMA concluded successfully with team answering over 50 questions about protocol development, tokenomics, and future plans. This article summarizes the most popular Q&As.',
   },
+  'account-funding-staking-guide': {
+    title: 'Starter Guide: Login, Funding, Staking, Withdrawal',
+    preview:
+      'A categorized guide for chat users and newcomers: wallet login, funding preparation, staking flow, withdrawals, and security checks.',
+  },
 }

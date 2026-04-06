@@ -62,13 +62,7 @@ export function WalletBar() {
           </span>
         </div>
 
-        {/* Right: disconnect */}
-        <button
-          type="button"
-          className="text-[12px] text-[#00f5d4] transition-colors hover:text-[#f1f5f9] min-h-[44px] px-2"
-        >
-          {t('wallet.disconnect')}
-        </button>
+        <div />
       </div>
     </div>
   )

@@ -52,10 +52,25 @@ router.get('/:address', async (req, res) => {
        LEFT JOIN stake_events se ON se.stake_id = drr.stake_id
        WHERE LOWER(drr.referrer_address) = LOWER(?)
          AND drr.status IN ('PENDING', 'SETTLED'))
+      UNION ALL
+      (SELECT
+         ys.id as id,
+         'yield_settlement' as type,
+         'rewardRWA' as type_key,
+         CONCAT('YIELD_SETTLEMENT_', ys.asset_type) as event_type,
+         CAST(ys.total_yield * 1000000000000000000 AS DECIMAL(65,0)) as amount,
+         0 as block_number,
+         ys.settlement_time as timestamp,
+         ys.tx_hash as tx_hash
+       FROM yield_settlements ys
+       WHERE LOWER(ys.user_address) = LOWER(?)
+         AND ys.tx_hash IS NOT NULL
+         AND ys.tx_hash <> 'PENDING'
+         AND ys.total_yield > 0)
       ORDER BY timestamp DESC LIMIT ?
     `;
 
-    const rows = await query(sql, [address, address, address, limit]) as any[];
+    const rows = await query(sql, [address, address, address, address, limit]) as any[];
 
     // Convert RWA withdrawal amount from USDT equivalent back to RWA
     const processedRows = rows.map(row => {

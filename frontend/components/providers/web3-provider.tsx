@@ -5,10 +5,15 @@ import { WagmiProvider } from 'wagmi'
 import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit'
 import { config } from '@/lib/wagmi'
 import '@rainbow-me/rainbowkit/styles.css'
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect } from 'react'
 import { useLocale } from '@/components/locale-provider'
 import { AndroidWalletConnectHint } from '@/components/android-wallet-connect-hint'
 import { WalletResumeSync } from '@/components/providers/wallet-resume-sync'
+import { ChatAuthSync } from '@/components/providers/chat-auth-sync'
+import { Toaster } from 'sonner'
+import { ConnectWalletErrorListener } from '@/components/connect-wallet-error-listener'
+import { WalletConnectDisclaimer } from '@/components/wallet-connect-disclaimer'
+import { injectWalletConnectInfraPreconnect } from '@/lib/wallet-connect-preconnect'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,6 +44,11 @@ const getRainbowKitLocale = (locale: string): string => {
 
 export function Web3Provider({ children }: { children: React.ReactNode }) {
   const { locale } = useLocale()
+
+  useLayoutEffect(() => {
+    injectWalletConnectInfraPreconnect()
+  }, [])
+
   useEffect(() => {
     // 在客户端挂载后设置错误处理器，捕获 ethereum 属性重定义错误
     if (typeof window === 'undefined') return
@@ -92,10 +102,14 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
           appInfo={{
             appName: 'RWA Protocol',
             learnMoreUrl: locale === 'zh' ? 'https://ethereum.org/zh/wallets/' : 'https://ethereum.org/wallets/',
+            disclaimer: WalletConnectDisclaimer,
           }}
         >
+          <ConnectWalletErrorListener />
           <WalletResumeSync />
+          <ChatAuthSync />
           <AndroidWalletConnectHint />
+          <Toaster position="top-center" richColors closeButton theme="dark" />
           {children}
         </RainbowKitProvider>
       </QueryClientProvider>

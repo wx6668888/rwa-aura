@@ -50,7 +50,7 @@ export function SecurityTransparencyCard({ className }: { className?: string }) 
       </div>
 
       <h3 className="shrink-0 pr-[min(8.5rem,32%)] text-left text-2xl font-extrabold text-white sm:pr-[9.5rem] sm:text-3xl lg:pr-0">
-        安全可靠，久经考验
+        {t('home.homeSecurityCardTitle')}
       </h3>
 
       <div className={TRUST_CARD_BODY_GRID}>
@@ -59,26 +59,26 @@ export function SecurityTransparencyCard({ className }: { className?: string }) 
             <ul className={TRUST_BULLET_UL}>
               <li className={TRUST_BULLET_LI}>
                 <span className={TRUST_BULLET_MARK} aria-hidden />
-                <span className="min-w-0 break-words">链上可核验</span>
+                <span className="min-w-0 break-words">{t('home.homeSecurityBullet1')}</span>
               </li>
               <li className={TRUST_BULLET_LI}>
                 <span className={TRUST_BULLET_MARK} aria-hidden />
-                <span className="min-w-0 break-words">指标持续监控</span>
+                <span className="min-w-0 break-words">{t('home.homeSecurityBullet2')}</span>
               </li>
               <li className={TRUST_BULLET_LI}>
                 <span className={TRUST_BULLET_MARK} aria-hidden />
-                <span className="min-w-0 break-words">配置可回滚</span>
+                <span className="min-w-0 break-words">{t('home.homeSecurityBullet3')}</span>
               </li>
               <li className={TRUST_BULLET_LI}>
                 <span className={TRUST_BULLET_MARK} aria-hidden />
-                <span className="min-w-0 break-words">合约与持仓可在链上公开查验</span>
+                <span className="min-w-0 break-words">{t('home.homeSecurityBullet4')}</span>
               </li>
             </ul>
           </div>
 
           <div className="flex shrink-0 justify-start">
             <Link href="/security" className={TRUST_CARD_HERO_CTA_CLASS}>
-              查看
+              {t('home.homeSecurityCta')}
             </Link>
           </div>
         </div>

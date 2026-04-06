@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
+import type { DotLottie } from '@lottiefiles/dotlottie-web'
 import Lottie from 'lottie-react'
 
 // 使用 Next.js dynamic 导入，正确处理命名导出
@@ -154,7 +155,20 @@ export function DotLottieAnimation({
   width = '100%',
   height = '100%',
   style,
-}: Omit<LottieAnimationProps, 'src'> & { src: string }) {
+  onPlaybackReady,
+}: Omit<LottieAnimationProps, 'src'> & {
+  src: string
+  /** 首帧已解码、可播放（用于盖住海报占位） */
+  onPlaybackReady?: () => void
+}) {
+  const dotLottieRefCallback = useCallback(
+    (inst: DotLottie | null) => {
+      if (!inst || !onPlaybackReady) return
+      inst.addEventListener('load', () => onPlaybackReady(), { once: true })
+    },
+    [onPlaybackReady]
+  )
+
   return (
     <div className={className} style={{ width, height, ...style }}>
       <DotLottieReact
@@ -163,6 +177,7 @@ export function DotLottieAnimation({
         loop={loop}
         speed={speed}
         style={{ width: '100%', height: '100%' }}
+        dotLottieRefCallback={onPlaybackReady ? dotLottieRefCallback : undefined}
       />
     </div>
   )

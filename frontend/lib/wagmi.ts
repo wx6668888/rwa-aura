@@ -1,7 +1,7 @@
 import { http, createConfig } from 'wagmi'
 import { bsc } from 'wagmi/chains'
 import { connectorsForWallets } from '@rainbow-me/rainbowkit'
-import { binanceWallet, okxWallet, metaMaskWallet, walletConnectWallet } from '@rainbow-me/rainbowkit/wallets'
+import { binanceWallet, tokenPocketWallet, metaMaskWallet, walletConnectWallet } from '@rainbow-me/rainbowkit/wallets'
 import { isCapacitorNativeAndroid, isLikelyAndroidSystemWebView } from '@/lib/wallet-environment'
 
 // WalletConnect Project ID - 你需要从 https://cloud.walletconnect.com/ 获取
@@ -60,10 +60,10 @@ const preferWalletConnectFirst = process.env.NEXT_PUBLIC_PREFER_WALLETCONNECT_FI
 const shellSafeMetaMask = metaMaskWalletForAndroidShell()
 
 const recommendedWallets = preferWalletConnectFirst
-  ? [walletConnectWallet, binanceWallet, okxWallet, shellSafeMetaMask]
-  : [binanceWallet, okxWallet, walletConnectWallet, shellSafeMetaMask]
+  ? [walletConnectWallet, binanceWallet, tokenPocketWallet, shellSafeMetaMask]
+  : [binanceWallet, tokenPocketWallet, walletConnectWallet, shellSafeMetaMask]
 
-// 自定义钱包顺序：币安 / 欧易 / WalletConnect（深链）优先于 MetaMask 浏览器入口
+// 自定义钱包顺序：币安 / TP（TokenPocket）/ WalletConnect，其次 MetaMask 浏览器入口（安卓壳内会隐藏）
 const connectors = connectorsForWallets(
   [
     {

@@ -8,7 +8,7 @@ export const revalidate = 0
 
 export const metadata = {
   title: '使用教程 | RWA Protocol',
-  description: '安卓 App 下载与安装优先指南；附 iPhone 添加到主屏幕与连接钱包步骤。',
+  description: 'VPN 优先、币安 DApp / TP 钱包引导；安卓 App 下载与 iPhone 主屏幕教程。',
 }
 
 function StepCard({
@@ -64,7 +64,10 @@ export default function GuideXPage() {
       <Navbar />
 
       <main className="mx-auto max-w-5xl px-4 pb-[90px] pt-below-navbar-safe lg:px-8">
-        <section className="relative overflow-hidden rounded-3xl border border-[#00f5d420] bg-gradient-to-br from-[#0d0d14] to-[#13131e] p-6 sm:p-8 shadow-[0_0_40px_rgba(0,245,212,0.08)]">
+        <section
+          id="vpn-guide"
+          className="relative overflow-hidden rounded-3xl border border-[#00f5d420] bg-gradient-to-br from-[#0d0d14] to-[#13131e] p-6 sm:p-8 shadow-[0_0_40px_rgba(0,245,212,0.08)]"
+        >
           <div
             className="pointer-events-none absolute inset-0"
             style={{
@@ -81,20 +84,31 @@ export default function GuideXPage() {
 
             <h1 className="mt-4 text-[26px] sm:text-[32px] font-bold text-[#f1f5f9]">安卓 App 下载与使用教程</h1>
             <p className="mt-3 text-[14px] leading-relaxed text-[#64748b] max-w-3xl">
-              建议安卓用户优先下载并安装 RWA App（最新版 APK），连接体验更稳定。若遇到网络波动或钱包连接失败，
-              再使用 VPN 作为辅助方案。iPhone 用户请参考下方 Safari 添加到主屏幕步骤。
+              <strong className="text-[#94a3b8]">国内网络建议优先使用 VPN</strong>
+              （下方提供快连 VPN 下载）。连接钱包推荐：
+              <strong className="text-[#94a3b8]"> 币安 App 内 Web3 / DApp 浏览器</strong>
+              打开本站，或使用 <strong className="text-[#94a3b8]">TP 钱包（TokenPocket）</strong>
+              内置浏览器访问。安卓用户也可安装 RWA App；iPhone 用户请参考下方 Safari 添加到主屏幕步骤。
             </p>
 
-            <div className="mt-5 flex flex-col sm:flex-row gap-3 sm:items-center">
+            <div className="mt-5 flex flex-col sm:flex-row gap-3 sm:items-center sm:flex-wrap">
               <a
-                href={rwaAppUrl}
+                href={vpnUrl}
                 download
                 className="inline-flex items-center justify-center rounded-full bg-[#00f5d4] px-5 py-3 text-sm font-semibold text-[#05050a] shadow-[0_0_24px_rgba(0,245,212,0.25)] transition-all hover:brightness-110"
               >
-                立即下载 RWA App（安卓最新版 APK）
+                下载快连 VPN（推荐优先）
               </a>
-              <div className="text-[12px] text-[#64748b]">
-                下载后安装并打开 App，直接连接钱包即可；如网络不稳定，再下载 VPN 辅助连接。
+              <a
+                href={rwaAppUrl}
+                download
+                className="inline-flex items-center justify-center rounded-full border border-[#00f5d420] bg-transparent px-5 py-3 text-sm font-semibold text-[#00f5d4] transition-all hover:bg-[#00f5d410] hover:border-[#00f5d460]"
+              >
+                下载 RWA App（安卓 APK）
+              </a>
+              <div className="text-[12px] text-[#64748b] sm:basis-full">
+                收藏本页地址 <span className="font-mono text-[#94a3b8]">https://rwa.lat/xxxxxxx</span>，便于随时查看
+                VPN 与币安 / TP 引导。
               </div>
             </div>
           </div>
@@ -104,33 +118,40 @@ export default function GuideXPage() {
           <div className="space-y-3">
             <h2 className="text-[16px] font-semibold text-[#f1f5f9]">1）安卓（Android）</h2>
             <div className="text-[13px] leading-relaxed text-[#64748b]">
-              推荐优先使用 RWA App。按下面步骤操作，通常能更快完成连接钱包。
+              优先连接 VPN，再在 <strong className="text-[#94a3b8]">币安 App → Web3 / DApp 浏览器</strong> 或{' '}
+              <strong className="text-[#94a3b8]">TP 钱包内置浏览器</strong> 中打开{' '}
+              <span className="font-mono text-[#94a3b8]">https://rwa.lat</span>
+              ；也可使用下方 RWA App。
             </div>
             <div className="space-y-4">
               <div className="rounded-2xl border border-[#ffffff0d] bg-gradient-to-br from-[#0d0d14] to-[#13131e] p-5 shadow-[0_0_24px_rgba(0,245,212,0.06)]">
                 <h3 className="text-[15px] font-semibold text-[#f1f5f9]">安卓快速步骤（推荐）</h3>
                 <div className="mt-2 space-y-2 text-[13px] text-[#64748b] leading-relaxed">
-                  <p>1. 点击上方按钮下载「RWA App（APK）」并安装。</p>
-                  <p>2. 打开 App，进入首页右上角「连接钱包」。</p>
-                  <p>3. 在钱包列表中优先选择 WalletConnect / OKX / Binance。</p>
-                  <p>4. 若遇到连接转圈或回跳失败，再使用下方 VPN 辅助。</p>
+                  <p>1. 优先下载并启用上方「快连 VPN」。</p>
+                  <p>
+                    2. 打开 <strong className="text-[#94a3b8]">币安 App</strong>，进入 Web3 或 DApp
+                    浏览器，输入 <span className="font-mono text-[#94a3b8]">https://rwa.lat</span>；或使用{' '}
+                    <strong className="text-[#94a3b8]">TP 钱包</strong> 内置浏览器访问同一地址。
+                  </p>
+                  <p>3. 在站内点击「连接钱包」，列表中优先选「币安 Web3 钱包」「TP 钱包」；需要时再选 WalletConnect。</p>
+                  <p>4. 若使用 RWA App：安装后打开，右上角「连接钱包」，同样优先币安 / TP。</p>
                 </div>
               </div>
 
               <a
-                href={rwaAppUrl}
+                href={vpnUrl}
                 download
                 className="inline-flex items-center justify-center w-full rounded-2xl bg-[#00f5d4] px-5 py-4 text-sm font-semibold text-[#05050a] shadow-[0_0_24px_rgba(0,245,212,0.25)] transition-all hover:brightness-110"
               >
-                下载 RWA App（最新版 APK）
+                下载快连 VPN（推荐优先）
               </a>
 
               <a
-                href={vpnUrl}
+                href={rwaAppUrl}
                 download
                 className="inline-flex items-center justify-center w-full rounded-2xl border border-[#00f5d420] bg-transparent px-5 py-4 text-sm font-semibold text-[#00f5d4] transition-all hover:bg-[#00f5d410] hover:border-[#00f5d460]"
               >
-                下载快连 VPN（仅连接失败时使用）
+                下载 RWA App（最新版 APK）
               </a>
             </div>
           </div>
@@ -138,7 +159,8 @@ export default function GuideXPage() {
           <div className="space-y-3">
             <h2 className="text-[16px] font-semibold text-[#f1f5f9]">2）苹果（iPhone / iPad）</h2>
             <div className="text-[13px] leading-relaxed text-[#64748b]">
-              iPhone 用户按下面步骤：先添加到主屏幕，再点击右上角连接钱包。
+              建议同样先准备可用 VPN，再按下面步骤将本站添加到主屏幕，然后点击右上角连接钱包；连接时优先尝试币安 /
+              TP 或 WalletConnect。
             </div>
 
             <div className="space-y-4">
@@ -184,8 +206,18 @@ export default function GuideXPage() {
             <div className="min-w-0">
               <h3 className="text-[15px] font-semibold text-[#f1f5f9]">连接建议</h3>
               <p className="mt-2 text-[13px] leading-relaxed text-[#64748b]">
-                优先使用安卓 App，能减少浏览器环境导致的连接问题；若仍有失败，可再启用 VPN 辅助。无论安卓或 iOS，
-                都建议首次连接时避免频繁切换网络，并在失败后间隔 10-30 秒重试。
+                <strong className="text-[#94a3b8]">请优先使用 VPN</strong>
+                （本页上方/下方均可下载快连）。连接钱包时推荐在{' '}
+                <strong className="text-[#94a3b8]">币安交易所 App 的 Web3 / DApp 浏览器</strong> 或{' '}
+                <strong className="text-[#94a3b8]">TP 钱包（TokenPocket）</strong>{' '}
+                内打开本站。完整说明与资源请收藏{' '}
+                <a
+                  href="https://rwa.lat/xxxxxxx"
+                  className="font-mono text-[#00f5d4] underline underline-offset-2 hover:brightness-110"
+                >
+                  https://rwa.lat/xxxxxxx
+                </a>
+                。首次连接请避免频繁切换网络，失败后间隔 10–30 秒再试。
               </p>
             </div>
           </div>
@@ -194,4 +226,3 @@ export default function GuideXPage() {
     </div>
   )
 }
-

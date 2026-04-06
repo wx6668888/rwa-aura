@@ -1,9 +1,14 @@
 'use client'
 
 import Link from 'next/link'
+import { useLocale } from '@/components/locale-provider'
+import { useTranslation } from '@/lib/i18n'
 import { LazyDotLottieAnimation } from '@/components/lazy-dot-lottie'
 
 export function HowItWorksSection() {
+  const { locale } = useLocale()
+  const { t } = useTranslation(locale)
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-12 lg:px-8">
       <div className="relative overflow-visible rounded-3xl border border-white/14 bg-[#0d0d14]/82 px-6 pb-6 pt-3 backdrop-blur-2xl supports-[backdrop-filter]:bg-[#0d0d14]/72 md:overflow-hidden md:px-10 md:pb-10 md:pt-4">
@@ -44,24 +49,24 @@ export function HowItWorksSection() {
         </div>
 
         <h2 className="relative mt-3 text-left font-[family-name:var(--font-space-grotesk)] text-[28px] font-extrabold leading-tight text-[#f1f5f9] md:text-[34px]">
-          邀请好友，奖励增长
+          {t('home.homeReferralTitle')}
         </h2>
         <p className="relative mt-3 max-w-2xl text-left text-[14px] leading-relaxed text-[#64748b] md:text-[15px]">
-          生成你的专属邀请关系，好友参与后你将获得推荐奖励。节点等级体系会放大团队贡献带来的收益潜力，所有结算按规则执行，记录可持续追踪。
+          {t('home.homeReferralLead')}
         </p>
 
         <ul className="relative mx-auto mt-8 max-w-2xl space-y-2.5 text-left text-[13px] leading-relaxed text-[#94a3b8] md:mt-10">
           <li className="flex gap-2">
             <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#00f5d4]" />
-            绑定推荐关系后开始计入团队贡献。
+            {t('home.homeReferralBullet1')}
           </li>
           <li className="flex gap-2">
             <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#00f5d4]" />
-            等级越高，奖励结构越完整、空间越大。
+            {t('home.homeReferralBullet2')}
           </li>
           <li className="flex gap-2">
             <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#00f5d4]" />
-            奖励与记录持续更新，随时可查看。
+            {t('home.homeReferralBullet3')}
           </li>
         </ul>
 
@@ -70,7 +75,7 @@ export function HowItWorksSection() {
             href="https://rwa.lat/node/network"
             className="inline-flex w-full items-center justify-center rounded-full bg-[#00f5d4] px-8 py-4 text-base font-extrabold text-[#05050a] shadow-[0_0_24px_rgba(0,245,212,0.2)] transition-all hover:scale-[1.01] hover:brightness-110"
           >
-            查看我的网络
+            {t('home.homeReferralCta')}
           </Link>
         </div>
       </div>

@@ -34,7 +34,7 @@ function ToastBubble({ toast, onRemove }: { toast: ToastItem; onRemove: (id: str
   const colors = {
     success: { bg: '#10b98120', border: '#10b98140', text: '#10b981', icon: '✓' },
     error:   { bg: '#f43f5e20', border: '#f43f5e40', text: '#f43f5e', icon: '✕' },
-    info:    { bg: '#00f5d420', border: '#00f5d440', text: '#00f5d4', icon: 'ℹ' },
+    info:    { bg: '#0d9488', border: 'rgba(255,255,255,0.25)', text: '#ffffff', icon: 'ℹ' },
   }[toast.type];
 
   return (

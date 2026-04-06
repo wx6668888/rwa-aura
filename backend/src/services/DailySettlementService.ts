@@ -283,10 +283,31 @@ export class DailySettlementService {
 
     for (const raw of addresses) {
       const address = raw.toLowerCase();
-      const [hasRwa, hasUsdt] = await Promise.all([
-        this.onChainCalculator.hadRwaPositionAt(address, blockAtFrom),
-        this.onChainCalculator.hadUsdtPositionAt(address, blockAtFrom),
-      ]);
+      let hasRwa = false;
+      let hasUsdt = false;
+      let probed = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const pair = await Promise.all([
+            this.onChainCalculator.hadRwaPositionAt(address, blockAtFrom),
+            this.onChainCalculator.hadUsdtPositionAt(address, blockAtFrom),
+          ]);
+          hasRwa = pair[0];
+          hasUsdt = pair[1];
+          probed = true;
+          break;
+        } catch (e) {
+          if (attempt < 2) {
+            await new Promise((r) => setTimeout(r, 400));
+          } else {
+            logger.warn(
+              `[DailySettlement] 地址 ${address} 历史区块仓位探测失败（已重试 3 次），跳过该地址以免整批日结中断；可改 RPC 后补跑当日`,
+              e
+            );
+          }
+        }
+      }
+      if (!probed) continue;
       if (hasRwa) users.push({ address, asset_type: 'RWA' });
       if (hasUsdt) users.push({ address, asset_type: 'USDT' });
     }

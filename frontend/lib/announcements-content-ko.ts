@@ -48,4 +48,9 @@ export const announcementsContentKo = {
     title: '커뮤니티 AMA 하이라이트',
     preview: '지난주 커뮤니티 AMA가 성공적으로 마무리되었으며 팀은 프로토콜 개발, 토큰경제학 및 향후 계획에 대한 50개 이상의 질문에 답변했습니다. 이 글은 가장 인기 있는 Q&A를 요약합니다.',
   },
+  'account-funding-staking-guide': {
+    title: '초보자 가이드: 로그인, 입금, 스테이킹, 출금',
+    preview:
+      '채팅 사용자와 신규 이용자를 위한 분류형 안내: 지갑 로그인, 입금 준비, 스테이킹 절차, 출금, 보안 체크 포인트.',
+  },
 }

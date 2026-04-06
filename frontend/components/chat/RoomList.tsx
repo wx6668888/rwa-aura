@@ -65,8 +65,10 @@ export default function RoomList(
       {/* Brand header */}
       <div className="px-4 pt-5 pb-3">
         <div className="flex items-center gap-2.5 mb-1">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center font-heading font-bold text-sm"
-            style={{ background: 'linear-gradient(135deg, #00f5d420, #8b5cf620)', border: '1px solid #00f5d430', color: '#00f5d4' }}>
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center font-heading font-bold text-sm text-white"
+            style={{ background: 'linear-gradient(135deg, #0d9488, #0f766e)', border: '1px solid rgba(255,255,255,0.2)' }}
+          >
             R
           </div>
           <div>
@@ -103,7 +105,7 @@ export default function RoomList(
               setCreateErr('');
               setShowNewGroup(true);
             }}
-            className="text-[10px] font-mono px-2 py-1 rounded-md bg-plasma-cyan/10 text-plasma-cyan border border-plasma-cyan/25 hover:bg-plasma-cyan/15 transition-colors shrink-0"
+            className="text-[10px] font-mono px-2 py-1 rounded-md bg-[#0d9488] text-white border border-white/15 hover:bg-[#0f766e] transition-colors shrink-0"
           >
             + {t('chat.newGroup')}
           </button>
@@ -144,7 +146,7 @@ export default function RoomList(
               type="button"
               disabled={creating}
               onClick={() => void submitNewGroup()}
-              className="w-full py-2.5 rounded-xl font-medium text-[13px] bg-plasma-cyan/15 text-plasma-cyan border border-plasma-cyan/30 hover:bg-plasma-cyan/25 disabled:opacity-50"
+              className="w-full py-2.5 rounded-xl font-medium text-[13px] bg-[#0d9488] text-white border border-white/15 hover:bg-[#0f766e] disabled:opacity-50"
             >
               {creating ? t('chat.connecting') : t('chat.newGroupCreate')}
             </button>
@@ -173,7 +175,7 @@ export default function RoomList(
               }}
               className={`w-full text-left px-2.5 py-2 rounded-lg transition-all duration-150 flex items-center gap-2.5 group mb-[2px]
                 ${isActive
-                  ? 'bg-plasma-cyan/8 text-text-primary'
+                  ? 'bg-[#0f766e] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]'
                   : 'text-text-secondary hover:bg-surface-2 hover:text-text-primary'
                 }`}
             >
@@ -183,8 +185,9 @@ export default function RoomList(
                   ? ''
                   : 'opacity-50 group-hover:opacity-80'}`}
                 style={isActive ? {
-                  background: 'linear-gradient(135deg, #00f5d415, #00f5d408)',
-                  border: '1px solid #00f5d425',
+                  background: 'rgba(255,255,255,0.14)',
+                  border: '1px solid rgba(255,255,255,0.28)',
+                  color: '#fff',
                 } : {
                   background: 'var(--surface-2)',
                   border: '1px solid var(--border-subtle)',
@@ -195,18 +198,21 @@ export default function RoomList(
 
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <div className={`text-[12px] font-medium truncate leading-none
-                  ${isActive ? 'text-plasma-cyan' : ''}`}>
+                <div className={`text-[12px] font-medium truncate leading-none ${isActive ? 'text-white' : ''}`}>
                   {displayName}
                 </div>
                 {room.type === 'channel' && (
-                  <div className="text-[9px] text-text-disabled mt-1 font-mono">{t('chat.readOnly')}</div>
+                  <div
+                    className={`mt-1 font-mono text-[9px] ${isActive ? 'text-white/65' : 'text-text-disabled'}`}
+                  >
+                    {t('chat.readOnly')}
+                  </div>
                 )}
               </div>
 
               {/* Active indicator */}
               {isActive && (
-                <div className="w-1 h-4 rounded-full" style={{ background: '#00f5d4' }} />
+                <div className="h-4 w-1 rounded-full bg-white/90" />
               )}
             </button>
           );
@@ -219,7 +225,7 @@ export default function RoomList(
           <button
             type="button"
             onClick={() => onOpenWallet?.()}
-            className="w-full mb-3 h-9 rounded-lg border border-plasma-cyan/25 bg-plasma-cyan/10 text-plasma-cyan text-[12px] font-medium hover:bg-plasma-cyan/15 transition-colors"
+            className="mb-3 h-9 w-full rounded-lg border border-white/15 bg-[#0d9488] text-[12px] font-medium text-white transition-colors hover:bg-[#0f766e]"
           >
             {t('chat.redWalletTitle')}
           </button>
