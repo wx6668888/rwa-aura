@@ -762,7 +762,7 @@ export function Navbar() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-1">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-5 space-y-1">
               {navGroupsMobile.map((group) => (
                 <MobileNavItem
                   key={group.key}
@@ -774,40 +774,42 @@ export function Navbar() {
                 />
               ))}
             </div>
-            {/* Social Links Footer */}
-            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-[#64748b]/30 p-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))]">
-              <Link
-                href="/chat"
-                onClick={() => setMobileOpen(false)}
-                className={`flex h-10 w-10 items-center justify-center rounded-full border transition-all ${
-                  isActive('/chat')
-                    ? 'border-[#22c55e] bg-[#22c55e]/25 text-[#22c55e]'
-                    : 'border-[#22c55e]/35 bg-[#22c55e]/12 text-[#22c55e] hover:bg-[#22c55e]/20'
-                }`}
-                aria-label="Chat"
-                title="Chat"
-              >
-                <MessageCircle className="h-5 w-5" />
-              </Link>
-              <div className="flex items-center gap-3">
-                <a
-                  href="https://t.me/+nDdRxLhC6zkzNjhl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex h-10 w-10 items-center justify-center rounded-full text-[#e2e8f0] hover:bg-[#00f5d4]/20 hover:text-[#00f5d4] transition-all"
-                  aria-label="Telegram"
+            {/* Social Links Footer：实色底 + 与顶部分割线留出间距，避免 iOS PWA 下图标与分割线/背后动效叠在一起 */}
+            <div className="relative z-20 shrink-0 border-t border-[#64748b]/40 bg-[#1e293b]">
+              <div className="flex items-center justify-between gap-4 px-4 pt-4 pb-[max(1.125rem,env(safe-area-inset-bottom,0px))] pe-[max(1rem,env(safe-area-inset-right,0px))]">
+                <Link
+                  href="/chat"
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all ${
+                    isActive('/chat')
+                      ? 'border-[#22c55e] bg-[#22c55e]/25 text-[#22c55e]'
+                      : 'border-[#22c55e]/35 bg-[#22c55e]/12 text-[#22c55e] hover:bg-[#22c55e]/20'
+                  }`}
+                  aria-label="Chat"
+                  title="Chat"
                 >
-                  <Send className="h-5 w-5" />
-                </a>
-                <a
-                  href="https://github.com/cutupdev/Solana-RWA-Smart-Contract"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex h-10 w-10 items-center justify-center rounded-full text-[#e2e8f0] hover:bg-[#00f5d4]/20 hover:text-[#00f5d4] transition-all"
-                  aria-label="GitHub"
-                >
-                  <Github className="h-5 w-5" />
-                </a>
+                  <MessageCircle className="h-5 w-5" />
+                </Link>
+                <div className="flex shrink-0 items-center gap-4">
+                  <a
+                    href="https://t.me/+nDdRxLhC6zkzNjhl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-10 w-10 items-center justify-center rounded-full text-[#e2e8f0] transition-all hover:bg-[#00f5d4]/20 hover:text-[#00f5d4]"
+                    aria-label="Telegram"
+                  >
+                    <Send className="h-5 w-5" />
+                  </a>
+                  <a
+                    href="https://github.com/cutupdev/Solana-RWA-Smart-Contract"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-10 w-10 items-center justify-center rounded-full text-[#e2e8f0] transition-all hover:bg-[#00f5d4]/20 hover:text-[#00f5d4]"
+                    aria-label="GitHub"
+                  >
+                    <Github className="h-5 w-5" />
+                  </a>
+                </div>
               </div>
             </div>
           </div>
