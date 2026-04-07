@@ -30,9 +30,9 @@ import {
   FileCheck,
   Megaphone,
   Send,
+  Mail,
   Github,
   Share2,
-  MessageCircle,
 } from 'lucide-react'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { warmConnectModal } from '@/lib/wallet-connect-preconnect'
@@ -40,6 +40,7 @@ import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { WalletDetailsModal } from '@/components/wallet-details-modal'
+import { LazyDotLottieAnimation } from '@/components/lazy-dot-lottie'
 
 // 导航分组配置
 type NavItem = {
@@ -74,29 +75,27 @@ const navGroups: NavGroup[] = [
     items: [{ key: 'nav.home', href: '/' }],
     standalone: true,
   },
+  /** 原「我的资产」+ 原「节点网络」下的节点 / 我的网络 */
   {
-    key: 'assets',
-    label: 'nav.group.assets',
+    key: 'mine',
+    label: 'nav.group.mine',
     icon: Wallet,
     items: [
       { key: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard, description: 'nav.group.assets.desc.dashboard' },
       { key: 'nav.withdraw', href: '/withdraw', icon: ArrowUpCircle, description: 'nav.group.assets.desc.withdraw' },
+      { key: 'nav.nodes', href: '/nodes', icon: Network },
+      { key: 'nav.referralNetworkPage', href: '/node/network', icon: Share2 },
     ],
   },
+  /** 交易市场内包含抽奖 */
   {
     key: 'trade',
     label: 'nav.group.trade',
     icon: TrendingUp,
     items: [
       { key: 'nav.market', href: '/market', icon: Store, description: 'nav.group.tradeDesc.market' },
+      { key: 'nav.lucky', href: '/lucky', icon: Gift },
     ],
-  },
-  {
-    key: 'lucky',
-    label: 'nav.group.lucky',
-    icon: Gift,
-    items: [{ key: 'nav.lucky', href: '/lucky' }],
-    standalone: true,
   },
   {
     key: 'analytics',
@@ -105,15 +104,6 @@ const navGroups: NavGroup[] = [
     items: [
       { key: 'nav.analytics', href: '/analytics', icon: BarChart3, description: 'nav.group.analyticsDesc.analytics' },
       { key: 'nav.calculator', href: '/calculator', icon: Calculator, description: 'nav.group.analyticsDesc.calculator' },
-    ],
-  },
-  {
-    key: 'network',
-    label: 'nav.group.network',
-    icon: Network,
-    items: [
-      { key: 'nav.nodes', href: '/nodes', icon: Network },
-      { key: 'nav.referralNetworkPage', href: '/node/network', icon: Share2 },
     ],
   },
   {
@@ -154,18 +144,16 @@ const navGroupsDesktop: (NavGroup | NavGroupMore)[] = [
     items: [{ key: 'nav.swap', href: '/swap' }],
     standalone: true,
   },
-  navGroups[1], // 我的资产
-  navGroups[2], // 交易市场
-  navGroups[3], // 抽奖
+  navGroups[1], // 我的（含节点 / 我的网络）
+  navGroups[2], // 交易市场（含抽奖）
   {
     key: 'more',
     label: 'nav.group.more',
     icon: MoreHorizontal,
     sections: [
-      { label: 'nav.group.analytics', items: navGroups[4].items },
-      { label: 'nav.group.network', items: navGroups[5].items },
-      { label: 'nav.group.governance', items: navGroups[6].items },
-      { label: 'nav.group.info', items: navGroups[7].items },
+      { label: 'nav.group.analytics', items: navGroups[3].items },
+      { label: 'nav.group.governance', items: navGroups[4].items },
+      { label: 'nav.group.info', items: navGroups[5].items },
     ],
   },
 ]
@@ -187,13 +175,11 @@ const navGroupsMobile: NavGroup[] = [
     items: [{ key: 'nav.swap', href: '/swap' }],
     standalone: true,
   },
-  navGroups[1], // 我的资产
-  navGroups[2], // 交易市场
-  navGroups[3], // 抽奖
-  navGroups[4], // 数据分析
-  navGroups[5], // 节点网络
-  navGroups[6], // 治理安全
-  navGroups[7], // 信息中心
+  navGroups[1], // 我的
+  navGroups[2], // 交易市场（含抽奖）
+  navGroups[3], // 数据分析
+  navGroups[4], // 治理安全
+  navGroups[5], // 信息中心
 ]
 
 // 移动端菜单项组件
@@ -379,6 +365,10 @@ export function Navbar() {
   const headerBg = isScrolled 
     ? 'bg-[#05050a]/95 backdrop-blur-xl border-b border-[#ffffff0d]' 
     : 'bg-transparent border-b border-transparent'
+
+  /** 移动端侧栏：顶与页眉下沿对齐；底部不为图标预留占位 */
+  const mobileDrawerTop = 'calc(var(--app-safe-top) + 4rem)'
+  const mobileDrawerBottom = 'calc(0.5rem + 2.5rem + max(1rem, env(safe-area-inset-bottom, 0px)))'
 
   return (
     <>
@@ -739,30 +729,20 @@ export function Navbar() {
         </div>
       </header>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer：顶与页眉下沿对齐；底在飞机/Git 之上；内无关闭钮（用顶栏 X）；TG/Git 无框、在栏外 */}
       {mobileOpen && (
         <>
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md lg:hidden"
+          <div
+            className="fixed left-0 right-0 bottom-0 z-[90] bg-black/80 backdrop-blur-md lg:hidden"
+            style={{ top: mobileDrawerTop }}
             onClick={() => setMobileOpen(false)}
+            aria-hidden
           />
-          {/* Drawer：顶栏避开刘海/状态栏，避免菜单标题贴顶 */}
-          <div 
-            className="fixed inset-y-0 end-0 z-[110] flex w-[min(100vw-3rem,20rem)] flex-col border-s border-[#64748b]/30 bg-[#334155]/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-3xl lg:hidden pt-[var(--app-safe-top)]"
+          <div
+            className="fixed end-0 z-[110] flex w-[min(100vw-3rem,20rem)] flex-col overflow-hidden rounded-l-2xl border-s border-[#64748b]/30 bg-[#334155]/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-3xl lg:hidden"
+            style={{ top: mobileDrawerTop, bottom: mobileDrawerBottom }}
           >
-            <div className="flex shrink-0 items-center justify-between border-b border-[#64748b]/50 p-6">
-              <span className="text-lg font-bold text-[#00f5d4] font-[family-name:var(--font-space-grotesk)]">{t('nav.menu')}</span>
-              <button
-                type="button"
-                onClick={() => setMobileOpen(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-[#f1f5f9] hover:bg-[#64748b]/50"
-                aria-label={t('nav.closeMenu')}
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-5 space-y-1">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-1">
               {navGroupsMobile.map((group) => (
                 <MobileNavItem
                   key={group.key}
@@ -774,44 +754,67 @@ export function Navbar() {
                 />
               ))}
             </div>
-            {/* Social Links Footer：实色底 + 与顶部分割线留出间距，避免 iOS PWA 下图标与分割线/背后动效叠在一起 */}
-            <div className="relative z-20 shrink-0 border-t border-[#64748b]/40 bg-[#1e293b]">
-              <div className="flex items-center justify-between gap-4 px-4 pt-4 pb-[max(1.125rem,env(safe-area-inset-bottom,0px))] pe-[max(1rem,env(safe-area-inset-right,0px))]">
-                <Link
-                  href="/chat"
-                  onClick={() => setMobileOpen(false)}
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all ${
-                    isActive('/chat')
-                      ? 'border-[#22c55e] bg-[#22c55e]/25 text-[#22c55e]'
-                      : 'border-[#22c55e]/35 bg-[#22c55e]/12 text-[#22c55e] hover:bg-[#22c55e]/20'
-                  }`}
-                  aria-label="Chat"
-                  title="Chat"
-                >
-                  <MessageCircle className="h-5 w-5" />
-                </Link>
-                <div className="flex shrink-0 items-center gap-4">
-                  <a
-                    href="https://t.me/+nDdRxLhC6zkzNjhl"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-10 w-10 items-center justify-center rounded-full text-[#e2e8f0] transition-all hover:bg-[#00f5d4]/20 hover:text-[#00f5d4]"
-                    aria-label="Telegram"
-                  >
-                    <Send className="h-5 w-5" />
-                  </a>
-                  <a
-                    href="https://github.com/cutupdev/Solana-RWA-Smart-Contract"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-10 w-10 items-center justify-center rounded-full text-[#e2e8f0] transition-all hover:bg-[#00f5d4]/20 hover:text-[#00f5d4]"
-                    aria-label="GitHub"
-                  >
-                    <Github className="h-5 w-5" />
-                  </a>
-                </div>
-              </div>
-            </div>
+            {/* 右下角 /chat 动图入口（较原 160px 放大约 30% → 208px） */}
+            <Link
+              href="/chat"
+              onClick={() => setMobileOpen(false)}
+              className="pointer-events-auto absolute bottom-0 right-[-6px] z-[2] block h-[13rem] w-[13rem] overflow-hidden"
+              aria-label="Chat"
+              title="Chat"
+            >
+              <LazyDotLottieAnimation
+                src="/chat.lottie"
+                className="h-full w-full"
+                autoplay
+                loop
+                speed={1}
+                rootMargin="200px 0px 200px 0px"
+              />
+            </Link>
+            {/* 群聊按钮：放在菜单框内、动图下层，贴紧抽屉底部（允许被动图覆盖） */}
+            <Link
+              href="/chat"
+              onClick={() => setMobileOpen(false)}
+              className="pointer-events-auto absolute bottom-0 right-[2.35rem] z-[1] inline-flex -translate-x-[60%] items-center justify-center rounded-t-lg rounded-b-none bg-[#00f5d4] px-3 py-1.5 text-sm font-semibold leading-none text-[#0a0a12] shadow-[0_0_20px_rgba(0,245,212,0.5)] transition-transform active:scale-[0.98]"
+              aria-label="群聊"
+              title="群聊"
+            >
+              群聊
+            </Link>
+          </div>
+          <div
+            className="pointer-events-auto fixed z-[120] flex items-center gap-4 lg:hidden"
+            style={{
+              bottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
+              right: 'max(1rem, env(safe-area-inset-right, 0px))',
+            }}
+          >
+            <a
+              href="mailto:rwacoin001@gmail.com"
+              className="p-1 text-[#e2e8f0] transition-colors hover:text-[#00f5d4]"
+              aria-label="Email"
+              title="rwacoin001@gmail.com"
+            >
+              <Mail className="h-5 w-5" />
+            </a>
+            <a
+              href="https://t.me/+nDdRxLhC6zkzNjhl"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1 text-[#e2e8f0] transition-colors hover:text-[#00f5d4]"
+              aria-label="Telegram"
+            >
+              <Send className="h-5 w-5" />
+            </a>
+            <a
+              href="https://github.com/cutupdev/Solana-RWA-Smart-Contract"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1 text-[#e2e8f0] transition-colors hover:text-[#00f5d4]"
+              aria-label="GitHub"
+            >
+              <Github className="h-5 w-5" />
+            </a>
           </div>
         </>
       )}

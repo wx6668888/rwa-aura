@@ -20,6 +20,16 @@ export function useDirectReferrals() {
   const [referrals, setReferrals] = useState<DirectReferral[]>([])
   const [loading, setLoading] = useState(true)
   const [count, setCount] = useState(0)
+  const [backendMembers, setBackendMembers] = useState<Array<{ address: string; timestamp: number }>>([])
+
+  function mapBackendMembersToReferrals(members: Array<{ address: string; timestamp: number }>): DirectReferral[] {
+    return members.map((m) => ({
+      address: m.address,
+      totalStaked: '0',
+      firstStakeTime: Number(m.timestamp || 0),
+      stakeId: '0',
+    }))
+  }
 
   // 始终优先用后端人数兜底，避免链上日志波动导致卡片显示 0
   useEffect(() => {
@@ -47,6 +57,41 @@ export function useDirectReferrals() {
     }
   }, [address])
 
+  // 从后端拿直推成员列表，作为链上日志列表的兜底，避免“上方有直推数、下方空列表”。
+  useEffect(() => {
+    let cancelled = false
+    async function fetchBackendMembers() {
+      if (!address) {
+        setBackendMembers([])
+        return
+      }
+      try {
+        const res = await fetch(`/api/team/${address.toLowerCase()}`)
+        const json = await res.json()
+        const membersRaw = Array.isArray(json?.data?.members) ? json.data.members : []
+        const members = membersRaw
+          .map((row: any) => ({
+            address: String(row?.user_address || '').toLowerCase(),
+            timestamp: Number(row?.timestamp || 0),
+          }))
+          .filter((row: { address: string; timestamp: number }) => row.address.startsWith('0x') && row.address.length === 42)
+        if (!cancelled) {
+          setBackendMembers(members)
+          // 当链上还没拿到列表时，用后端成员先填充，保证页面口径一致
+          setReferrals((prev) => (prev.length > 0 ? prev : mapBackendMembersToReferrals(members)))
+        }
+      } catch {
+        if (!cancelled) {
+          setBackendMembers([])
+        }
+      }
+    }
+    void fetchBackendMembers()
+    return () => {
+      cancelled = true
+    }
+  }, [address])
+
   useEffect(() => {
     async function fetchReferrals() {
       if (!address) {
@@ -58,7 +103,7 @@ export function useDirectReferrals() {
 
       if (!chainId || !publicClient) {
         setLoading(false)
-        setReferrals([])
+        setReferrals(mapBackendMembersToReferrals(backendMembers))
         return
       }
 
@@ -66,7 +111,8 @@ export function useDirectReferrals() {
         const stakingAddress = CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES]?.stakingContract
         if (!stakingAddress) {
           setLoading(false)
-          setReferrals([])
+          // 若用户连接了不支持的网络，链上无法查询，但后端统计/成员仍可用；避免“上方有直推数、下方空列表”
+          setReferrals(mapBackendMembersToReferrals(backendMembers))
           return
         }
 
@@ -182,7 +228,7 @@ export function useDirectReferrals() {
         // Sort by first stake time (oldest first)
         referralList.sort((a, b) => a.firstStakeTime - b.firstStakeTime)
 
-        setReferrals(referralList)
+        setReferrals(referralList.length > 0 ? referralList : mapBackendMembersToReferrals(backendMembers))
         // 链上结果仅做上限补充，不覆盖已拿到的后端人数
         setCount((prev) => Math.max(prev, referralList.length))
         console.log(`✅ 共找到 ${referralList.length} 个直推用户`)
@@ -196,7 +242,7 @@ export function useDirectReferrals() {
         } else {
           console.error('Failed to fetch referrals:', error)
         }
-        setReferrals([])
+        setReferrals(mapBackendMembersToReferrals(backendMembers))
         // 注意：这里不要直接 setCount(referrals.length)，因为 referrals 可能为空但后端 count 可用
       } finally {
         setLoading(false)
@@ -204,7 +250,7 @@ export function useDirectReferrals() {
     }
 
     fetchReferrals()
-  }, [address, chainId, publicClient])
+  }, [address, chainId, publicClient, backendMembers])
 
   return { referrals, loading, count }
 }

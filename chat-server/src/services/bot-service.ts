@@ -391,11 +391,11 @@ function isSupportIntent(content: string): boolean {
 /**
  * BOT_ADMIN_ROUTING: support | questions | always
  * - support：仅产品/规则意图或 @ 管理员昵称
- * - questions：任意明显提问/身份/在吗类也走管理员（更「专业全面」）
+ * - questions：任意明显提问/身份/在吗类也走管理员（更「专业全面」）【默认】
  * - always：每条真人消息都由管理员接（氛围组不参与接话）
  */
 function shouldRouteToAdminBot(content: string): boolean {
-  const mode = String(process.env.BOT_ADMIN_ROUTING || 'support')
+  const mode = String(process.env.BOT_ADMIN_ROUTING || 'questions')
     .trim()
     .toLowerCase();
   const adminName = String(process.env.ADMIN_BOT_NAME || 'Aura助手').trim();
@@ -472,6 +472,71 @@ function jaccard(a: Set<string>, b: Set<string>): number {
   return union <= 0 ? 0 : inter / union;
 }
 
+function containsEmojiLike(text: string): boolean {
+  // Best-effort: covers most emoji + pictographs + dingbats.
+  return /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(text);
+}
+
+function stripEmojiLike(text: string): string {
+  return text
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function sanitizeLinkLikeMarkup(text: string): string {
+  let out = text;
+  // BBCode-like [href='...']Text[/href] / [url=...]Text[/url]
+  out = out.replace(/\[(?:href|url)\s*=\s*['"]?([^\]'"]+)['"]?\]([\s\S]*?)\[\/(?:href|url)\]/gi, (_m, url, label) => {
+    const t = String(label || '').trim();
+    const u = String(url || '').trim();
+    if (!t && !u) return '';
+    if (!t) return u;
+    if (!u) return t;
+    return `${t} (${u})`;
+  });
+  out = out.replace(/\[(?:href|url)\s*['"]?([^\]'"]+)['"]?\]([\s\S]*?)\[\/(?:href|url)\]/gi, (_m, url, label) => {
+    const t = String(label || '').trim();
+    const u = String(url || '').trim();
+    if (!t && !u) return '';
+    if (!t) return u;
+    if (!u) return t;
+    return `${t} (${u})`;
+  });
+  // Bare [href='...']Text[/href]
+  out = out.replace(/\[(?:href|url)\s*['"]?([^\]'"]+)['"]?\]([\s\S]*?)\[\/(?:href|url)\]/gi, (_m, url, label) => {
+    const t = String(label || '').trim();
+    const u = String(url || '').trim();
+    return t ? `${t} (${u})` : u;
+  });
+  // HTML anchor <a href="...">Text</a>
+  out = out.replace(/<a\s+[^>]*href\s*=\s*['"]([^'"]+)['"][^>]*>([\s\S]*?)<\/a>/gi, (_m, url, label) => {
+    const t = String(label || '').replace(/<[^>]+>/g, '').trim();
+    const u = String(url || '').trim();
+    return t ? `${t} (${u})` : u;
+  });
+  return out;
+}
+
+function sanitizeAmbientNoiseTokens(text: string): string {
+  return String(text || '')
+    .replace(/\b(?:ha\s*lk|halk|lk|lK|LK)\b/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/([。！？!?])\s+([。！？!?])/g, '$1$2')
+    .trim();
+}
+
+function hasAnswerShape(text: string): boolean {
+  const s = String(text || '').trim();
+  if (s.length < 6) return false;
+  const qCount = (s.match(/[?？]/g) || []).length;
+  const hasStatementPunc = /[。；!！]/.test(s);
+  const hasAnswerCue = /(我这|我一般|我会|我觉得|建议|可以|先|通常|因为|所以|需要|得|会|是|不是|别急|先看|先核对|先确认)/.test(s);
+  // If it is mostly asking back without any declarative cue, treat as non-answer.
+  if (qCount >= 1 && !hasStatementPunc && !hasAnswerCue) return false;
+  return hasStatementPunc || hasAnswerCue || qCount === 0;
+}
+
 function isNearMeaningDuplicate(a: string, b: string, threshold: number): boolean {
   const aa = normalizeForSemanticSim(a);
   const bb = normalizeForSemanticSim(b);
@@ -480,6 +545,81 @@ function isNearMeaningDuplicate(a: string, b: string, threshold: number): boolea
   if (aa.length >= 10 && bb.length >= 10 && (aa.includes(bb) || bb.includes(aa))) return true;
   const score = jaccard(toBigrams(aa), toBigrams(bb));
   return score >= threshold;
+}
+
+function tokenizeCn(input: string): string[] {
+  const t = String(input || '')
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/[0-9a-fA-F]{40,}/g, ' ')
+    .replace(/[^\u4e00-\u9fa5A-Za-z0-9]+/g, ' ')
+    .toLowerCase()
+    .trim();
+  if (!t) return [];
+  const parts = t.split(/\s+/).filter(Boolean);
+  const stop = new Set([
+    '这个',
+    '那个',
+    '然后',
+    '就是',
+    '还是',
+    '有没有',
+    '怎么',
+    '为啥',
+    '为什么',
+    '可以',
+    '不可以',
+    '我',
+    '你',
+    '他',
+    '她',
+    '我们',
+    '你们',
+    '他们',
+    '啊',
+    '呢',
+    '吗',
+    '嘛',
+    '吧',
+    '了',
+    '的',
+    '在',
+    '和',
+    '与',
+    '要',
+    '就',
+    '都',
+  ]);
+  return parts
+    .filter((p) => p.length >= 2 && p.length <= 18 && !stop.has(p))
+    .slice(0, 16);
+}
+
+function looksContextualEnough(reply: string, anchor: string, roomContext: string): boolean {
+  const r = String(reply || '').trim();
+  if (r.length < 6) return false;
+  const keys = Array.from(new Set([...tokenizeCn(anchor), ...tokenizeCn(roomContext)]));
+  if (keys.length === 0) return true;
+  const hit = keys.filter((k) => r.toLowerCase().includes(k)).length;
+  // Must "touch" at least one anchor keyword to avoid self-talk.
+  return hit >= 1;
+}
+
+function buildRoomHumanStyleHint(recent: Array<{ name: string; content: string; isHuman: boolean }>): string {
+  const humans = recent.filter((x) => x.isHuman).slice(-8);
+  if (humans.length < 3) return '';
+  const lens = humans.map((h) => (h.content || '').trim().length).filter((n) => n > 0);
+  const avg = lens.reduce((a, b) => a + b, 0) / Math.max(1, lens.length);
+  const shortRatio = lens.filter((n) => n <= 18).length / Math.max(1, lens.length);
+  const lineBreakRatio = humans.filter((h) => (h.content || '').includes('\n')).length / Math.max(1, humans.length);
+  const questionRatio = humans.filter((h) => /[?？]$/.test((h.content || '').trim()) || /(吗|嘛|么)$/.test((h.content || '').trim()))
+    .length / Math.max(1, humans.length);
+
+  const style: string[] = [];
+  style.push(`- 近期真人平均长度约 ${Math.round(avg)} 字；短句占比约 ${Math.round(shortRatio * 100)}%`);
+  if (lineBreakRatio > 0.25) style.push(`- 真人偶尔分行（约 ${Math.round(lineBreakRatio * 100)}%）；你也可偶尔分行但别像公告`);
+  if (questionRatio > 0.25) style.push(`- 真人提问较多（约 ${Math.round(questionRatio * 100)}%）；你接话时尽量“先答后追问”保持对话`);
+  style.push(`- 用词与语气尽量贴近真人，不要客服腔；但必须保持 PERSONA，不可漂移`);
+  return `\nROOM_HUMAN_STYLE_HINT (imitate humans in this room):\n${style.map((s) => `  ${s}`).join('\n')}\n`;
 }
 
 function extractTopicTags(text: string): string[] {
@@ -499,36 +639,332 @@ function extractTopicTags(text: string): string[] {
 
 type AdminBroadcastSlot = 'morning' | 'afternoon' | 'night';
 
-// 7-day rotation per slot (Mon..Sun), one item per day per slot.
-const ADMIN_BROADCAST_LIBRARY_WEEKLY: Record<AdminBroadcastSlot, string[]> = {
+type AdminBroadcastVariant = 'long' | 'medium';
+type AdminBroadcastTopic = { long: string; medium: string };
+
+type PersonaTopicItem = { id: string; title: string; prompt: string; tags: string[] };
+
+function buildPersonaTopicPoolsMinimal(): Record<BotIdentity, PersonaTopicItem[]> {
+  const mk = (pfx: string, title: string, prompt: string, tags: string[]): PersonaTopicItem => ({
+    id: `${pfx}-${normalizeForSemanticSim(title).slice(0, 24)}`.replace(/\s+/g, '-'),
+    title,
+    prompt,
+    tags,
+  });
+
+  const generic: PersonaTopicItem[] = [
+    mk('g', '新手最容易踩坑的 3 个步骤', '用口语列出 3 个最容易踩坑的步骤，并问一句“你卡在哪一步？”', ['rules', 'chain']),
+    mk('g', '为什么建议先小额试一笔', '解释“先小额验证链路”的原因，给一个具体的小额范围，并追问对方计划操作哪一步', ['rules']),
+    mk('g', 'Gas 不够会出现什么症状', '用通俗话解释 BNB Gas 不足会导致什么，并问对方钱包里是否有少量 BNB', ['chain']),
+    mk('g', 'Pending 处理顺序', '给出 pending 的排查顺序（先看确认数/TxHash），最后追问对方 TxHash 有了吗', ['chain']),
+    mk('g', '地址三段法怎么核对', '教“三段法”，举个例子说明前6后4怎么对，并问对方复制地址来自哪里（TP/币安）', ['rules']),
+    mk('g', '签名/授权/转账怎么区分', '用 3 句话对比签名/授权/转账，并让对方把弹窗关键信息发出来', ['rules', 'chain']),
+    mk('g', '邀请好友推广的合规说法', '给两句合规表述（不承诺收益、不代操作），最后问“你准备怎么说？”', ['rules']),
+  ];
+
+  const beginner: PersonaTopicItem[] = [
+    mk('b', '我到底该用哪个钱包', '用新手口吻问：TP/币安哪个更好用？你自己更倾向哪种？', ['misc']),
+    mk('b', '我担心签名会扣钱', '表达担心签名扣钱，顺带问“你们签名的时候弹窗长啥样？”', ['rules']),
+    mk('b', '第一次准备 Gas 要多少', '问 BNB 要准备多少才够，别太专业，带一点慌张', ['chain']),
+    mk('b', '地址复制后我不敢点确认', '说自己不敢点确认，想让大家教怎么核对地址', ['rules']),
+  ];
+
+  const pro: PersonaTopicItem[] = [
+    mk('p', '把步骤写成 checklist 更不容易错', '用专业口吻给一个 5 步 checklist，并问对方现在在哪一步', ['rules']),
+    mk('p', '授权额度建议怎么选', '说明授权额度的取舍（最小额度优先），并问对方是否看到 approve 弹窗', ['chain']),
+    mk('p', '如何留存核账四件套', '给出核账四件套并解释价值，追问对方是否有 TxHash', ['rules']),
+    mk('p', '遇到异常先做信息收集', '强调先收集截图/TxHash/网络信息，问对方能否补齐这些信息', ['rules']),
+  ];
+
+  const wool: PersonaTopicItem[] = [
+    mk('w', '别整天公告腔，来点真实卡点', '用更俗气一点的口吻吐槽别公告腔，问“你们卡哪儿了？”', ['misc']),
+    mk('w', '别瞎点，先小额跑通', '用直接一点的口吻劝先小额，问对方准备上多少', ['rules']),
+    mk('w', '别信私聊，真有事就群里问', '用粗一点的口吻反诈，提醒别信私聊，问有没有遇到私聊', ['rules']),
+  ];
+
+  const earner: PersonaTopicItem[] = [
+    mk('e', '收益核对看哪两处', '强调站内+链上两处核对，问对方收益显示是不是有延迟', ['yield', 'chain']),
+    mk('e', '收益不到账先别慌', '用口语安抚但要具体：先看确认数/时间窗口，问对方是哪一笔', ['yield']),
+  ];
+
+  const dedupe = (arr: PersonaTopicItem[]) => {
+    const seen = new Set<string>();
+    return arr.filter((x) => {
+      if (seen.has(x.id)) return false;
+      seen.add(x.id);
+      return true;
+    });
+  };
+
+  return {
+    beginner: dedupe([...generic, ...beginner]),
+    pro: dedupe([...generic, ...pro]),
+    wool: dedupe([...generic, ...wool]),
+    earner: dedupe([...generic, ...earner]),
+    generic: dedupe([...generic]),
+  };
+}
+
+function adminPickVariantBySlot(slot: AdminBroadcastSlot): AdminBroadcastVariant {
+  // 默认：早上发长版，下午/晚上发中版（中版也保持公告级详细）
+  if (slot === 'morning') return 'long';
+  return 'medium';
+}
+
+// 7-day rotation (Mon..Sun), one topic per day, 2 variants (long/medium).
+// 注意：优先推荐 TP 钱包与币安；不要提欧易。
+const ADMIN_BROADCAST_LIBRARY_WEEKLY: Record<AdminBroadcastSlot, AdminBroadcastTopic[]> = {
   morning: [
-    '【周一·晨间教程】先确认 3 件事：① 钱包网络为 BSC；② 预留少量 BNB 作为 Gas；③ 当前页面规则与金额无误。先小额试一笔，再做大额操作。',
-    '【周二·晨间教程】连接钱包只做签名验证（不扣资产）。若连接失败，优先在钱包内置浏览器打开站点，再检查授权弹窗和网络。',
-    '【周三·晨间教程】TRON 充值请严格按页面给出的专属地址与倒计时转账；避免复用历史地址，避免超时后再打款。',
-    '【周四·晨间教程】充值前核对链与币种：TRC20-USDT 走 TRON，BEP20 走 BSC。跨链误转通常无法自动追回。',
-    '【周五·晨间教程】准备大额前先做一次 1-5 USDT 小额验证，确认链路、到账与页面状态都正常，再放大金额。',
-    '【周六·晨间教程】地址校验建议“三段法”：前 6 位、中段、后 4 位，避免复制时被剪贴板劫持篡改。',
-    '【周日·晨间教程】每次操作前先看公告与帮助中心最新规则，参数可能更新；以站内最新页面与链上结果为准。',
+    {
+      long:
+        `📢【官方教程】Web3 钱包（0x 地址）配置指南（优先 TP 钱包 + 币安）\n` +
+        `尊敬的 RWA 平台用户：\n\n` +
+        `为提供更合规、更安全、更高效的资产管理体验，平台后续链上交互将以 BSC（BNB Smart Chain / 币安智能链）为主。迁移/结算相关动作将通过链上智能合约完成，链上记录可核验、可追溯。\n\n` +
+        `为确保您的资产与后续收益发放顺利进行，请务必完成 Web3 BSC 钱包（0x 开头地址）的准备与核对。不确定是否完成？请先按下列步骤自查；如需协助，点我头像直接咨询。\n\n` +
+        `💡 核心说明：什么是 Web3 钱包？\n` +
+        `- 自托管：助记词/私钥由你本人保管，等同于资产所有权。\n` +
+        `- 0x 地址：你在 BSC 上接收资产与执行交互的唯一账户标识。\n` +
+        `- 不可逆：链上操作无法撤销，必须严格核对网络/地址/币种。\n\n` +
+        `一、官方优先推荐：TP 钱包（TokenPocket）创建 BSC 钱包\n` +
+        `1）在应用商店下载安装 TP 钱包（请认准官方来源）。\n` +
+        `2）创建/导入钱包：选择【创建钱包】或【导入钱包】。\n` +
+        `3）备份助记词（核心环节）：使用纸笔抄写并离线保存。\n` +
+        `   - 严禁截图、相册、微信传输或云盘存储。\n` +
+        `4）切换到 BSC 网络：在钱包内选择 BSC / BNB Smart Chain。\n` +
+        `5）复制 0x 地址：进入【接收/收款】复制 0x 开头地址（这就是你的 BSC 地址）。\n\n` +
+        `二、备选方案（同样推荐）：币安 Web3 钱包创建 BSC 地址\n` +
+        `1）打开币安 App → 进入【Web3】入口。\n` +
+        `2）创建钱包并完成备份/恢复设置（务必记住恢复方式）。\n` +
+        `3）获取地址：点击【接收】→ 选择 BNB Smart Chain（BEP20）→ 复制 0x 地址。\n\n` +
+        `三、链上交互准备：储备“燃油费”(BNB) ⛽\n` +
+        `在 BSC 上进行领取/转账/提现/授权等操作，需要消耗少量 BNB 作为 Gas Fee。\n` +
+        `- 建议准备：约 5–10 USDT 等值的 BNB（随链拥堵可能波动）。\n` +
+        `- 从交易所提币到钱包：提现币种 BNB，网络务必选择 BSC/BEP20，地址粘贴你的 0x 地址。\n\n` +
+        `四、地址校验“三段法”（防剪贴板劫持）\n` +
+        `复制地址后不要直接确认：\n` +
+        `- 前 6 位 + 中间任意 4 位 + 后 4 位，三段一致再提交。\n\n` +
+        `⚠️ 安全合规警示（请务必阅读）\n` +
+        `- 平台/客服/群主不会索要：助记词、私钥、验证码、远程控制。\n` +
+        `- 任何“代操作/包回本/内部通道/私聊引导链接”均为高风险。\n` +
+        `- 一切以站内页面说明与链上结果为准；不确定先停一步再咨询。\n\n` +
+        `RWA 运营团队`,
+      medium:
+        `📢【官方教程】3 分钟完成 BSC Web3 钱包准备（TP 钱包 + 币安）\n` +
+        `尊敬的 RWA 平台用户：\n\n` +
+        `为确保后续链上交互与收益发放顺利进行，请务必准备 BSC（BEP20）网络的 Web3 钱包 0x 地址，并预留少量 BNB 作为 Gas。\n\n` +
+        `✅ 1）优先推荐：TP 钱包（TokenPocket）\n` +
+        `- 创建/导入钱包 → 纸笔备份助记词（严禁截图/转发）\n` +
+        `- 切换网络到 BSC/BNB Smart Chain\n` +
+        `- 进入【接收】复制 0x 地址\n\n` +
+        `✅ 2）同样推荐：币安 Web3 钱包\n` +
+        `- 进入币安 App 的 Web3 入口创建钱包并完成备份\n` +
+        `- 选择 BNB Smart Chain（BEP20）获取 0x 地址\n\n` +
+        `⛽ 3）准备 Gas（BNB）\n` +
+        `- 建议准备 5–10 USDT 等值 BNB\n` +
+        `- 提现网络务必选 BSC/BEP20，地址粘贴 0x 地址\n\n` +
+        `🔎 4）地址三段法核对\n` +
+        `前 6 位 + 中间 4 位 + 后 4 位一致再确认\n\n` +
+        `⚠️ 安全提醒：任何索要助记词/私钥/验证码/远程协助的都是诈骗；不确定请点我头像直接咨询。\n\n` +
+        `RWA 运营团队`,
+    },
+    {
+      long:
+        `📢【官方教程】充值/转账“零失误”流程（BSC/BEP20 必读）✅\n` +
+        `尊敬的 RWA 平台用户：\n\n` +
+        `链上转账与充值具有不可逆特性。多数问题都来自三个点：网络选错、地址粘贴被劫持、币种链路不一致。\n` +
+        `为保障资产安全，请按本公告流程执行；不确定请先暂停操作，点我头像直接咨询。\n\n` +
+        `✅ 一、操作前的“三核对”（必须执行）🔎\n` +
+        `1）核对网络：钱包/交易所网络是否为 BSC / BEP20（与页面要求一致）\n` +
+        `2）核对币种：USDT/RWA/BNB 是否一致；不要把 TRC20、ERC20、BEP20 混用\n` +
+        `3）核对地址：使用“三段法”对照（防剪贴板劫持）\n` +
+        `   - 前 6 位 + 中间任意 4 位 + 后 4 位，三段一致再确认\n\n` +
+        `✅ 二、强烈建议：先小额验证，再放大金额🧪\n` +
+        `首次链路建议 1–5 USDT 小额测试，确认“上链→确认→页面展示/到账”完整闭环后，再做大额操作。\n\n` +
+        `✅ 三、从交易所提币到 TP 钱包 / 币安 Web3 钱包（示例）📤\n` +
+        `1）交易所【提现】选择币种（如 USDT/BNB）\n` +
+        `2）网络务必选择：BSC / BEP20\n` +
+        `3）提现地址：粘贴你的 0x 地址（来自 TP 钱包或币安 Web3 钱包的【接收】）\n` +
+        `4）提交后等待确认：不要在 Pending 期间重复提交同类型交易\n\n` +
+        `⏳ 四、Pending 很久/页面不更新怎么办？（按步骤排查）\n` +
+        `1）先看链上确认是否在推进（TxHash/确认数）\n` +
+        `2）检查钱包 Gas 是否过低、链是否拥堵\n` +
+        `3）不要多端、多页面反复操作同一步\n` +
+        `4）需要协助：准备“截图 + TxHash”，点我头像直接咨询\n\n` +
+        `⚠️ 五、安全合规警示🛡️\n` +
+        `- 平台/客服/群主不会索要：助记词、私钥、验证码、远程控制\n` +
+        `- 任何“代操作/保本承诺/私聊引导链接”均为高风险\n` +
+        `- 规则与口径以站内页面与链上结果为准\n\n` +
+        `RWA 运营团队`,
+      medium:
+        `📢【官方教程】充值/转账前必做“三核对”（BSC/BEP20）\n` +
+        `尊敬的 RWA 平台用户：\n\n` +
+        `为避免误转与不到账，请务必按以下流程执行；不确定请暂停，点我头像直接咨询。\n\n` +
+        `✅ 1）核对网络：BSC / BEP20\n` +
+        `✅ 2）核对币种：链路一致，TRC20/ERC20/BEP20 不混用\n` +
+        `✅ 3）核对地址：三段法（前 6 + 中间 4 + 后 4）一致再确认\n\n` +
+        `🧪 建议：首次先小额（1–5 USDT）跑通链路，再放大金额。\n\n` +
+        `⏳ Pending 处理：先看 TxHash/确认数，不要重复提交同一步。\n\n` +
+        `⚠️ 安全提醒：任何索要助记词/私钥/验证码/远程协助的都是诈骗。\n\n` +
+        `RWA 运营团队`,
+    },
+    {
+      long:
+        `📢【官方教程】签名 vs 授权 Approve vs 转账交易：一眼辨别，避免误操作\n` +
+        `尊敬的 RWA 平台用户：\n\n` +
+        `钱包弹窗里最常见的三类动作是“签名（Sign）”“授权（Approve）”“提交交易（Confirm/Send）”。理解它们的区别，能显著降低误操作与风险。\n\n` +
+        `🟢 一、签名（Sign Message）是什么？\n` +
+        `- 用途：登录/身份校验/建立会话。\n` +
+        `- 特点：通常不扣资产、通常不消耗 Gas（取决于具体实现）。\n` +
+        `- 风险：也不要随意给陌生站点签名，避免被诱导进行后续授权。\n\n` +
+        `🟠 二、授权（Approve）是什么？\n` +
+        `- 用途：允许合约在一定额度内使用你的代币（常见于首次质押/兑换/交互）。\n` +
+        `- 特点：会产生链上交易，需要 Gas（BNB）。\n` +
+        `- 建议：\n` +
+        `  1）优先选择“最小必要额度”（如页面提供）；\n` +
+        `  2）不要对来源不明的合约地址授权；\n` +
+        `  3）授权后若不再使用，可在钱包/工具里撤销授权（Revocation）。\n\n` +
+        `🔴 三、提交交易（Confirm/Send）是什么？\n` +
+        `- 这一步会真正上链，产生 TxHash。\n` +
+        `- 会消耗 Gas，且不可逆。\n` +
+        `- 提交前必须核对：网络（BSC/BEP20）/地址/金额/合约交互类型。\n\n` +
+        `⛽ 四、为什么要准备 BNB（Gas）？\n` +
+        `在 BSC 上的授权、转账、领取等操作都需要少量 BNB。\n` +
+        `建议提前准备 5–10 USDT 等值 BNB，避免“临门一脚操作失败”。\n\n` +
+        `📌 五、遇到不确定弹窗怎么办？\n` +
+        `- 先不要点确认；截屏弹窗内容（网络/合约/费用/动作描述）\n` +
+        `- 点我头像直接咨询，我会按步骤帮你判断“这是签名/授权/转账”\n\n` +
+        `⚠️ 安全合规警示：任何索要助记词/私钥/验证码/远程协助的都是诈骗。\n\n` +
+        `RWA 运营团队`,
+      medium:
+        `📢【官方教程】三类弹窗分清楚：签名 / 授权 / 转账\n` +
+        `尊敬的 RWA 平台用户：\n\n` +
+        `🟢 签名：用于登录校验，通常不扣资产\n` +
+        `🟠 授权 Approve：给额度，会产生链上交易并消耗 BNB Gas\n` +
+        `🔴 转账/提交交易：真正上链，不可逆\n\n` +
+        `✅ 关键：确认前先看网络是否 BSC/BEP20，合约/金额是否合理。\n` +
+        `不确定就先别点，点我头像直接咨询。\n\n` +
+        `RWA 运营团队`,
+    },
+    {
+      long:
+        `📢【官方教程】质押标准流程（含首次授权）与常见问题\n` +
+        `尊敬的 RWA 平台用户：\n\n` +
+        `质押类操作一般包含“授权→确认质押→等待确认→页面更新”。请严格按顺序执行，避免 Pending 期间重复提交造成多笔手续费。\n\n` +
+        `✅ 一、质押标准顺序（别跳步）\n` +
+        `1）输入金额：确认币种、数量与页面规则一致\n` +
+        `2）首次授权 Approve：允许合约使用代币额度（会消耗 Gas）\n` +
+        `3）确认质押：提交交易并等待链上确认（生成 TxHash）\n` +
+        `4）等待页面更新：确认后再进行下一步\n\n` +
+        `⛽ 二、Gas 准备（BNB）\n` +
+        `- 授权与质押都需要少量 BNB 作为手续费\n` +
+        `- 建议提前准备 5–10 USDT 等值 BNB\n\n` +
+        `⏳ 三、Pending 期间注意事项\n` +
+        `- 不要重复点击同一个按钮\n` +
+        `- 不要多端同时操作同一钱包\n` +
+        `- 先看链上确认数是否推进\n\n` +
+        `🔎 四、质押后如何核对？\n` +
+        `- 站内：仓位/状态/收益展示\n` +
+        `- 链上：TxHash/确认状态\n` +
+        `如出现短时延迟，先等确认块。\n\n` +
+        `📌 五、需要协助时请准备的信息\n` +
+        `- 你在第几步（授权/质押/等待确认）\n` +
+        `- 页面截图 + TxHash\n` +
+        `点我头像直接咨询，我会按步骤帮你对齐。\n\n` +
+        `⚠️ 安全提醒：任何索要助记词/私钥/验证码/远程协助的都是诈骗。\n\n` +
+        `RWA 运营团队`,
+      medium:
+        `📢【官方教程】质押标准流程（4 步）\n` +
+        `尊敬的 RWA 平台用户：\n\n` +
+        `✅ 1）输入金额\n` +
+        `✅ 2）首次需要授权 Approve（消耗 BNB Gas）\n` +
+        `✅ 3）确认质押提交交易（生成 TxHash）\n` +
+        `✅ 4）等待链上确认与页面更新（Pending 别重复点）\n\n` +
+        `需要我帮你看 Pending/TxHash？点我头像直接咨询。\n\n` +
+        `RWA 运营团队`,
+    },
+    {
+      long:
+        `📢【官方教程】提现/赎回与 Pending 排查（按步骤处理）\n` +
+        `尊敬的 RWA 平台用户：\n\n` +
+        `提现/赎回属于链上不可逆操作，常见问题集中在：余额条件、冷却/到期规则、Gas 不足、链拥堵、重复提交。请按以下步骤执行。\n\n` +
+        `✅ 一、提现/赎回前必看 3 项\n` +
+        `1）可提余额是否足够\n` +
+        `2）是否存在冷却/到期限制（以页面说明为准）\n` +
+        `3）钱包是否有足够 BNB 作为 Gas\n\n` +
+        `⛽ 二、Gas 说明\n` +
+        `链上提交交易需要消耗少量 BNB。没有 Gas 会导致交易无法发出或失败。\n\n` +
+        `⏳ 三、Pending 很久怎么办（排查顺序）\n` +
+        `1）先看 TxHash 是否生成、确认数是否推进\n` +
+        `2）检查链拥堵与 Gas 设置是否过低\n` +
+        `3）不要重复提交同类型交易（避免多笔手续费/状态混乱）\n` +
+        `4）确认是否在同一钱包地址下操作\n\n` +
+        `🧾 四、建议留存“核账四件套”\n` +
+        `- 时间\n` +
+        `- 金额\n` +
+        `- TxHash\n` +
+        `- 页面截图\n\n` +
+        `📌 五、需要协助时怎么提问最快？\n` +
+        `请说明：你在第几步 + 发 TxHash + 发页面截图。\n` +
+        `点我头像直接咨询，我会按步骤帮你定位问题。\n\n` +
+        `⚠️ 安全提醒：任何索要助记词/私钥/验证码/远程协助的都是诈骗。\n\n` +
+        `RWA 运营团队`,
+      medium:
+        `📢【官方教程】提现/赎回前 3 项自查 + Pending 排查\n` +
+        `尊敬的 RWA 平台用户：\n\n` +
+        `✅ 提现前自查：可提余额 / 冷却或到期规则 / BNB Gas 是否足够\n` +
+        `⏳ Pending：先看 TxHash 与确认数，别重复提交同一步\n` +
+        `需要协助：点我头像直接咨询（发截图 + TxHash）\n\n` +
+        `RWA 运营团队`,
+    },
+    {
+      long:
+        `📢【官方教程】邀请好友推广指引：如何合规分享并获得收益（国内用户必读）\n` +
+        `尊敬的 RWA 平台用户：\n\n` +
+        `为帮助国内用户更清晰、合规地完成“邀请好友/推广分享”，并减少不规范宣传带来的纠纷与风险，现发布本指引。请务必按以下步骤执行；不确定时请先停一步，点我头像直接咨询。\n\n` +
+        `✅ 一、推广收益的基本逻辑（先讲清楚）\n` +
+        `- 推广行为：你将站内的邀请入口/专属链接/邀请码分享给真实好友。\n` +
+        `- 绑定关系：好友通过你的入口完成注册/连接钱包/参与相关流程后，系统会记录邀请关系。\n` +
+        `- 收益规则：以站内页面当前展示的“邀请/推荐”规则为准（口口相传、截图可能过期）。\n\n` +
+        `📌 二、标准推广流程（推荐按“微信场景”执行）\n` +
+        `1）先把自己账号配置好：完成钱包连接与 0x 地址准备（BSC/BEP20）。\n` +
+        `2）在站内进入【邀请/推荐】页面，复制你的专属入口。\n` +
+        `3）分享给真实好友：建议一对一说明，不建议群发刷屏。\n` +
+        `4）提醒好友按步骤完成：注册/连接钱包/按页面要求操作。\n` +
+        `5）回到站内查看邀请记录与状态：以页面展示为准。\n\n` +
+        `🧾 三、建议你这样说（更像“官方/合规表达”）\n` +
+        `✅ 可用：\n` +
+        `- “我这边有个站内邀请入口，你按页面步骤走，规则以页面为准。”\n` +
+        `- “涉及链上操作需要少量 BNB Gas，不确定先问官方。”\n` +
+        `- “助记词/私钥自己保管，任何人要都别给。”\n\n` +
+        `🚫 禁止/高风险表达（请避免）\n` +
+        `- “保本/稳赚/内部渠道/躺赚”\n` +
+        `- “我帮你代操作/把助记词给我”\n` +
+        `- “点陌生短链/下载不明软件包”\n\n` +
+        `⚠️ 四、国内用户特别提醒（务必遵守）\n` +
+        `- 不做收益承诺：任何收益以站内规则与链上结果为准。\n` +
+        `- 不诱导陌生人：建议分享给真实熟人，避免纠纷。\n` +
+        `- 不要代操作：不要帮别人点授权/转账/签名。\n\n` +
+        `🔐 五、安全合规警示\n` +
+        `- 官方不会索要：助记词/私钥/验证码/远程控制。\n` +
+        `- 链上不可逆：涉及转账/授权/提现必须自己确认网络与地址。\n` +
+        `- 如遇异常：保留截图与 TxHash，点我头像直接咨询。\n\n` +
+        `RWA 运营团队`,
+      medium:
+        `📢【官方教程】邀请好友推广：合规分享与注意事项（国内用户）\n` +
+        `尊敬的 RWA 平台用户：\n\n` +
+        `✅ 推广步骤：站内进入【邀请/推荐】→ 复制专属入口 → 分享给真实好友 → 好友按页面完成流程 → 回站内查看记录。\n\n` +
+        `⚠️ 合规要点：不做收益承诺；不群发刷屏；不代操作；规则以站内页面为准。\n` +
+        `🔐 安全红线：任何索要助记词/私钥/验证码/远程协助的都是诈骗。\n\n` +
+        `RWA 运营团队`,
+    },
   ],
-  afternoon: [
-    '【周一·午后教程】质押标准顺序：输入金额 -> 授权（首次）-> 确认质押。提交后等待链上确认，不要重复连点。',
-    '【周二·午后教程】收益核对建议看两处：仪表盘仓位/收益 + 链上哈希。若有延迟，先等待确认块后再判断异常。',
-    '【周三·午后教程】提现前先确认：可提余额、冷却时间、手续费口径。建议先小额测试，确认链路后再做大额。',
-    '【周四·午后教程】Pending 期间不要重复提交同类型交易，重复提交可能导致多笔手续费或状态混乱。',
-    '【周五·午后教程】若交易长时间未确认，先检查钱包 Gas 设置与链拥堵情况，再决定是否替换/加速交易。',
-    '【周六·午后教程】质押后建议记录：时间、金额、哈希、页面快照。后续核账和排查会更高效。',
-    '【周日·午后教程】到期与赎回请按页面步骤逐项确认，避免“同时操作多笔”导致读数误解。',
-  ],
-  night: [
-    '【周一·夜间风控】夜间操作建议降频：每笔前核对地址、金额、网络三项；遇到 Pending 先等确认，不重复提交。',
-    '【周二·夜间安全】官方不会私聊索要私钥、助记词、验证码。凡是“代操作/代转账/保本收益”都按高风险处理。',
-    '【周三·夜间复盘】今天若做过充值/质押/提现，建议记录哈希、金额、时间，便于后续核账与异常排查。',
-    '【周四·夜间安全】谨防“仿站链接”和“客服私聊跳转”。只从站内入口进入页面，不点来路不明短链接。',
-    '【周五·夜间风控】转账前先核对收款链路与地址归属，再次确认币种精度与数量，避免手误导致不可逆损失。',
-    '【周六·夜间复盘】若当日多次操作，建议按时间线复盘每笔状态：发起、上链、确认、到账，确保闭环。',
-    '【周日·夜间提醒】休市/低活跃时段更要慢操作，先看规则再点击；不确定就先问管理员，不抢一步。',
-  ],
+  afternoon: [],
+  night: [],
 };
+
+// Reuse same weekly topics across all slots; slot only decides long/medium.
+ADMIN_BROADCAST_LIBRARY_WEEKLY.afternoon = ADMIN_BROADCAST_LIBRARY_WEEKLY.morning;
+ADMIN_BROADCAST_LIBRARY_WEEKLY.night = ADMIN_BROADCAST_LIBRARY_WEEKLY.morning;
 
 function getShanghaiWeekdayIndex(now: Date): number {
   // Monday=0 ... Sunday=6
@@ -537,10 +973,78 @@ function getShanghaiWeekdayIndex(now: Date): number {
   return d === 0 ? 6 : d - 1;
 }
 
+function formatShanghaiYmd(now: Date): string {
+  const sh = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const y = sh.getFullYear();
+  const m = String(sh.getMonth() + 1).padStart(2, '0');
+  const d = String(sh.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 class BotService {
   private bots = new Map<string, Bot>();
   private timers = new Map<string, NodeJS.Timeout>();
   private onBotMessage?: (msg: Message & { user: User }, roomId: string) => void;
+
+  // Rolling limiter (in-memory) to enforce emoji ratios at runtime per room.
+  private roomEmojiWindow = new Map<
+    string,
+    { total: number; emoji: number; emojiOnly: number; window: Array<{ e: boolean; eo: boolean }> }
+  >();
+
+  private enforceEmojiQuota(roomId: string, input: string, bypass = false): string {
+    // 管理员/公告类允许更丰富 emoji，不参与全局限流（否则官方公告风格会被“剥表情”）
+    if (bypass) return input.trim();
+    const windowSize = 100;
+    const emojiMaxRatio = 0.10; // <= 1/10 messages contain emoji
+    const emojiOnlyRatioWithinEmoji = 0.20; // ~ 1/5 of emoji-bearing messages are emoji-only
+
+    const raw = input.trim();
+    if (!raw) return raw;
+
+    const hasEmoji = containsEmojiLike(raw);
+    const emojiOnly = hasEmoji && stripEmojiLike(raw).length === 0;
+
+    const state =
+      this.roomEmojiWindow.get(roomId) || { total: 0, emoji: 0, emojiOnly: 0, window: [] as any[] };
+
+    const total = Math.max(1, state.total);
+    const emojiRatio = state.emoji / total;
+    const emojiOnlyRatio = state.emoji > 0 ? state.emojiOnly / state.emoji : 0;
+
+    let out = raw;
+    if (hasEmoji) {
+      // Hard cap: once emoji usage exceeds quota, strip emojis from this message.
+      if (emojiRatio >= emojiMaxRatio) {
+        out = stripEmojiLike(out);
+      } else {
+        // Within quota: keep emoji-only messages rarer within emoji-bearing ones.
+        if (emojiOnly && emojiOnlyRatio >= emojiOnlyRatioWithinEmoji) {
+          // Prefer turning emoji-only into plain text instead of adding more emoji-only.
+          out = '';
+        }
+        // Mixed messages within quota are allowed; earlier system prompt already limits count.
+      }
+    }
+
+    const finalHasEmoji = containsEmojiLike(out);
+    const finalEmojiOnly = finalHasEmoji && stripEmojiLike(out).length === 0;
+
+    // Update rolling window counts.
+    state.window.push({ e: finalHasEmoji, eo: finalEmojiOnly });
+    state.total += 1;
+    if (finalHasEmoji) state.emoji += 1;
+    if (finalEmojiOnly) state.emojiOnly += 1;
+    while (state.window.length > windowSize) {
+      const old = state.window.shift()!;
+      state.total -= 1;
+      if (old.e) state.emoji -= 1;
+      if (old.eo) state.emojiOnly -= 1;
+    }
+    this.roomEmojiWindow.set(roomId, state);
+
+    return out.trim();
+  }
 
   private identityByBotId = new Map<string, BotIdentity>();
   private speakChanceByBotId = new Map<string, number>();
@@ -565,12 +1069,90 @@ class BotService {
   /** 管理员定时播报去重：YYYY-MM-DD:slot:HH:mm */
   private adminBroadcastSentKeys = new Set<string>();
 
+  private personaTopicPools: Record<BotIdentity, PersonaTopicItem[]> | null = null;
+  private topicRoundRobinCursor = new Map<string, number>(); // roomId::identity -> idx
+
+  private ensurePersonaTopicPoolsSeeded(): void {
+    if (this.personaTopicPools) return;
+    const raw = chatService.getBotTopicPools();
+    const hasEnough = (k: BotIdentity) => Array.isArray((raw as any)?.[k]) && ((raw as any)?.[k] || []).length >= 12;
+    if (hasEnough('beginner') && hasEnough('pro') && hasEnough('wool') && hasEnough('earner') && hasEnough('generic')) {
+      this.personaTopicPools = raw as any;
+      return;
+    }
+    const pools = buildPersonaTopicPoolsMinimal();
+    chatService.setBotTopicPools(pools as any);
+    this.personaTopicPools = pools;
+  }
+
+  private pickPersonaTopicRoundRobin(bot: Bot, roomId: string): PersonaTopicItem | null {
+    this.ensurePersonaTopicPoolsSeeded();
+    const pools = this.personaTopicPools;
+    if (!pools) return null;
+    const id: BotIdentity = this.identityByBotId.get(bot.id) ?? 'generic';
+    const list = pools[id] || pools.generic || [];
+    if (!list.length) return null;
+    const key = `${roomId}::${id}`;
+    const cursor = this.topicRoundRobinCursor.get(key) ?? 0;
+    const sorted = [...list].sort((a, b) => a.id.localeCompare(b.id));
+    const item = sorted[cursor % sorted.length] || null;
+    if (item) this.topicRoundRobinCursor.set(key, cursor + 1);
+    return item;
+  }
+
   setMessageCallback(cb: (msg: Message & { user: User }, roomId: string) => void) {
     this.onBotMessage = cb;
   }
 
   getAllBots(): Bot[] {
     return Array.from(this.bots.values());
+  }
+
+  /**
+   * Manual admin broadcast trigger (for testing / ops).
+   * - weekdayIdx: 0=Mon ... 6=Sun
+   * - slot: affects long/medium selection by default
+   */
+  triggerAdminBroadcastManual(opts: {
+    roomIds: string[];
+    weekdayIdx: number;
+    slot?: AdminBroadcastSlot;
+    variant?: AdminBroadcastVariant;
+    now?: Date;
+    force?: boolean;
+  }): { ok: boolean; error?: string; sent: number } {
+    const now = opts.now || new Date();
+    const weekdayIdx = Math.max(0, Math.min(6, Math.floor(opts.weekdayIdx)));
+    const slot: AdminBroadcastSlot = (opts.slot as AdminBroadcastSlot) || 'morning';
+    const variant: AdminBroadcastVariant = opts.variant || adminPickVariantBySlot(slot);
+
+    const bot =
+      Array.from(this.bots.values()).find((b) => b.role === 'admin_support') ||
+      Array.from(this.bots.values()).find((b) => b.role === 'group_owner');
+    if (!bot) return { ok: false, error: 'admin bot not found', sent: 0 };
+
+    const pool = ADMIN_BROADCAST_LIBRARY_WEEKLY[slot] || ADMIN_BROADCAST_LIBRARY_WEEKLY.morning;
+    const topic = pool[weekdayIdx % pool.length] || pool[0];
+    if (!topic) return { ok: false, error: 'broadcast pool empty', sent: 0 };
+
+    const raw = topic[variant] || topic.long || topic.medium || '';
+    if (!raw.trim()) return { ok: false, error: 'broadcast body empty', sent: 0 };
+
+    const dateLine = `🗓️ 日期：${formatShanghaiYmd(now)}`;
+    const body = `${raw}\n\n${dateLine}\n\n💬 需要我一步步帮你核对操作？点我头像直接咨询。`;
+
+    let sent = 0;
+    for (const roomId of opts.roomIds || []) {
+      if (!roomId || !chatService.getRoom(roomId)) continue;
+      if (opts.force !== true && this.wasSameTextRecently(roomId, bot.userId, body, 15 * 60_000)) continue;
+      const msg = this.pushBotChatMessage(roomId, bot, body, 'text');
+      if (msg) {
+        sent += 1;
+        this.rememberUtteranceToday(body);
+        this.rememberRoomTopic(roomId, body);
+      }
+    }
+    return { ok: sent > 0, sent };
   }
 
   getBot(botId: string): Bot | undefined {
@@ -778,6 +1360,58 @@ class BotService {
     /** 接真人一律用全池；夜间活跃机器人少，不能再按作息过滤否则无人可回 */
     const pool = candidates;
 
+    // 真实用户点名 @ 某个机器人：必须由该机器人本人回应（绕过概率/间隔门槛，避免“点名不回”）
+    // 支持两类：
+    // 1) @机器人昵称（精确匹配）
+    // 2) @0x1234…abcd / @0x1234...abcd（地址短写：前缀+后缀匹配）
+    const mentionTokens = Array.from(content.matchAll(/@([^\s，。,。！？!?:：；;、]{2,64})/g)).map((m) =>
+      String(m[1] || '').trim()
+    );
+    const pickMentionedBot = (): Bot | undefined => {
+      if (!mentionTokens.length) return undefined;
+
+      // First: exact nickname match
+      for (const tok of mentionTokens) {
+        const exact = pool.find((b) => {
+          const nick = chatService.getUser(b.userId)?.nickname || b.name;
+          return nick === tok;
+        });
+        if (exact) return exact;
+      }
+
+      // Second: address short-hand match
+      for (const tok of mentionTokens) {
+        if (!/^0x/i.test(tok)) continue;
+        const cleaned = tok.replace(/\u2026/g, '...'); // … -> ...
+        const m = cleaned.match(/^0x([0-9a-fA-F]{3,40})(?:\.{3}([0-9a-fA-F]{1,8}))?$/);
+        if (!m) continue;
+        const prefix = `0x${m[1]}`.toLowerCase();
+        const suffix = (m[2] || '').toLowerCase();
+
+        const candidatesByAddr = pool
+          .map((b) => ({ b, addr: (chatService.getUser(b.userId)?.address || '').toLowerCase() }))
+          .filter((x) => x.addr && x.addr.startsWith(prefix) && (!suffix || x.addr.endsWith(suffix)));
+
+        if (candidatesByAddr.length === 1) return candidatesByAddr[0]!.b;
+        if (candidatesByAddr.length > 1) {
+          // Prefer the one with longest prefix match (more specific); stable pick by nickname as tie-breaker.
+          const best = candidatesByAddr
+            .sort((a, b) => b.addr.length - a.addr.length)
+            .sort((a, b) => {
+              const an = (chatService.getUser(a.b.userId)?.nickname || a.b.name).localeCompare(
+                chatService.getUser(b.b.userId)?.nickname || b.b.name
+              );
+              return an;
+            })[0];
+          if (best) return best.b;
+        }
+      }
+
+      return undefined;
+    };
+
+    const mentionedBot = pickMentionedBot();
+
     const ownerBot = pool.find((b) => b.role === 'group_owner');
     const adminBot = pool.find((b) => b.role === 'admin_support');
     const routeOwner = ownerBot && shouldRouteToOwnerBot(content);
@@ -792,13 +1426,20 @@ class BotService {
     const replyGapMs = Math.max(25_000, Math.floor(baseReplyGapMs * factors.gapMult));
     const roomLast = this.roomLastBotAt.get(roomId) || 0;
     const tooSoon = Date.now() - roomLast < replyGapMs;
-    if (!routeOwner && !routeAdmin) {
+    // 被点名：强制回应；仅保留极短的防抖，避免同一秒内连发造成刷屏
+    if (!mentionedBot && !routeOwner && !routeAdmin) {
       if (tooSoon) return;
       if (Math.random() > replyProb) return;
     }
 
+    // 若用户 @ 了具体机器人昵称，则优先由该机器人本人回复（带来更强的「被点名就回应」体验）
     let selected: Bot;
-    if (routeOwner) {
+    if (mentionedBot) {
+      selected = mentionedBot;
+      const hardDebounceMs = readEnvInt('BOT_MENTION_HARD_DEBOUNCE_MS', 2_500, 0, 30_000);
+      const lastBotAt = this.roomLastBotAt.get(roomId) || 0;
+      if (Date.now() - lastBotAt < hardDebounceMs) return;
+    } else if (routeOwner) {
       selected = ownerBot!;
     } else if (routeAdmin) {
       selected = adminBot!;
@@ -904,6 +1545,7 @@ class BotService {
     const addr = makeDeterministicBotAddress('rwa-admin-support-bot:v1');
     const botUser = chatService.createUser(addr, name, 'L1');
     botUser.isBot = true;
+    botUser.isAdmin = true;
     botUser.avatar = String(process.env.ADMIN_BOT_AVATAR || '/chat-bot-icons/01.svg').trim();
 
     const persona = `你是 RWA Aura 官方社区管理员「${name}」。
@@ -1115,6 +1757,21 @@ class BotService {
     return msg;
   }
 
+  private wasSameTextRecently(roomId: string, userId: string, body: string, withinMs: number): boolean {
+    const now = Date.now();
+    const key = normalizeUtteranceKey(body);
+    if (!key) return false;
+    const recent = chatService.getMessages(roomId, 12);
+    for (let i = recent.length - 1; i >= 0; i--) {
+      const m = recent[i]!;
+      if (m.userId !== userId) continue;
+      if (m.type !== 'text') continue;
+      if (now - m.timestamp > withinMs) break;
+      if (normalizeUtteranceKey(m.content) === key) return true;
+    }
+    return false;
+  }
+
   private getAdminBroadcastTimes(): Array<{ slot: AdminBroadcastSlot; hour: number; minute: number; key: string }> {
     // Default: morning / afternoon / night fixed times (Shanghai)
     const raw = String(process.env.BOT_ADMIN_BROADCAST_TIMES || '10:00,15:30,21:30');
@@ -1166,8 +1823,13 @@ class BotService {
 
     const pool = ADMIN_BROADCAST_LIBRARY_WEEKLY[hit.slot] || ADMIN_BROADCAST_LIBRARY_WEEKLY.morning;
     const weekdayIdx = getShanghaiWeekdayIndex(now);
-    const body = pool[weekdayIdx % pool.length] || pool[0]!;
+    const topic = pool[weekdayIdx % pool.length] || pool[0]!;
+    const variant = adminPickVariantBySlot(hit.slot);
+    const raw = topic[variant] || topic.long;
+    const dateLine = `🗓️ 日期：${formatShanghaiYmd(now)}`;
+    const body = `${raw}\n\n${dateLine}\n\n💬 需要我一步步帮你核对操作？点我头像直接咨询。`;
     for (const roomId of roomIds) {
+      if (this.wasSameTextRecently(roomId, bot.userId, body, 15 * 60_000)) continue;
       const msg = this.pushBotChatMessage(roomId, bot, body, 'text');
       if (msg) {
         this.rememberUtteranceToday(body);
@@ -1372,15 +2034,29 @@ class BotService {
         }
       }
 
-      const recentMessages = chatService.getMessages(roomId, 12);
-      const context = recentMessages
+      const recentMessages = chatService.getMessages(roomId, 16);
+      const recentLite = recentMessages
         .map((m) => {
           const u = chatService.getUser(m.userId);
           const name = u?.nickname || 'Unknown';
-          if (m.type === 'image') return `${name}: [图片] ${m.content}`;
-          return `${name}: ${m.content}`;
+          const isHuman = Boolean(u && !u.isBot);
+          const content = m.type === 'image' ? `[图片] ${m.content}` : m.content;
+          return { name, isHuman, content: String(content || '') };
         })
-        .join('\n');
+        .filter((x) => x.content.trim().length > 0);
+      const context = recentLite.map((x) => `${x.name}: ${x.content}`).join('\n');
+      const humanStyleHint = buildRoomHumanStyleHint(recentLite);
+      const hasQuestionMark = (s: string) => /[?？]/.test(s);
+      const latestQuestion = (() => {
+        for (let i = recentLite.length - 1; i >= 0; i--) {
+          const c = (recentLite[i]?.content || '').trim();
+          if (!c) continue;
+          if (hasQuestionMark(c)) return c;
+        }
+        return '';
+      })();
+      const contextLogicHintAmbient =
+        '你这条没有接住群里刚刚的问题（像自说自话/只顾抛问题）。请重写：先用 1-2 句回答上文里最近那个问句（引用其中 1-2 个关键词），再结合 PERSONA 给出你的观点/经历；如果话题在聊收益/质押，再自然带上你人设里的日收益率/每日粗算收益。是否反问可自由，但不要只抛新问题。不要公告腔。';
 
       const room = chatService.getRoom(roomId);
       const calendarBlock = describeCalendarForLlm(now);
@@ -1393,7 +2069,8 @@ class BotService {
 
       let triggerLine = '';
       const superEco = readEnvInt('BOT_SUPER_ECO_MODE', 1, 0, 1) === 1;
-      const ambientDailyRatio = readEnvFloat('BOT_AMBIENT_DAILY_CHAT_RATIO', superEco ? 0.14 : 0.20, 0, 0.95);
+      // 主动插话：优先走“话题池”（更像群里正常聊天），少量概率才日常闲聊；避免总聊天气
+      const ambientDailyRatio = readEnvFloat('BOT_AMBIENT_DAILY_CHAT_RATIO', superEco ? 0.06 : 0.10, 0, 0.95);
       const ambientDailyMode = !effOpts.triggeredBy && !chunkyFollowUp && Math.random() < ambientDailyRatio;
       if (effOpts.triggeredBy) {
         const qc = effOpts.triggeredBy.content;
@@ -1402,7 +2079,7 @@ class BotService {
           const introAdmin = jobQ
             ? `\n对方在问「你是谁/做啥的」：说明你是官方社区值班助手「${bot.name}」，负责解答规则与操作问题；不要说自己是普通路人群友。`
             : '';
-          triggerLine = `【官方客服】用户 ${effOpts.triggeredBy.user.nickname}：「${effOpts.triggeredBy.content}」\n请先判断问题类型（规则/操作/风险/节点/推荐/链上确认等），用准确中文作答；不得编造合约地址与保本收益。${introAdmin}`;
+          triggerLine = `【官方客服】用户 ${effOpts.triggeredBy.user.nickname}：「${effOpts.triggeredBy.content}」\n请先判断问题类型（规则/操作/风险/节点/推荐/链上确认等），用准确中文作答；不得编造合约地址与保本收益。说明规则时尽量写出可核对数字（如锁仓 30/90/180/360 天对应约 0.8%/1.04%/1.28%/1.6% 日收益，活动档可到约 2.0%）；先接住对方上文里的具体点，再作答。如语境合适，可用一句澄清式提问收尾。${introAdmin}`;
         } else {
           const needSelfIntro =
             isIdentityOrJobQuestion(qc) || isLikelyAtSomeoneQuestion(qc);
@@ -1412,12 +2089,23 @@ class BotService {
             : needQuestionAnswer
               ? `\n【接话】对方在提问或接话题：结合 PERSONA 用口语直接回应，别敷衍成纯「收到」。`
               : '';
-          triggerLine = `刚有人发言：${effOpts.triggeredBy.user.nickname}: ${effOpts.triggeredBy.content}\n请像微信群一样自然接话；可短可稍长，别整段复述对方原话。必要时可顺着上下文反问一句，带出对话感。${introBlock}`;
+          triggerLine = `刚有人发言：${effOpts.triggeredBy.user.nickname}: ${effOpts.triggeredBy.content}\n请像微信群一样自然接话：先理解对方在说什么，再用 PERSONA 口吻回应；可短可稍长，别整段复述对方原话。若对方在聊收益/质押/对比，你需要引用自己人设的日收益率/每日粗算收益来回应（不要另编矛盾数字）；若对方只是日常聊天，则不必硬塞数字。可以顺势反问一句，但不是硬性要求。${introBlock}`;
         }
       } else {
-        triggerLine = ambientDailyMode
-          ? `群里安静了一会：请发一条自然的日常闲聊短句（天气、收工、吃饭、通勤、门店生意、今天状态都可），语气像真人，不要硬扯业务，也不要像客服话术。`
-          : `群里刚安静一会：请发一条自然短句。多围绕质押、充值、收益规则与操作节奏（遵守 CALENDAR 里收益数字禁令）。约一半时间只用几个字到一行；另一半可以两三行。不要每条都带 emoji。`;
+        if (ambientDailyMode) {
+          triggerLine =
+            `群里安静了一会：请发一条自然的日常闲聊短句，但避免反复聊天气。` +
+            `更像真人随口一句（工作/生活小细节/轻吐槽/近况都行），不要公告腔，也不要像客服话术。`;
+        } else {
+          const topic = !isAdminBot ? this.pickPersonaTopicRoundRobin(bot, roomId) : null;
+          const topicBlock = topic
+            ? `【话题池轮值】主题：${topic.title}\n要求：${topic.prompt}\n注意：必须符合 PERSONA（允许俏皮/粗鲁/俗气只在你的人设本来就会这么说时才用）。`
+            : `请发一条自然短句，但不要总聊天气；尽量从“操作步骤/常见卡点/反诈提醒/邀请推广注意事项”等切入，并抛一个问题带出对话。`;
+          triggerLine =
+            `群里刚安静一会：如果上文有人提了问题，你必须先接住并回答那个问题（不要只抛新问题）；然后再发一条能引发回复的消息（先给一个具体点，再抛一个问题）。\n` +
+            `${topicBlock}\n` +
+            `字数：12–90 字为主，偶尔可两三行；不要像公告。若聊到质押/收益/对比，可自然带一句 PERSONA 里的日收益率与两项粗算每日收益（RWA+USDT），并配以问句。`;
+        }
       }
 
       if (chunkyFollowUp) {
@@ -1462,6 +2150,10 @@ class BotService {
           ? '- Topic bias: 本条优先日常聊天（生活琐事/工作近况/轻松吐槽）；可轻触业务但别变成教程。'
           : '- Topic bias: prefer 质押(staking)、充值(on-ramp/top-up)、收益规则与节奏、赎回与确认数——贴合 RWA 协议聊天场景。';
 
+      const numbersAndDialogueRules = isAdminBot
+        ? `- 数字与接话：多用可核对数字（锁仓天数、档位百分比、确认数等），少空话；先对准用户上文再答；如合适以澄清式提问收尾。`
+        : `- 数字与对话：不要为了凑数字而生硬堆数字。仅当话题在聊收益/质押/对比/金额时，才优先用具体数字来回应；此时必须牢记并引用 PERSONA 中的「日收益率」与「每日粗算 RWA、USDT」两项，勿另编矛盾数字。若是日常闲聊，可完全不提收益数字。回应真人时必先接住上文关键词再用人设回答；是否反问可自由，但不要只抛问题不回应。`;
+
       const systemPrompt = `You are "${bot.name}", a real community participant in the RWA Aura protocol chat.
 
 PERSONA:
@@ -1471,6 +2163,7 @@ ${punctPersonaLine}
 
 ${liveBlock}
 ${addressingBlock}
+${humanStyleHint}
 
 CALENDAR_AND_POLICY (Shanghai time):
 ${calendarBlock}
@@ -1478,6 +2171,7 @@ ${calendarBlock}
 RULES:
 ${lengthRule}
 ${topicBiasLine}
+${numbersAndDialogueRules}
 - Sound ${isAdminBot ? 'professional, clear, and approachable (official assistant). Avoid slang filler' : 'human and casual'} (NEVER say you're a bot/AI).
 - MUST follow PERSONA strictly: tone, identity, occupation and speaking habit must stay consistent. Do not drift into another persona.
 - Prefer Chinese if the recent chat is mostly Chinese.
@@ -1487,7 +2181,7 @@ ${topicBiasLine}
 - Follow CALENDAR_AND_POLICY strictly for yield-related wording outside/inside the morning distribution window.
 - No investment advice; keep it casual product/chat experience.
 - 禁止使用「查看详情」「点击查看」「点我查看」等 App/按钮腔；用口语如「看公告」「对一下页面」「条款里写得清楚」。
-- Emoji: usually NO emoji; only rarely add one if it fits (most messages plain text).
+- Emoji: usually NO emoji；在 100 条消息里，带 emoji 的不超过约 10 条。其中大约 1/5 可以是「纯表情消息」（单独一个或一小串表情）；其余如需使用 emoji，整条里最多 1-2 个，且尽量放在结尾，禁止一串连发。
 ${ambientAntiTemplate}
 ${ambientMotifRule}
 - When replying to a user: 仅当对方明确问你是谁/做什么时，才透露个人信息（姓名/职业/城市等）；平时接话不要主动自报身份，但语气必须符合 PERSONA。
@@ -1498,7 +2192,7 @@ ${room?.name || roomId} - ${room?.description || ''}`;
 
       const userPrompt = isAdminBot
         ? `Recent chat:\n${context}\n\n${triggerLine}\n${earningsLine}\n\nProvide a professional, accurate answer as ${bot.name}. Do not use 查看详情 or other app-button clichés.`
-        : `Recent chat:\n${context}\n\n${triggerLine}\n${earningsLine}\n\nWrite the next message as ${bot.name}. Vary length; default short. Do not use the phrase 查看详情 or similar button-copy.`;
+        : `Recent chat:\n${context}\n\n${triggerLine}\n${earningsLine}\n\nWrite the next message as ${bot.name}. Vary length; default short. Do not use the phrase 查看详情 or similar button-copy. 若本条是在聊收益/质押/金额：请用 PERSONA 里的日收益率与每日粗算收益自然回应（勿另编矛盾数字）。若只是日常聊天：不要硬塞收益数字。`;
 
       let messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
         { role: 'system', content: systemPrompt },
@@ -1536,6 +2230,10 @@ ${room?.name || roomId} - ${room?.description || ''}`;
         '这条用了群里高频低质量口头禅（如“口头不算数”等），请完全重写，给出自然且有信息量的表达。';
       const timeContextHint =
         '你这句话与当前上海时间不一致（如白天说“刚下夜班/夜班很累”）。请按当前时段重写，保持自然。';
+      const contextLogicHint =
+        '你这条回复没有接住上文（像自说自话）。请重写：必须引用对方原话里的 1-2 个关键词或具体细节（金额/币种/步骤/卡点/网络等），先针对性回答；若对方在聊收益/质押/金额对比，则引用 PERSONA 的日收益率/每日粗算收益来回应（勿另编矛盾数字）；若是日常闲聊则不必塞数字；是否反问可自由但不要只抛问题。不要跑题，也不要改变 PERSONA。';
+      const answerFirstHardHint =
+        '你这条像“只提问不回答”。请重写：必须先给出至少一句明确回答（陈述句，不是反问），再决定要不要补一个追问。禁止连续只问不答。';
 
       const antiShallowHint = isAdminBot
         ? '上一条有效信息不足或过于敷衍。请基于 PROJECT_FACTS 与 CALENDAR 给出更具体、可执行的说明；仍不确定则说明以站内页面与链上为准，勿堆叠套话。'
@@ -1559,6 +2257,19 @@ ${room?.name || roomId} - ${room?.description || ''}`;
             ? humanizeCasualChinese(piece, { mode: 'micro', punctuation: punct })
             : humanizeCasualChinese(piece, { punctuation: punct });
 
+        if (!replyToHuman && !chunkyFollowUp && latestQuestion && hasQuestionMark(latestQuestion)) {
+          // 群里有人问了问题：主动插话必须先“回答到点上”，否则重试
+          if (!looksContextualEnough(piece, latestQuestion, context)) {
+            messages = [...messages, { role: 'assistant', content: piece }, { role: 'user', content: contextLogicHintAmbient }];
+            rawLlm = await tryLlmChatCompletion(messages, retryTok, llmOpts);
+            continue;
+          }
+          if (!hasAnswerShape(piece)) {
+            messages = [...messages, { role: 'assistant', content: piece }, { role: 'user', content: answerFirstHardHint }];
+            rawLlm = await tryLlmChatCompletion(messages, retryTok, llmOpts);
+            continue;
+          }
+        }
         if (!chunkyFollowUp && isShallowRoboticAckLine(piece)) {
           messages = [...messages, { role: 'assistant', content: piece }, { role: 'user', content: antiShallowHint }];
           rawLlm = await tryLlmChatCompletion(messages, retryTok, llmOpts);
@@ -1571,6 +2282,20 @@ ${room?.name || roomId} - ${room?.description || ''}`;
         }
         if (!chunkyFollowUp && isTimeContextContradiction(piece, shHour)) {
           messages = [...messages, { role: 'assistant', content: piece }, { role: 'user', content: timeContextHint }];
+          rawLlm = await tryLlmChatCompletion(messages, retryTok, llmOpts);
+          continue;
+        }
+        if (
+          replyToHuman &&
+          effOpts.triggeredBy?.content &&
+          !looksContextualEnough(piece, effOpts.triggeredBy.content, context)
+        ) {
+          messages = [...messages, { role: 'assistant', content: piece }, { role: 'user', content: contextLogicHint }];
+          rawLlm = await tryLlmChatCompletion(messages, retryTok, llmOpts);
+          continue;
+        }
+        if (replyToHuman && effOpts.triggeredBy?.content && /[?？]/.test(effOpts.triggeredBy.content) && !hasAnswerShape(piece)) {
+          messages = [...messages, { role: 'assistant', content: piece }, { role: 'user', content: answerFirstHardHint }];
           rawLlm = await tryLlmChatCompletion(messages, retryTok, llmOpts);
           continue;
         }
@@ -1669,7 +2394,7 @@ ${room?.name || roomId} - ${room?.description || ''}`;
         }
       }
 
-      let finalContent = sanitizeLlmStockPhrases(content);
+      let finalContent = sanitizeAmbientNoiseTokens(sanitizeLinkLikeMarkup(sanitizeLlmStockPhrases(content)));
       if (isBannedLowValuePhrase(finalContent)) {
         rollbackLocks();
         return null;
@@ -1691,6 +2416,12 @@ ${room?.name || roomId} - ${room?.description || ''}`;
         return null;
       }
       if (!replyToHuman && this.isOverusedSmallTalkMotif(roomId, finalContent)) {
+        rollbackLocks();
+        return null;
+      }
+
+      finalContent = this.enforceEmojiQuota(roomId, finalContent, isAdminBot);
+      if (!finalContent.trim()) {
         rollbackLocks();
         return null;
       }

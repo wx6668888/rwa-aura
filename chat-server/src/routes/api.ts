@@ -130,6 +130,49 @@ router.get('/rooms/:roomId/messages', (req: Request, res: Response) => {
   res.json({ messages: enriched });
 });
 
+/** 定位到某条消息附近的一页（用于从搜索结果跳转） */
+router.get('/rooms/:roomId/messages/around/:messageId', (req: Request, res: Response) => {
+  const roomId = req.params.roomId as string;
+  const messageId = req.params.messageId as string;
+  if (!chatService.getRoom(roomId)) return res.status(404).json({ error: 'Room not found' });
+  const limit = Math.min(100, Math.max(10, parseInt(req.query.limit as string) || 50));
+  const messages = chatService.getMessagesAround(roomId, messageId, limit);
+  const enriched = messages.map((msg) => {
+    const u = chatService.getUser(msg.userId);
+    return {
+      ...msg,
+      user: u ? toPublicChatUser(u) : undefined,
+    };
+  });
+  res.json({ messages: enriched });
+});
+
+/** 跨房间搜索聊天记录（需钱包/访客签名） */
+router.get('/search/messages', authMiddleware, (req: Request, res: Response) => {
+  const userId = (req as any).userId as string | undefined;
+  if (!userId) return res.status(401).json({ error: 'Authentication required' });
+  const q = String(req.query.q || '').trim();
+  const limit = Math.min(80, Math.max(1, parseInt(req.query.limit as string) || 40));
+  if (q.length < 2) {
+    return res.json({ results: [] });
+  }
+  const found = chatService.searchMessagesGlobal(q, limit);
+  const results = found.map((msg) => {
+    const u = chatService.getUser(msg.userId);
+    const room = chatService.getRoom(msg.roomId);
+    return {
+      message: {
+        ...msg,
+        user: u ? toPublicChatUser(u) : undefined,
+      },
+      room: room
+        ? { id: room.id, name: room.name }
+        : { id: msg.roomId, name: msg.roomId },
+    };
+  });
+  res.json({ results });
+});
+
 router.post('/rooms/:roomId/redpackets', authMiddleware, async (req: Request, res: Response) => {
   const userId = (req as any).userId as string;
   const roomId = req.params.roomId as string;
@@ -305,6 +348,42 @@ router.post('/internal/trigger-bot-burst', async (req: Request, res: Response) =
   const cap = Number.isFinite(maxBots) && maxBots > 0 && maxBots <= 50 ? Math.floor(maxBots) : 15;
   const out = await botService.triggerBotBurst(roomId, cap);
   res.json({ ok: true, roomId, ...out });
+});
+
+/**
+ * 仅本机：手动触发“管理员每日播报”（用于试播/验文案）。
+ * Body:
+ * - weekdayIdx: number (0=Mon..6=Sun) required
+ * - slot: 'morning'|'afternoon'|'night' optional
+ * - variant: 'long'|'medium' optional
+ * - roomIds: string[] optional (default BOT_ADMIN_BROADCAST_ROOMS)
+ */
+router.post('/internal/admin-broadcast-test', (req: Request, res: Response) => {
+  if (!isLocalhostChatReq(req)) {
+    return res.status(403).json({ error: 'localhost only' });
+  }
+  const weekdayIdx = Number(req.body?.weekdayIdx);
+  if (!Number.isFinite(weekdayIdx)) {
+    return res.status(400).json({ error: 'weekdayIdx required (0=Mon..6=Sun)' });
+  }
+  const slot = typeof req.body?.slot === 'string' ? req.body.slot.trim() : 'morning';
+  const variant = typeof req.body?.variant === 'string' ? req.body.variant.trim() : undefined;
+  const force = req.body?.force === true;
+
+  const roomIdsRaw = String(process.env.BOT_ADMIN_BROADCAST_ROOMS || 'room-announcements,room-general');
+  const roomIds: string[] = Array.isArray(req.body?.roomIds)
+    ? (req.body.roomIds as any[]).map((x) => String(x || '').trim()).filter(Boolean)
+    : roomIdsRaw.split(',').map((s) => s.trim()).filter(Boolean);
+
+  const out = botService.triggerAdminBroadcastManual({
+    roomIds,
+    weekdayIdx,
+    slot: slot as any,
+    variant: variant as any,
+    now: new Date(),
+    force,
+  });
+  res.json(out);
 });
 
 export default router;

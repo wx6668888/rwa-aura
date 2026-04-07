@@ -262,17 +262,114 @@ export function isBannedLowValuePhrase(text: string): boolean {
 }
 
 /**
- * 时段语义冲突：白天别说“刚下夜班/夜班很累”等当下状态。
+ * 「确认了心里才踏实 / 操作慢就等确认」类高频 comfort 模板，多 bot 极易撞句，需触发重写或丢弃。
+ */
+export function isComfortConfirmCliche(text: string): boolean {
+  const t = text.replace(/\s+/g, '').trim();
+  if (!t) return false;
+
+  const cryptoCue = /(确认|等确认|链上|页面|质押|赎回|规则|条款|公告|操作|核对|对一下)/.test(t);
+  const confirmEase =
+    /确认(了)?.{0,10}心里(才)?踏实/.test(t) ||
+    /心里(才)?踏实.{0,15}(确认|链上|等)/.test(t) ||
+    /(确认|核对|对完|对了一下).{0,16}心里(才)?(踏实|稳)/.test(t) ||
+    /确认.{0,8}(就|才).{0,4}(安心|踏实)/.test(t) ||
+    /心里有谱了/.test(t);
+
+  if (confirmEase && cryptoCue) return true;
+
+  if (
+    /操作慢就等确认|链上慢就等确认|链上.{0,6}等确认|链上慢我(就)?等确认|等确认了再说|等确认再(操作|动|点|充)/.test(
+      t
+    )
+  ) {
+    return true;
+  }
+
+  if (t.length <= 52) {
+    if (/确认了再说|确认了再(充|操作)|慢点就等确认/.test(t)) return true;
+  }
+
+  const easeHits = (t.match(/(心里|心).{0,4}(才)?踏实|等确认/g) || []).length;
+  if (cryptoCue && easeHits >= 2) return true;
+
+  return false;
+}
+
+/**
+ * 氛围机器人「起帖」：必须像抛话题或提问，避免无信息水群。
+ */
+export function isAmbientTopicOrQuestionOpener(text: string): boolean {
+  const t = String(text || '').trim();
+  if (t.length < 8) return false;
+  if (/[？?]/.test(t)) return true;
+  if (/吗[？?!！.。…~～]*$/u.test(t)) return true;
+  if (/嘛[？?!！.。…~～]*$/u.test(t)) return true;
+  if (
+    /(大家觉得|你们觉得|有没有人|有没有大哥|来聊|聊聊|想问问|想请教|谁懂|咋看|咋样|为啥|为什么|怎么|如何|是不是|会不会|能不能)/.test(t)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * 时段语义冲突：须与北京时间（上海钟点）一致。
  * hour 传入上海小时(0-23)。
  */
 export function isTimeContextContradiction(text: string, hour: number): boolean {
   const t = text.replace(/\s+/g, '').trim();
   if (!t) return false;
+
   const isDaytime = hour >= 8 && hour < 19;
   const isDeepNight = hour >= 0 && hour < 6;
   const nightNowLike = /(刚下夜班|夜班挺累|夜班太累|通宵刚结束|凌晨还在忙)/;
   const dayNowLike = /(大中午|午休刚醒|白天太晒|中午太热)/;
   if (isDaytime && nightNowLike.test(t)) return true;
   if (isDeepNight && dayNowLike.test(t)) return true;
+
+  /** 晚餐 / 夜宵 / 夜市 / 收摊 / 夜间「娃睡了」类（须覆盖「晚餐」等书面说法与常见变体） */
+  const eveningMeal =
+    /(吃晚饭|吃晚餐|吃晚饭后|晚餐后|刚吃.{0,10}晚饭|刚吃.{0,10}晚餐|晚饭吃了|晚餐吃了|晚饭得|晚餐得|晚饭时间|晚餐时间|该吃晚饭|该吃晚餐|吃完晚饭|吃完晚餐|吃了晚饭|吃过晚饭|去吃晚饭|去吃晚餐|点个夜宵|吃个夜宵|整点夜宵|夜宵|宵夜|撸串喝酒|撸个串)/;
+  const nightMarketStall =
+    /(夜市|逛夜市|夜排挡|大排档|晚上.{0,10}收摊|收摊.{0,12}刷|刚收摊|收摊了|收摊回家|收摊刷|打烊了|打烊)/;
+  const kidBedtime =
+    /(娃睡了|娃儿睡了|娃子睡了|孩儿睡了|孩子睡了|宝宝睡了|小宝睡了|闺女睡了|儿子睡了|哄娃睡|哄孩子睡|哄睡着了|等娃睡|等娃睡了|等孩子睡|娃睡后|睡了再上线|睡了再刷|娃放倒|放倒娃|睡熟了才)/;
+  /** 人设口癖被当成「此刻」说出（上午不应出现） */
+  const personaNightBlurb = /(娃睡后上线)/;
+  const goToBedSoon = /(准备睡觉|洗洗睡|该睡了|要睡了|去睡了)/;
+
+  // 清晨至上午（5–12）：禁止晚间吃饭、夜市、哄睡、收摊等
+  if (hour >= 5 && hour < 12) {
+    if (eveningMeal.test(t)) return true;
+    if (nightMarketStall.test(t)) return true;
+    if (kidBedtime.test(t)) return true;
+    if (personaNightBlurb.test(t)) return true;
+    if (goToBedSoon.test(t)) return true;
+    if (/(刚下班|下了班).{0,12}(吃晚饭|晚饭|晚餐|夜市|收摊)/.test(t)) return true;
+  }
+
+  // 中午到傍晚前（12–17）：仍忌晚餐完成态、夜市、夜间哄睡
+  if (hour >= 12 && hour < 17) {
+    if (eveningMeal.test(t)) return true;
+    if (nightMarketStall.test(t)) return true;
+    if (kidBedtime.test(t)) return true;
+    if (personaNightBlurb.test(t)) return true;
+  }
+
+  // 傍晚（17–19）：可聊晚饭准备，但忌「娃已睡」类通常指夜间场景
+  if (hour >= 17 && hour < 19) {
+    if (kidBedtime.test(t)) return true;
+    if (personaNightBlurb.test(t)) return true;
+  }
+
+  // 深夜至凌晨：忌白天场景、上班早饭等
+  if (hour >= 22 || hour < 5) {
+    if (/(大中午|午休了|吃午饭|中午饭|刚吃完午饭|太阳晒|大白天)/.test(t)) return true;
+  }
+  if (hour >= 0 && hour < 6) {
+    if (/(吃早饭|早餐吃了|刚到公司|上班路上|早高峰)/.test(t)) return true;
+  }
+
   return false;
 }

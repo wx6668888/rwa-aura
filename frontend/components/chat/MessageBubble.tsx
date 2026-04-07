@@ -10,7 +10,14 @@ import { useTranslation } from '@/lib/i18n';
 import { resolveChatMediaUrl } from '@/lib/chat-api';
 
 function formatTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  // 显示为 日期+时间，避免与下方时间重复 & 更清晰
+  return new Date(ts).toLocaleString([], {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function formatDate(ts: number, t: (key: string) => string): string {
@@ -218,7 +225,7 @@ export function MessageGroup({ messages, isOwn, onToast, onMentionUser }: Messag
                 </div>
               ) : (
                 <div
-                  className={`break-words py-[1px] text-[13px] leading-[1.45] ${
+                  className={`break-words whitespace-pre-wrap py-[1px] text-[13px] leading-[1.45] ${
                     isOwn ? ownBubble : 'text-text-primary'
                   }`}
                 >
@@ -231,9 +238,6 @@ export function MessageGroup({ messages, isOwn, onToast, onMentionUser }: Messag
                 </div>
               )
             )}
-            <span className={`mt-0.5 text-[10px] font-mono text-text-disabled ${isOwn ? 'pr-1' : 'pl-1'}`}>
-              {formatTime(msg.timestamp)}
-            </span>
           </div>
         ))}
         </div>

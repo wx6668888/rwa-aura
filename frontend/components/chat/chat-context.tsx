@@ -109,6 +109,10 @@ interface ChatContextType {
   getRedPacketRecords: (packetId: string) => Promise<Array<{ userId: string; nickname: string; amount: number; claimedAt: number }>>;
   sendTyping: () => void;
   loadMoreMessages: () => void;
+  /** 从搜索结果跳转到某条消息所在上下文 */
+  jumpToMessage: (roomId: string, messageId: string) => Promise<void>;
+  jumpTargetMessageId: string | null;
+  clearJumpTarget: () => void;
   getAuthHeaders: () => Record<string, string>;
   clearActionError: () => void;
   createGroupRoom: (name: string, description: string) => Promise<ChatRoom>;
@@ -135,6 +139,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [walletEscrow, setWalletEscrow] = useState<Record<ChatCurrency, number>>({ USDT: 0, RWA: 0 });
   const [walletWithdrawn, setWalletWithdrawn] = useState<Record<ChatCurrency, number>>({ USDT: 0, RWA: 0 });
   const [walletLoading, setWalletLoading] = useState(false);
+  const [jumpTargetMessageId, setJumpTargetMessageId] = useState<string | null>(null);
   const signatureRef = useRef<string>('');
   const addressRef = useRef<string>('');
   const socketRef = useRef<Socket | null>(null);
@@ -157,9 +162,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // ─── Load messages ─────────────────────────────────
   const loadMessages = useCallback(async (roomId: string) => {
     try {
+      // 后端 messages 接口需要 x-wallet-*（否则会 401，导致 messages 被置空，看起来像聊天记录被清空）
+      const headers: Record<string, string> = {}
+      if (addressRef.current && signatureRef.current) {
+        headers['x-wallet-address'] = addressRef.current
+        headers['x-wallet-signature'] = signatureRef.current
+      }
+
       const res = await fetchWithTimeout(chatHttpUrl(`rooms/${roomId}/messages?limit=50`), {
         timeoutMs: 22000,
-      });
+        headers,
+      })
       const data = await res.json();
       setMessages(data.messages || []);
     } catch (err) {
@@ -312,8 +325,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // ─── Set active room ──────────────────────────────
   const setActiveRoom = useCallback((roomId: string) => {
     setActiveRoomId(roomId);
-    loadMessages(roomId);
-    socket?.emit('room:join', roomId, () => {});
+    if (socket) {
+      // 先 join 再拉取，避免 membership 尚未写入导致 REST 拉不到消息
+      socket.emit('room:join', roomId, () => {
+        void loadMessages(roomId);
+      });
+    } else {
+      void loadMessages(roomId);
+    }
   }, [socket, loadMessages]);
 
   // ─── Send message ─────────────────────────────────
@@ -492,13 +511,54 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (!activeRoomId || messages.length === 0) return;
     const oldest = messages[0]?.timestamp;
     try {
-      const res = await fetch(chatHttpUrl(`rooms/${activeRoomId}/messages?limit=50&before=${oldest}`));
+      const headers: Record<string, string> = {}
+      if (addressRef.current && signatureRef.current) {
+        headers['x-wallet-address'] = addressRef.current
+        headers['x-wallet-signature'] = signatureRef.current
+      }
+
+      const res = await fetch(
+        chatHttpUrl(`rooms/${activeRoomId}/messages?limit=50&before=${oldest}`),
+        { headers }
+      );
       const data = await res.json();
       setMessages((prev) => [...(data.messages || []), ...prev]);
     } catch (err) {
       console.error('Failed to load more:', err);
     }
   }, [activeRoomId, messages]);
+
+  const clearJumpTarget = useCallback(() => setJumpTargetMessageId(null), []);
+
+  const jumpToMessage = useCallback(
+    async (roomId: string, messageId: string) => {
+      setJumpTargetMessageId(null);
+      setActiveRoomId(roomId);
+      socketRef.current?.emit('room:join', roomId, () => {});
+      try {
+        const headers: Record<string, string> = {}
+        if (addressRef.current && signatureRef.current) {
+          headers['x-wallet-address'] = addressRef.current
+          headers['x-wallet-signature'] = signatureRef.current
+        }
+
+        const res = await fetchWithTimeout(
+          chatHttpUrl(`rooms/${roomId}/messages/around/${messageId}?limit=50`),
+          {
+            timeoutMs: 22000,
+            headers,
+          }
+        )
+        const data = await res.json();
+        setMessages(data.messages || []);
+        setJumpTargetMessageId(messageId);
+      } catch (err) {
+        console.error('jumpToMessage failed:', err);
+        await loadMessages(roomId);
+      }
+    },
+    [loadMessages]
+  );
 
   const getAuthHeaders = useCallback((): Record<string, string> => {
     if (!addressRef.current || !signatureRef.current) {
@@ -721,6 +781,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       withdrawWallet,
       sendTyping,
       loadMoreMessages,
+      jumpToMessage,
+      jumpTargetMessageId,
+      clearJumpTarget,
       getAuthHeaders,
       clearActionError,
       createGroupRoom,

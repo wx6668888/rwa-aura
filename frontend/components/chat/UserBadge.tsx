@@ -94,6 +94,7 @@ export function UserAvatar({ user, size = 32 }: { user: ChatUser; size?: number 
       : null;
   const initial = botMark ?? (user.isBot ? '?' : user.nickname?.[0]?.toUpperCase() || '?');
   const isElite = config.tier === 'elite';
+  const isAdmin = Boolean(user.isAdmin);
 
   const iconSrc =
     user.avatar && (user.avatar.startsWith('/') || user.avatar.startsWith('http'))
@@ -129,6 +130,24 @@ export function UserAvatar({ user, size = 32 }: { user: ChatUser; size?: number 
         />
       ) : (
         initial
+      )}
+      {isAdmin && (
+        <div
+          className="absolute -top-[2px] -right-[2px] rounded-full flex items-center justify-center"
+          style={{
+            width: Math.max(14, Math.round(size * 0.34)),
+            height: Math.max(14, Math.round(size * 0.34)),
+            background: 'linear-gradient(135deg, #00f5d4, #8b5cf6)',
+            border: '2px solid var(--void-black)',
+            boxShadow: '0 0 10px rgba(0,245,212,0.25)',
+            fontSize: Math.max(9, Math.round(size * 0.18)),
+            lineHeight: 1,
+            color: '#06141a',
+          }}
+          title="官方/管理员"
+        >
+          ✓
+        </div>
       )}
       {user.isOnline && (
         <div

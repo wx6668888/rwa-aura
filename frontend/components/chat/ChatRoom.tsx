@@ -49,8 +49,18 @@ function groupMessages(messages: ChatMessage[]): { type: 'messages' | 'date'; da
 }
 
 export default function ChatRoom() {
-  const { messages, activeRoomId, rooms, currentUser, typingUsers, isAuthenticated, loadMoreMessages, getAuthHeaders } =
-    useChat();
+  const {
+    messages,
+    activeRoomId,
+    rooms,
+    currentUser,
+    typingUsers,
+    isAuthenticated,
+    loadMoreMessages,
+    getAuthHeaders,
+    jumpTargetMessageId,
+    clearJumpTarget,
+  } = useChat();
   const { locale } = useLocale();
   const { t } = useTranslation(locale);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -120,15 +130,35 @@ export default function ChatRoom() {
 
   /** 仅在新消息追加时滚到底；加载历史（prepend）时跳过，避免与保持视口冲突导致整页抖动 */
   useEffect(() => {
+    if (jumpTargetMessageId) {
+      return;
+    }
     if (skipAutoScrollBottomRef.current) {
       skipAutoScrollBottomRef.current = false;
       return;
     }
     const el = scrollRef.current;
     if (el) {
-      el.scrollTop = el.scrollHeight;
+      // 只有当用户“本来就在底部附近”时才自动滚到底
+      // 否则用户可能正在看更早消息，强制滚到底会造成“像刷新/跳动”的错觉。
+      const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      const nearBottomThresholdPx = 160;
+      if (distFromBottom <= nearBottomThresholdPx) {
+        el.scrollTop = el.scrollHeight;
+      }
     }
-  }, [messages]);
+  }, [messages, jumpTargetMessageId]);
+
+  /** 从搜索结果跳转：滚动到目标消息 */
+  useEffect(() => {
+    if (!jumpTargetMessageId) return;
+    const id = window.setTimeout(() => {
+      const el = document.querySelector(`[data-message-id="${jumpTargetMessageId}"]`);
+      el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      clearJumpTarget();
+    }, 120);
+    return () => clearTimeout(id);
+  }, [messages, jumpTargetMessageId, clearJumpTarget]);
 
   // 滚动到顶部触发加载更多
   const handleScroll = React.useCallback(async () => {

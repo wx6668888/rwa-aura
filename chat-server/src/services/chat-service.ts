@@ -11,6 +11,11 @@ import { User, Message, Room, NodeLevel, RedPacket, ChatCurrency } from '../mode
 
 const USER_AVATAR_POOL = 50;
 
+/** 每房间仅保留最近若干条消息；超出时按批从最早删除（与前端说明文案一致） */
+const MAX_MESSAGES_PER_ROOM = 1000;
+/** 单次持久化时最多删除的条数（避免一次 splice 过大） */
+const MESSAGE_TRIM_CHUNK = 100;
+
 /** 与机器人同款图标池：按地址确定性分配，登录多次不变 */
 export function pickDeterministicUserAvatar(address: string): string {
   const h = BigInt(ethers.id(address.toLowerCase()));
@@ -66,6 +71,8 @@ class ChatService {
   private userWithdrawnBalances = new Map<string, Record<ChatCurrency, number>>(); // userId -> currency -> withdrawn total
   private poolReservedBalances: Record<ChatCurrency, number> = { USDT: 0, RWA: 0 }; // claimed-but-unwithdrawn total per currency
   private provider: ethers.JsonRpcProvider | null = null;
+  /** 机器人话题池（按人设分组）持久化到 chat-data.json */
+  private botTopicPools: Record<string, Array<Record<string, any>>> = {};
 
   constructor() {
     // Restore from disk if available, otherwise create defaults.
@@ -168,6 +175,7 @@ class ChatService {
         userWithdrawnBalances?: Record<string, Record<ChatCurrency, number>>;
         poolReservedBalances?: Record<ChatCurrency, number>;
         addressToUser?: Record<string, string>;
+        botTopicPools?: Record<string, Array<Record<string, any>>>;
       };
 
       this.users = new Map((data.users || []).map((u) => [u.id, u]));
@@ -203,6 +211,7 @@ class ChatService {
         })
       );
       this.addressToUser = new Map(Object.entries(data.addressToUser || {}));
+      this.botTopicPools = (data.botTopicPools || {}) as Record<string, Array<Record<string, any>>>;
 
       // Ledger
       this.userEscrowBalances = new Map(Object.entries(data.userEscrowBalances || {}).map(([userId, balances]) => [userId, balances as any]));
@@ -257,6 +266,7 @@ class ChatService {
           Array.from(this.userWithdrawnBalances.entries()).map(([userId, balances]) => [userId, balances])
         ),
         poolReservedBalances: this.poolReservedBalances,
+        botTopicPools: this.botTopicPools,
       };
       fs.writeFileSync(this.dataFilePath, JSON.stringify(payload, null, 2), 'utf8');
     } catch (err) {
@@ -435,6 +445,15 @@ class ChatService {
     this.persistToDisk();
   }
 
+  getBotTopicPools(): Record<string, Array<Record<string, any>>> {
+    return this.botTopicPools;
+  }
+
+  setBotTopicPools(pools: Record<string, Array<Record<string, any>>>): void {
+    this.botTopicPools = pools;
+    this.persistToDisk();
+  }
+
   getUserByAddress(address: string): User | undefined {
     const userId = this.addressToUser.get(address.toLowerCase());
     return userId ? this.users.get(userId) : undefined;
@@ -580,9 +599,9 @@ class ChatService {
 
     const roomMessages = this.messages.get(roomId) || [];
     roomMessages.push(msg);
-    // Keep last 500 messages per room
-    if (roomMessages.length > 500) {
-      roomMessages.splice(0, roomMessages.length - 500);
+    while (roomMessages.length > MAX_MESSAGES_PER_ROOM) {
+      const excess = roomMessages.length - MAX_MESSAGES_PER_ROOM;
+      roomMessages.splice(0, Math.min(MESSAGE_TRIM_CHUNK, excess));
     }
     this.messages.set(roomId, roomMessages);
 
@@ -614,6 +633,34 @@ class ChatService {
       if (m) return { roomId, message: m };
     }
     return null;
+  }
+
+  /** 全文搜索（所有房间），按时间倒序，仅匹配文本/图片消息的 content */
+  searchMessagesGlobal(query: string, limit = 50): Message[] {
+    const q = query.trim().toLowerCase();
+    if (q.length < 2) return [];
+    const cap = Math.min(200, Math.max(1, limit));
+    const out: Message[] = [];
+    for (const msgs of this.messages.values()) {
+      for (const m of msgs) {
+        if (m.type !== 'text' && m.type !== 'image') continue;
+        if (!(m.content || '').toLowerCase().includes(q)) continue;
+        out.push(m);
+      }
+    }
+    out.sort((a, b) => b.timestamp - a.timestamp);
+    return out.slice(0, cap);
+  }
+
+  /** 取某条消息前后窗口，便于前端跳转定位 */
+  getMessagesAround(roomId: string, messageId: string, limit = 50): Message[] {
+    const msgs = this.messages.get(roomId) || [];
+    const idx = msgs.findIndex((m) => m.id === messageId);
+    if (idx === -1) return [];
+    const lim = Math.min(100, Math.max(10, limit));
+    const half = Math.floor(lim / 2);
+    const start = Math.max(0, idx - half);
+    return msgs.slice(start, Math.min(msgs.length, start + lim));
   }
 
   /** 机器人当日去重：收集自 sinceMs（含）起的文本消息归一化键 */

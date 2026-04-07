@@ -153,10 +153,60 @@ export function getCalendarExtraFallbackLines(now = new Date()): string[] {
   return out;
 }
 
+/** 人类可读：当前北京时间（用于 LLM 锚点） */
+export function formatBeijingDateTimeForLlm(now = new Date()): string {
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(now);
+}
+
+/**
+ * 强制 LLM 按北京时间叙事：吃饭/带娃/收摊等必须与当前钟点一致
+ */
+export function buildBeijingDailyLifeNarrationRules(now = new Date()): string {
+  const { hour } = getShanghaiHourMinute(now);
+  const ts = formatBeijingDateTimeForLlm(now);
+  const lines: string[] = [
+    `【北京时间锚点】当前时刻：${ts}（Asia/Shanghai，与北京时间相同）。所有涉及吃饭、睡觉、下班、带娃、开店收摊的描写必须与此刻一致，禁止假装是晚上/深夜/刚吃完晚饭若实际为清晨上午。`,
+    '- 叙事一律以上海/北京时间为准，不要按 UTC 或服务器本地时间想象场景。',
+    '- 人设（PERSONA）里的「娃睡后上线」「夜市摊主」「夜班」等只是身份标签：本句描写必须是「此刻正在发生的事」，清晨至傍晚不得把夜间习惯写成本刻场景（例如上午不能说娃已睡、刚吃完晚饭）。',
+  ];
+  if (hour >= 5 && hour < 10) {
+    lines.push(
+      '- 当前属清晨至上午早间：可写吃早饭、通勤、送孩子上学/去幼儿园、刚到公司、泡茶开始一天、上午店里客流等；禁止写「吃晚饭/晚餐/夜宵/宵夜」「娃睡了/孩子睡了/哄睡完成」「收摊逛夜市/晚上收摊刷群」「刚下班去吃晚饭」；也不要写「娃睡后上线」当本句状态（应改成送娃出门前、刚送完娃等）。'
+    );
+  } else if (hour >= 10 && hour < 12) {
+    lines.push(
+      '- 当前近中午：可写午饭、上午忙完等；不要写「吃晚饭/晚餐/夜宵」「娃睡了（指夜间哄睡）」「夜市/晚上收摊」类晚间话术，也不要把「娃睡后上线」当本句状态。'
+    );
+  } else if (hour >= 12 && hour < 17) {
+    lines.push(
+      '- 当前下午：可写午休后、下午茶、接孩子放学前等；不要写「吃晚饭了/刚吃完晚饭/刚吃完晚餐」「娃睡了（夜间）」「夜市/晚上收摊」等晚间话术。'
+    );
+  } else if (hour >= 17 && hour < 19) {
+    lines.push(
+      '- 当前傍晚：可以自然提到准备晚饭或刚下班；避免写「娃已经睡了」类通常指夜间哄睡完成的表述（除非明确是幼儿午睡且上下文合理）。'
+    );
+  } else {
+    lines.push(
+      '- 当前晚间或深夜：晚饭、夜宵、娃睡后上线、收摊等表述一般合理，但仍勿与「大中午/午休刚醒」等白天场景混用。'
+    );
+  }
+  return lines.join('\n');
+}
+
 /** 给 LLM 的日历与收益时段说明 */
 export function describeCalendarForLlm(now = new Date()): string {
   const key = getShanghaiDateKey(now);
   const lines: string[] = [];
+  lines.push(`【当前北京时间】${formatBeijingDateTimeForLlm(now)}（一切生活化描写必须与此刻钟点一致）。`);
   if (isInEarningsDistributionWindow(now)) {
     lines.push(
       '【收益话术窗口】当前为上海时间早间收益发放时段约 8:00–8:30，仅在此窗口内可以说「今天到账大约 X RWA」这类具体数字；语气仍要口语自然。'

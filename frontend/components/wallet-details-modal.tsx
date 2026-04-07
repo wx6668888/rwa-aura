@@ -188,6 +188,7 @@ export function WalletDetailsModal({ open, isOpen, onClose, onOpenChainModal }: 
                       <div className="text-[15px] font-semibold text-[#e2e8f0]">{r.symbol}</div>
                       <div className="text-[13px] text-[#64748b]">{r.name}</div>
                     </div>
+
                   </div>
                   <div className="text-[15px] font-medium text-[#e2e8f0]">{Number(r.amount).toFixed(4)}</div>
                 </div>

@@ -7,6 +7,7 @@ import type {
   BotPersonaRow,
   RwabotChatPersonality,
   RwabotDetailedPersona,
+  RwabotFinancialData,
 } from './rwa-bot-persona-types';
 import {
   RWA_STAKING_RULES,
@@ -467,12 +468,38 @@ function buildOne(index: number): RwabotDetailedPersona {
   };
 }
 
+/** 从「1.04%」「2.0%」解析为每日比例小数；失败则 0 */
+function parseDailyRoiToRate(roiStr: string): number {
+  const m = String(roiStr).match(/(\d+(?:\.\d+)?)/);
+  if (!m) return 0;
+  const n = Number(m[1]);
+  return Number.isFinite(n) ? n / 100 : 0;
+}
+
+/** 与人设质押一致的「日收益率 + 每日两项粗算收益」，供模型当固定记忆使用 */
+export function buildPersonaDailyYieldMemo(fd: RwabotFinancialData): string {
+  let rate = parseDailyRoiToRate(fd.daily_roi);
+  if (!rate || !Number.isFinite(rate)) {
+    const s = roiForLockup(fd.lock_period_days, fd.is_vip_yield);
+    rate = Number(s) / 100;
+  }
+  const rwa = Math.round(fd.staking_amount_rwa * rate * 100) / 100;
+  const usdt = Math.round(fd.staking_amount_usdt * rate * 100) / 100;
+  return [
+    `【个人收益口径（必须记住，聊天可自然引用）】`,
+    `- 你的日收益率（与当前锁仓一致）：${fd.daily_roi}`,
+    `- 按「本金 × 日收益率」粗算，你每天大约 ${rwa.toFixed(2)} RWA、约 ${usdt.toFixed(2)} USDT（到账节奏与发放窗口以页面/公告为准；口头可以说「我按页面大概是这个数」）。`,
+    `- 谈到质押/收益/和他人对比时，优先用以上百分比与两项金额，不要临时编另一套互相矛盾的数字。`,
+  ].join('\n');
+}
+
 /** 写入 LLM system prompt 的完整人设块（中文，结构化） */
 export function buildLlmPersonaBlock(p: RwabotDetailedPersona): string {
   const fd = p.financial_data;
   const vipLine = fd.is_vip_yield
     ? `【特权】日收益率按站内 VIP/活动档：${fd.daily_roi}（知识库 special_vip）；锁仓 ${fd.lock_period_days} 天。`
     : `锁仓 ${fd.lock_period_days} 天，日收益率 ${fd.daily_roi}（与知识库一致）。`;
+  const yieldMemo = buildPersonaDailyYieldMemo(fd);
 
   return [
     `你是真实群友「${p.display_name}」，昵称展示以短地址为准时不要拆穿设定。`,
@@ -480,6 +507,7 @@ export function buildLlmPersonaBlock(p: RwabotDetailedPersona): string {
     `职业：${p.identity.occupation}（${p.identity.company}），学历：${p.identity.education}，家庭：${p.identity.family_status}，常用机：${p.identity.device_info}。`,
     `【质押与收益】钱包展示地址 ${fd.wallet_address}；质押 ${fd.staking_amount_rwa} RWA ≈ ${fd.staking_amount_usdt} USDT（1 RWA=0.85 USDT）。`,
     `质押起始日 ${fd.staking_date}。${vipLine}`,
+    yieldMemo,
     `获客：${fd.acquisition_channel}。动机：${fd.motivation}`,
     `投资风格：${fd.investment_style}。`,
     `【作息】活跃时段：${p.behavior.active_time_slots.join('；')}。回复节奏：${p.behavior.response_speed}。上线频率：${p.behavior.online_frequency}。`,

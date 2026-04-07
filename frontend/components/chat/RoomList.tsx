@@ -1,9 +1,11 @@
 'use client';
 
 import React from 'react';
-import { useChat } from './chat-context';
+import { useChat, type ChatMessage } from './chat-context';
 import { useLocale } from '@/components/locale-provider';
 import { useTranslation } from '@/lib/i18n';
+import { chatHttpUrl } from '@/lib/chat-api';
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 
 export default function RoomList(
   {
@@ -11,7 +13,16 @@ export default function RoomList(
     onOpenWallet,
   }: { closeMobileSidebar?: () => void; onOpenWallet?: () => void } = {}
 ) {
-  const { rooms, activeRoomId, setActiveRoom, isConnected, createGroupRoom, isAuthenticated } = useChat();
+  const {
+    rooms,
+    activeRoomId,
+    setActiveRoom,
+    isConnected,
+    createGroupRoom,
+    isAuthenticated,
+    jumpToMessage,
+    getAuthHeaders,
+  } = useChat();
   const { locale } = useLocale();
   const { t } = useTranslation(locale);
   const [search, setSearch] = React.useState('');
@@ -20,6 +31,41 @@ export default function RoomList(
   const [newDesc, setNewDesc] = React.useState('');
   const [createErr, setCreateErr] = React.useState('');
   const [creating, setCreating] = React.useState(false);
+  const [messageHits, setMessageHits] = React.useState<
+    Array<{ message: ChatMessage; room: { id: string; name: string } }>
+  >([]);
+  const [msgSearchLoading, setMsgSearchLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    const q = search.trim();
+    if (q.length < 2 || !isAuthenticated) {
+      setMessageHits([]);
+      return;
+    }
+    const headers = getAuthHeaders();
+    if (!headers['x-wallet-address'] || !headers['x-wallet-signature']) {
+      setMessageHits([]);
+      return;
+    }
+    const id = window.setTimeout(() => {
+      void (async () => {
+        setMsgSearchLoading(true);
+        try {
+          const res = await fetchWithTimeout(
+            chatHttpUrl(`search/messages?q=${encodeURIComponent(q)}&limit=30`),
+            { headers, timeoutMs: 22000 }
+          );
+          const data = await res.json().catch(() => ({}));
+          setMessageHits(Array.isArray(data?.results) ? data.results : []);
+        } catch {
+          setMessageHits([]);
+        } finally {
+          setMsgSearchLoading(false);
+        }
+      })();
+    }, 350);
+    return () => clearTimeout(id);
+  }, [search, isAuthenticated, getAuthHeaders]);
 
   const submitNewGroup = async () => {
     if (!newName.trim()) {
@@ -154,11 +200,11 @@ export default function RoomList(
         </div>
       )}
 
-      {/* Room list */}
-      <div className="flex-1 overflow-y-auto px-2 pb-2 scrollbar-thin scrollbar-thumb-white/5 scrollbar-track-transparent">
+      {/* Room list + 聊天记录搜索 + 保留条数说明 */}
+      <div className="flex-1 overflow-y-auto px-2 pb-2 scrollbar-thin scrollbar-thumb-white/5 scrollbar-track-transparent min-h-0">
         {rooms
           .filter((r) => {
-            if (!search) return true;
+            if (!search.trim()) return true;
             const dn = getRoomDisplayName(r).toLowerCase();
             return dn.includes(search.toLowerCase());
           })
@@ -217,6 +263,60 @@ export default function RoomList(
             </button>
           );
         })}
+
+        {search.trim().length >= 2 && isAuthenticated && (
+          <div className="mt-3 border-t border-border-subtle/80 pt-2 px-1">
+            <div className="text-[10px] font-mono font-semibold text-text-disabled uppercase tracking-[0.12em] mb-1.5">
+              {t('chat.searchMessagesLabel')}
+            </div>
+            {msgSearchLoading && (
+              <p className="text-[10px] text-text-disabled font-mono px-1 py-1">…</p>
+            )}
+            {!msgSearchLoading && messageHits.length === 0 && (
+              <p className="text-[10px] text-text-disabled px-1 py-0.5">{t('chat.searchNoResults')}</p>
+            )}
+            {!msgSearchLoading &&
+              messageHits.map(({ message: m, room: r }) => {
+                const preview =
+                  m.type === 'image' ? `[${t('chat.imageSoon')}]` : (m.content || '').replace(/\s+/g, ' ').trim();
+                const short = preview.length > 72 ? `${preview.slice(0, 72)}…` : preview;
+                const roomLabel =
+                  r.id === 'room-general'
+                    ? t('chat.roomGeneral')
+                    : r.id === 'room-announcements'
+                      ? t('chat.roomAnnouncements')
+                      : r.id === 'room-staking'
+                        ? t('chat.roomStaking')
+                        : r.id === 'room-trading'
+                          ? t('chat.roomTrading')
+                          : r.id === 'room-vip'
+                            ? t('chat.roomVip')
+                            : stripRoomPrefix(r.name || r.id);
+                return (
+                  <button
+                    key={`${m.roomId}-${m.id}`}
+                    type="button"
+                    onClick={() => {
+                      void jumpToMessage(m.roomId, m.id);
+                      closeMobileSidebar?.();
+                    }}
+                    className="w-full text-left rounded-lg px-2 py-1.5 mb-1 hover:bg-surface-2 transition-colors"
+                  >
+                    <div className="text-[10px] font-mono text-plasma-cyan/90 truncate"># {roomLabel}</div>
+                    <div className="text-[11px] text-text-secondary line-clamp-2 mt-0.5">{short}</div>
+                  </button>
+                );
+              })}
+          </div>
+        )}
+
+        {search.trim().length >= 2 && !isAuthenticated && (
+          <p className="mt-2 px-1 text-[10px] text-text-disabled">{t('chat.searchLoginHint')}</p>
+        )}
+
+        <p className="mt-3 px-2.5 pb-1 text-[9px] leading-relaxed text-text-disabled/90 border-t border-border-subtle/60 pt-2">
+          {t('chat.retentionNotice')}
+        </p>
       </div>
 
       {/* Connection status */}
