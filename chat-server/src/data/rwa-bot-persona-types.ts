@@ -6,6 +6,48 @@ import type { BotSchedule } from '../models/types';
 /** 与 bot-service 兜底池 identity 一致 */
 export type BotArchetypeIdentity = 'beginner' | 'pro' | 'wool' | 'earner' | 'generic';
 
+export interface BotRuntimeTuning {
+  latency_profile?: {
+    reply_delay_mean_sec?: number;
+    reply_delay_jitter_sec?: number;
+    mention_priority_multiplier?: number;
+    question_priority_multiplier?: number;
+    busy_state_delay_multiplier?: number;
+  };
+  burst_style?: {
+    multi_message_probability?: number;
+    max_consecutive_messages?: number;
+    supports_split_sentences?: boolean;
+    self_interrupt_probability?: number;
+  };
+  typing_noise_profile?: {
+    typo_probability?: number;
+    missing_punctuation_probability?: number;
+    filler_word_probability?: number;
+    emoji_probability?: number;
+  };
+  topic_fatigue?: {
+    same_topic_max_turns?: number;
+    fatigue_silence_probability?: number;
+    fatigue_topic_shift_probability?: number;
+  };
+  self_repeat_penalty_profile?: {
+    semantic_similarity_threshold?: number;
+    cooldown_minutes?: number;
+    hard_block_same_sentence_hours?: number;
+  };
+  cross_bot_collision_profile?: {
+    room_semantic_cooldown_minutes?: number;
+    same_topic_cooldown_minutes?: number;
+    template_reuse_block_count?: number;
+  };
+  silence_recovery_profile?: {
+    cold_room_wakeup_minutes?: number;
+    wakeup_message_length_bias?: 'short' | 'medium' | 'long';
+    wakeup_question_probability?: number;
+  };
+}
+
 export interface BotPersonaRow {
   slug: string;
   name: string;
@@ -15,6 +57,7 @@ export interface BotPersonaRow {
   schedule: Partial<BotSchedule>;
   /** 1–50 → /chat-bot-icons/01.svg … */
   iconIndex: number;
+  runtimeTuning?: BotRuntimeTuning;
 }
 export interface RwabotKnowledgeBase {
   staking_rules: {

@@ -185,16 +185,18 @@ export function HomeMobilePromoCard() {
             <div
               className={`flex shrink-0 basis-[46%] items-end justify-center sm:basis-[44%] ${rightMotionClass}`}
             >
-              <PhonePicture
-                avifSrcSet={SAMSUNG_AVIF}
-                webpSrcSet={SAMSUNG_WEBP}
-                pngFallback={IMG_SAMSUNG_PNG}
-                alt={t('home.mobilePromoSamsungAlt')}
-                width={410}
-                height={780}
-                fetchPriority={inView ? 'high' : 'low'}
-                imgClassName={imgClass}
-              />
+              <div className="origin-bottom scale-[0.98] translate-y-[2%]">
+                <PhonePicture
+                  avifSrcSet={SAMSUNG_AVIF}
+                  webpSrcSet={SAMSUNG_WEBP}
+                  pngFallback={IMG_SAMSUNG_PNG}
+                  alt={t('home.mobilePromoSamsungAlt')}
+                  width={410}
+                  height={780}
+                  fetchPriority={inView ? 'high' : 'low'}
+                  imgClassName={imgClass}
+                />
+              </div>
             </div>
           </div>
 

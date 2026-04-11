@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844">
+  <defs>
+    <linearGradient id="sheetGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d0d14"/>
+      <stop offset="50%" stop-color="#0a0a10"/>
+      <stop offset="100%" stop-color="#0d0d14"/>
+    </linearGradient>
+    <linearGradient id="cardBgGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="rgba(13,13,20,0.95)"/>
+      <stop offset="100%" stop-color="rgba(19,19,30,0.6)"/>
+    </linearGradient>
+    <linearGradient id="leftBar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00f5d4"/>
+      <stop offset="100%" stop-color="#00f5d4" stop-opacity="0.2"/>
+    </linearGradient>
+  </defs>
+  <rect width="390" height="844" fill="#05050a"/>
+  <g transform="translate(0,10)">
+  <rect x="137" y="10" width="116" height="28" rx="14" fill="#0b0f14"/>
+  <text x="22" y="30" fill="#f1f5f9" font-size="16" font-family="'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif" font-weight="600">05:04</text>
+  <text x="334" y="28" fill="#64748b" font-size="12" font-family="'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif">5G</text>
+  <path d="M 368 14 l4 6 l-4 6" fill="none" stroke="#64748b" stroke-width="1.2"/>
+  <rect x="375" y="16" width="11" height="6" rx="1.5" fill="none" stroke="#64748b" stroke-width="1"/>
+</g>
+  <path d="M 0 76 L 0 844 L 390 844 L 390 76 Q 390 52 366 52 L 24 52 Q 0 52 0 76 Z"
+        fill="url(#sheetGrad)" stroke="rgba(0,245,212,0.12)" stroke-width="1"/>
+  <line x1="0" y1="53" x2="390" y2="53" stroke="#00f5d4" stroke-opacity="0.22" stroke-width="1"/>
+
+  <rect x="38" y="70" width="2" height="32" rx="1" fill="url(#leftBar)"/>
+  <text x="48" y="82" fill="rgba(0,245,212,0.75)" font-size="11" font-family="'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif" font-weight="600" letter-spacing="0.22em">ACTIVITY</text>
+  <g transform="translate(342,66)" stroke="#64748b" stroke-width="1.5" stroke-linecap="round">
+  <path d="M4 4l8 8"/><path d="M12 4L4 12"/>
+</g>
+  <text x="48" y="108" fill="#f1f5f9" font-size="17" font-family="'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif" font-weight="700">资金活动</text>
+  <text x="48" y="134" fill="#64748b" font-size="12" font-family="'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif">钱包相关的链上资金变动，链接在区块浏览器中打开。</text>
+
+  <rect x="20" y="150" width="350" height="1" fill="#00f5d4" fill-opacity="0.08"/>
+
+  <g transform="translate(22,160)" fill="none" stroke="#00f5d4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+  <path d="M2 4.5h12l-5 5.2v4.3l-2 1v-5.3L2 4.5z"/>
+</g>
+  <text x="46" y="177" fill="#64748b" font-size="12" font-family="'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif" font-weight="500" letter-spacing="0.06em">按类型筛选</text>
+  <rect x="138" y="160" width="168" height="36" rx="18" fill="rgba(10,10,16,0.8)" stroke="rgba(0,245,212,0.12)" stroke-width="1"/>
+  <text x="158" y="183" fill="#f1f5f9" font-size="13" font-family="'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif">全部</text>
+  <path d="M 288 172 l3.5 3.5 l3.5-3.5" fill="none" stroke="#64748b" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="366" y="182" text-anchor="end" fill="#64748b" font-size="12" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace">19 条</text>
+
+  <rect x="0" y="206" width="390" height="638" fill="rgba(5,5,10,0.35)"/>
+  <g>
+  <rect x="20" y="214" width="350" height="118" rx="16" ry="16" fill="url(#cardBgGrad)" stroke="rgba(0,245,212,0.12)" stroke-width="1"/>
+  <text x="36" y="234" fill="#64748b" font-size="12" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace">04/10 08:00:00</text>
+  <rect x="36" y="242" width="119" height="22" rx="11" fill="rgba(16,185,129,0.18)"/>
+  <text x="48" y="257" fill="#10b981" font-size="11" font-family="'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif" font-weight="600">质押收益（RWA）</text>
+  <text x="354" y="257" text-anchor="end" fill="#10b981" font-size="13" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace" font-weight="600">+23.40 RWA</text>
+  <text x="36" y="286" fill="#64748b" font-size="12" font-family="'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif">区块:</text>
+  <text x="72" y="286" fill="#64748b" font-size="12" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace" font-weight="400">—</text>
+  
+  <text x="36" y="312" fill="#64748b" font-size="11" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace">0x00000000...000000</text>
+  <g transform="translate(340,301)" fill="none" stroke="#64748b" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M10 2h2.5V6"/><path d="M6 10L12 4"/><path d="M12 8v3.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1H8"/>
+</g>
+</g><g>
+  <rect x="20" y="340" width="350" height="118" rx="16" ry="16" fill="url(#cardBgGrad)" stroke="rgba(0,245,212,0.12)" stroke-width="1"/>
+  <text x="36" y="360" fill="#64748b" font-size="12" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace">04/03 23:53:30</text>
+  <rect x="36" y="368" width="86" height="22" rx="11" fill="rgba(139,92,246,0.18)"/>
+  <text x="48" y="383" fill="#a78bfa" font-size="11" font-family="'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif" font-weight="600">质押 RWA</text>
+  <text x="354" y="383" text-anchor="end" fill="#a78bfa" font-size="13" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace" font-weight="600">+500.00 RWA</text>
+  <text x="36" y="412" fill="#64748b" font-size="12" font-family="'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif">区块:</text>
+  <text x="72" y="412" fill="#00f5d4" font-size="12" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace" font-weight="600">#89744003</text>
+  <g transform="translate(134.5,401)" fill="none" stroke="#00f5d4" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M10 2h2.5V6"/><path d="M6 10L12 4"/><path d="M12 8v3.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1H8"/>
+</g>
+  <text x="36" y="438" fill="#64748b" font-size="11" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace">0x00000000...000000</text>
+  <g transform="translate(340,427)" fill="none" stroke="#64748b" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M10 2h2.5V6"/><path d="M6 10L12 4"/><path d="M12 8v3.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1H8"/>
+</g>
+</g><g>
+  <rect x="20" y="466" width="350" height="118" rx="16" ry="16" fill="url(#cardBgGrad)" stroke="rgba(0,245,212,0.12)" stroke-width="1"/>
+  <text x="36" y="486" fill="#64748b" font-size="12" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace">04/03 04:53:30</text>
+  <rect x="36" y="494" width="119" height="22" rx="11" fill="rgba(16,185,129,0.18)"/>
+  <text x="48" y="509" fill="#10b981" font-size="11" font-family="'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif" font-weight="600">质押收益（RWA）</text>
+  <text x="354" y="509" text-anchor="end" fill="#10b981" font-size="13" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace" font-weight="600">+21.53 RWA</text>
+  <text x="36" y="538" fill="#64748b" font-size="12" font-family="'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif">区块:</text>
+  <text x="72" y="538" fill="#64748b" font-size="12" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace" font-weight="400">—</text>
+  
+  <text x="36" y="564" fill="#64748b" font-size="11" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace">0x00000000...000000</text>
+  <g transform="translate(340,553)" fill="none" stroke="#64748b" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M10 2h2.5V6"/><path d="M6 10L12 4"/><path d="M12 8v3.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1H8"/>
+</g>
+</g><g>
+  <rect x="20" y="592" width="350" height="118" rx="16" ry="16" fill="url(#cardBgGrad)" stroke="rgba(0,245,212,0.12)" stroke-width="1"/>
+  <text x="36" y="612" fill="#64748b" font-size="12" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace">04/03 16:53:30</text>
+  <rect x="36" y="620" width="141" height="22" rx="11" fill="rgba(139,92,246,0.18)"/>
+  <text x="48" y="635" fill="#a78bfa" font-size="11" font-family="'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif" font-weight="600">提现 RWA 灵活本金</text>
+  <text x="354" y="635" text-anchor="end" fill="#f97316" font-size="13" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace" font-weight="600">-1600.00 RWA</text>
+  <text x="36" y="664" fill="#64748b" font-size="12" font-family="'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif">区块:</text>
+  <text x="72" y="664" fill="#00f5d4" font-size="12" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace" font-weight="600">#89619436</text>
+  <g transform="translate(134.5,653)" fill="none" stroke="#00f5d4" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M10 2h2.5V6"/><path d="M6 10L12 4"/><path d="M12 8v3.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1H8"/>
+</g>
+  <text x="36" y="690" fill="#64748b" font-size="11" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace">0x00080000...800000</text>
+  <g transform="translate(340,679)" fill="none" stroke="#64748b" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M10 2h2.5V6"/><path d="M6 10L12 4"/><path d="M12 8v3.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1H8"/>
+</g>
+</g><g>
+  <rect x="20" y="718" width="350" height="118" rx="16" ry="16" fill="url(#cardBgGrad)" stroke="rgba(0,245,212,0.12)" stroke-width="1"/>
+  <text x="36" y="738" fill="#64748b" font-size="12" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace">04/05 01:53:30</text>
+  <rect x="36" y="746" width="72" height="22" rx="11" fill="rgba(132,204,22,0.18)"/>
+  <text x="48" y="761" fill="#84cc16" font-size="11" font-family="'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif" font-weight="600">推荐收益</text>
+  <text x="354" y="761" text-anchor="end" fill="#84cc16" font-size="13" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace" font-weight="600">+5.80 USDT</text>
+  <text x="36" y="790" fill="#64748b" font-size="12" font-family="'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif">区块:</text>
+  <text x="72" y="790" fill="#00f5d4" font-size="12" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace" font-weight="600">#89694003</text>
+  <g transform="translate(134.5,779)" fill="none" stroke="#00f5d4" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M10 2h2.5V6"/><path d="M6 10L12 4"/><path d="M12 8v3.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1H8"/>
+</g>
+  <text x="36" y="816" fill="#64748b" font-size="11" font-family="'Noto Sans Mono CJK SC','DejaVu Sans Mono',monospace">0x00000800...000000</text>
+  <g transform="translate(340,805)" fill="none" stroke="#64748b" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M10 2h2.5V6"/><path d="M6 10L12 4"/><path d="M12 8v3.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1H8"/>
+</g>
+</g>
+
+  <rect x="128" y="832" width="134" height="5" rx="2.5" fill="#f8fafc" opacity="0.55"/>
+
+  
+</svg>

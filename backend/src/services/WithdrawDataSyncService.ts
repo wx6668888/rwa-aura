@@ -22,6 +22,10 @@ export class WithdrawDataSyncService {
    * 启动定期同步
    */
   start() {
+    if (this.syncInterval) {
+      logger.info('[WithdrawDataSync] Already running, skip start');
+      return;
+    }
     logger.info('[WithdrawDataSync] Starting...');
     
     // 立即执行一次

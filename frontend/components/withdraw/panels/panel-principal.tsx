@@ -8,6 +8,7 @@ import { TransactionOverlay } from '../transaction-overlay'
 import { LockedStakesList } from '../locked-stakes-list'
 import { pollDashboardUntilTxIndexed } from '@/lib/dashboard-index-poll'
 import { emitDataRefresh } from '@/lib/data-refresh'
+import { useLocale } from '@/components/locale-provider'
 
 interface Props {
   onMobileBack: () => void
@@ -16,6 +17,8 @@ interface Props {
 }
 
 export function PanelPrincipal({ onMobileBack, data, embedded = false }: Props) {
+  const { locale } = useLocale()
+  const isZh = locale.startsWith('zh')
   const { isConnected, address, chainId } = useAccount()
   const publicClient = usePublicClient()
   const [amount, setAmount] = useState('')
@@ -34,7 +37,7 @@ export function PanelPrincipal({ onMobileBack, data, embedded = false }: Props) 
 
   const handleWithdraw = async () => {
     if (!amount || parseFloat(amount) < 100) {
-      alert('最低提取 100')
+      alert(isZh ? '最低提取 100' : 'Minimum withdrawal is 100')
       return
     }
 
@@ -76,20 +79,20 @@ export function PanelPrincipal({ onMobileBack, data, embedded = false }: Props) 
 
         if (data.refetch) data.refetch()
       } else {
-        throw new Error('交易执行失败，可能是余额不足或权限不足')
+        throw new Error(isZh ? '交易执行失败，可能是余额不足或权限不足' : 'Transaction failed, possible insufficient balance or permission')
       }
     } catch (err: any) {
       console.error('提取失败:', err)
       
       // 友好的错误提示
-      let errorMessage = '提取失败，请重试'
+      let errorMessage = isZh ? '提取失败，请重试' : 'Withdrawal failed, please try again'
       
       if (err.message?.includes('User rejected') || err.message?.includes('User denied')) {
-        errorMessage = '您已取消交易'
+        errorMessage = isZh ? '您已取消交易' : 'You cancelled the transaction'
       } else if (err.message?.includes('insufficient funds')) {
-        errorMessage = 'BNB 余额不足，无法支付 Gas 费用'
+        errorMessage = isZh ? 'BNB 余额不足，无法支付 Gas 费用' : 'Insufficient BNB for gas fee'
       } else if (err.message?.includes('execution reverted')) {
-        errorMessage = '合约执行失败，请检查提取金额'
+        errorMessage = isZh ? '合约执行失败，请检查提取金额' : 'Contract execution failed, please check withdrawal amount'
       }
       
       setError(errorMessage)
@@ -108,12 +111,12 @@ export function PanelPrincipal({ onMobileBack, data, embedded = false }: Props) 
             className="lg:hidden flex items-center gap-2 text-white/50 hover:text-[#00f5d4] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm">返回</span>
+            <span className="text-sm">{isZh ? '返回' : 'Back'}</span>
           </button>
           <div className="min-w-0 ml-auto text-right">
-            <h2 className="text-[14px] font-semibold text-[#e2e8f0] tracking-tight truncate">质押本金</h2>
+            <h2 className="text-[14px] font-semibold text-[#e2e8f0] tracking-tight truncate">{isZh ? '质押本金' : 'Staked Principal'}</h2>
             <p className="text-[11px] text-[#64748b] mt-0.5 truncate max-w-[220px]">
-              支持 RWA / USDT 灵活本金快速提取
+              {isZh ? '支持 RWA / USDT 灵活本金快速提取' : 'Supports quick withdrawal for flexible RWA / USDT principal'}
             </p>
           </div>
         </div>
@@ -138,7 +141,7 @@ export function PanelPrincipal({ onMobileBack, data, embedded = false }: Props) 
                   <div className="absolute inset-0 bg-gradient-to-br from-[#00f5d433] to-[#22c55e26] animate-pulse" />
                 )}
                 <div className="relative z-10">
-                  <div className="text-sm font-semibold text-[#00f5d4] mb-2">RWA 本金</div>
+                  <div className="text-sm font-semibold text-[#00f5d4] mb-2">{isZh ? 'RWA 本金' : 'RWA Principal'}</div>
                   <div className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
                     {data.rwaPrincipal}
                   </div>
@@ -157,7 +160,7 @@ export function PanelPrincipal({ onMobileBack, data, embedded = false }: Props) 
                   <div className="absolute inset-0 bg-gradient-to-br from-[#00f5d433] to-[#22c55e26] animate-pulse" />
                 )}
                 <div className="relative z-10">
-                  <div className="text-sm font-semibold text-[#00f5d4] mb-2">USDT 本金</div>
+                  <div className="text-sm font-semibold text-[#00f5d4] mb-2">{isZh ? 'USDT 本金' : 'USDT Principal'}</div>
                   <div className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
                     {data.usdtPrincipal}
                   </div>
@@ -168,7 +171,7 @@ export function PanelPrincipal({ onMobileBack, data, embedded = false }: Props) 
             {/* 提取金额输入：玻璃卡（MAX 按钮内嵌） */}
             <div className="bg-white/[0.03] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.06]">
               <div className="flex justify-between items-center mb-3">
-                <label className="text-sm font-semibold text-white/70">提取金额</label>
+                <label className="text-sm font-semibold text-white/70">{isZh ? '提取金额' : 'Withdrawal Amount'}</label>
               </div>
               <div className="relative">
                 <input
@@ -190,10 +193,10 @@ export function PanelPrincipal({ onMobileBack, data, embedded = false }: Props) 
               <div className="mt-4 flex items-start gap-2 text-xs text-[#94a3b8]">
                 <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <div>
-                  <div>扣除 8% 手续费，最低提取 100 {withdrawType === 'rwa' ? 'RWA' : 'USDT'}</div>
+                  <div>{isZh ? '扣除 8% 手续费，最低提取 100 ' : '8% fee deducted, minimum withdrawal 100 '}{withdrawType === 'rwa' ? 'RWA' : 'USDT'}</div>
                   {amount && parseFloat(amount) >= 100 && (
                     <div className="mt-1 text-[#22c55e] font-semibold">
-                      实际到账: {(parseFloat(amount) * 0.92).toFixed(2)} {withdrawType === 'rwa' ? 'RWA' : 'USDT'}
+                      {isZh ? '实际到账' : 'Net received'}: {(parseFloat(amount) * 0.92).toFixed(2)} {withdrawType === 'rwa' ? 'RWA' : 'USDT'}
                     </div>
                   )}
                 </div>
@@ -207,7 +210,7 @@ export function PanelPrincipal({ onMobileBack, data, embedded = false }: Props) 
               className="w-full h-14 rounded-2xl bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-[#0a0a0f] text-base font-bold flex items-center justify-center gap-2 hover:shadow-[0_0_30px_rgba(251,191,36,0.4)] hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0"
             >
               <Briefcase className="w-5 h-5" />
-              {loading ? '处理中...' : '提取质押本金'}
+              {loading ? (isZh ? '处理中...' : 'Processing...') : (isZh ? '提取质押本金' : 'Withdraw Principal')}
             </button>
           </div>
         ) : (
@@ -215,7 +218,7 @@ export function PanelPrincipal({ onMobileBack, data, embedded = false }: Props) 
             <div className="w-20 h-20 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
               <Briefcase className="w-10 h-10 text-[rgba(238,242,255,0.26)]" />
             </div>
-            <div className="text-[rgba(238,242,255,0.52)] text-[14px]">暂无质押本金</div>
+            <div className="text-[rgba(238,242,255,0.52)] text-[14px]">{isZh ? '暂无质押本金' : 'No principal available'}</div>
           </div>
         )}
 

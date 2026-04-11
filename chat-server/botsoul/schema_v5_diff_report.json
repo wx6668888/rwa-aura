@@ -1,0 +1,86 @@
+{
+  "report_version": "v5-diff-1",
+  "scope": "100 whitelisted production bot persona files",
+  "injection_status": {
+    "target_count": 100,
+    "all_8_fields_present": true,
+    "missing_field_counts": {
+      "identity_guard": 0,
+      "conversation_policy": 0,
+      "relationship_graph_strict": 0,
+      "timeline_anchor": 0,
+      "knowledge_boundary": 0,
+      "response_variation_pack": 0,
+      "rumor_and_conflict_playbook": 0,
+      "memory_decay_and_update": 0
+    }
+  },
+  "manual_refinement_needed": {
+    "priority_p0": [
+      {
+        "field": "timeline_anchor.critical_events[].date",
+        "issue": "dates still contain placeholders/unknown logic in most files",
+        "count": 100,
+        "impact": "time-related follow-up questions may sound templated"
+      }
+    ],
+    "priority_p1": [
+      {
+        "field": "relationship_graph_strict.people",
+        "issue": "default buckets exist but real named relationships need per-bot mapping",
+        "count": 100,
+        "impact": "who-can-know-what behavior not fully individualized"
+      },
+      {
+        "field": "response_variation_pack.intent_groups",
+        "issue": "default variants injected, but regional/occupation slang density needs tuning",
+        "count": 100,
+        "impact": "some replies may still feel generated under stress"
+      },
+      {
+        "field": "knowledge_boundary.confidence_score",
+        "issue": "partially tuned; needs persona-level confidence calibration",
+        "count": 100,
+        "impact": "technical questions may be too uniform"
+      }
+    ],
+    "priority_p2": [
+      {
+        "field": "memory_decay_and_update.volatile_memory",
+        "issue": "structure ready; runtime decay execution should be implemented in chat service",
+        "count": 100,
+        "impact": "memory feels static if runtime layer ignores decay policy"
+      }
+    ]
+  },
+  "db_migration_recommendation": {
+    "strategy": "two-phase, whitelist-driven upsert",
+    "phase_1": [
+      "import production_bot_whitelist.json into migration job",
+      "for each bot_id, load selected file only",
+      "upsert bot persona by stable key (bot_id or wallet_address)",
+      "store v5 payload in JSONB (persona_json) and schema_version=5.0.0"
+    ],
+    "phase_2": [
+      "activate runtime read path: only whitelist-selected persona",
+      "enable fallback guard: reject non-whitelisted files",
+      "run post-import validator: required top-level + 8 new fields + memory_seed_v2 canonical"
+    ],
+    "recommended_table_fields": [
+      "bot_id (unique)",
+      "wallet_address (unique)",
+      "display_name",
+      "enabled",
+      "priority",
+      "schema_version",
+      "persona_json (JSON/JSONB)",
+      "updated_at"
+    ],
+    "safety_checks": [
+      "dry-run import with changed_count preview",
+      "checksum compare before/after import",
+      "backup existing persona rows before overwrite",
+      "idempotent upsert by bot_id"
+    ]
+  }
+}

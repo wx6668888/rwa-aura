@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { BarChart2 } from 'lucide-react'
-import { Navbar } from '@/components/navbar'
 import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
 import { BackgroundEffects } from '@/components/background-effects'
@@ -26,7 +25,6 @@ export default function AnalyticsPage() {
 
   return (
     <>
-      <Navbar />
       <div className="relative min-h-screen">
       <BackgroundEffects />
       

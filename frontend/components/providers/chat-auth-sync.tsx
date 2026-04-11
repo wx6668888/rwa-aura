@@ -24,7 +24,10 @@ export function ChatAuthSync() {
 
     const key = address.toLowerCase()
     const cached = readPersistedChatAuth()
-    if (cached?.address?.toLowerCase() === key && cached.signature?.startsWith('0x')) {
+    const hasCachedAuth =
+      cached?.address?.toLowerCase() === key &&
+      (cached.sessionToken?.length > 8 || cached.signature?.startsWith('0x'))
+    if (hasCachedAuth) {
       ranForAddr.current = key
       return
     }

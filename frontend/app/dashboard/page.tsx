@@ -1,6 +1,5 @@
 'use client'
 
-import { Navbar } from '@/components/navbar'
 import { BackgroundEffects } from '@/components/background-effects'
 import { WalletBar } from '@/components/dashboard/wallet-bar'
 import { PortfolioCard } from '@/components/dashboard/portfolio-card'
@@ -17,7 +16,6 @@ export default function DashboardPage() {
     <StakesProvider>
       <div className="min-h-screen bg-[#0a0a0f] font-sans">
         <BackgroundEffects />
-        <Navbar />
         <WalletBar />
 
       <main className="mx-auto max-w-7xl px-4 pb-[100px] pt-8 lg:px-8">

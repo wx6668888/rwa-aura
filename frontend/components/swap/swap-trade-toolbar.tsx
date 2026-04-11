@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { BarChart3, Bell } from 'lucide-react'
+import { BarChart3, MessageCircle } from 'lucide-react'
 import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
 
@@ -20,9 +20,9 @@ export function SwapTradeToolbar({ tab, onTabChange }: Props) {
   const { t } = useTranslation(locale)
 
   const tabs: { id: SwapModeTab; label: string }[] = [
-    { id: 'protocol', label: (t('swap.tabProtocol') || '协议').trim() || '协议' },
-    { id: 'tron', label: (t('swap.tabTron') || 'TRON充值').trim() || 'TRON充值' },
-    { id: 'dex', label: (t('swap.tabDex') || 'DEX').trim() || 'DEX' },
+    { id: 'protocol', label: t('swap.tabProtocol') },
+    { id: 'tron', label: t('swap.tabTron') },
+    { id: 'dex', label: t('swap.tabDex') },
   ]
 
   return (
@@ -70,12 +70,12 @@ export function SwapTradeToolbar({ tab, onTabChange }: Props) {
             <BarChart3 className="h-4 w-4" />
           </Link>
           <Link
-            href="/announcements"
+            href="/chat"
             className={iconBtn}
-            title={t('swap.toolbarAnnouncements')}
-            aria-label={t('swap.toolbarAnnouncements')}
+            title={t('swap.toolbarGroupChat')}
+            aria-label={t('swap.toolbarGroupChat')}
           >
-            <Bell className="h-4 w-4" />
+            <MessageCircle className="h-4 w-4" />
           </Link>
         </div>
       </div>

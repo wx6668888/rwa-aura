@@ -726,4 +726,42 @@ router.get('/data/:address/all', async (req, res) => {
   }
 });
 
+/**
+ * 今日静态收益（RWA）：按 rewards 表当天 daily_yield/static 聚合。
+ * 仅返回该地址本人数据，供官方客服私聊精确答复使用。
+ */
+router.get('/data/:address/today-yield', async (req, res) => {
+  try {
+    const address = String(req.params.address || '').trim().toLowerCase();
+    if (!/^0x[a-f0-9]{40}$/.test(address)) {
+      return res.status(400).json({ success: false, error: 'invalid address' });
+    }
+    const pool = getPool();
+    const { dayStart, dayEnd } = utcDayRangeSeconds();
+    const [rows] = await pool.query(
+      `SELECT COALESCE(SUM(CAST(amount AS DECIMAL(38,8))), 0) AS totalRwa
+       FROM rewards
+       WHERE LOWER(user_address) = ?
+         AND LOWER(TRIM(COALESCE(reward_type, ''))) IN ('daily_yield', 'static')
+         AND timestamp >= FROM_UNIXTIME(?)
+         AND timestamp < FROM_UNIXTIME(?)`,
+      [address, dayStart, dayEnd]
+    );
+    const totalRwaRaw = Number((rows as any[])[0]?.totalRwa || 0);
+    // rewards.amount stores 18-decimal base unit in many deployments; expose human-readable RWA.
+    const totalRwa = totalRwaRaw / 1e18;
+    return res.json({
+      success: true,
+      data: {
+        address,
+        dayStart,
+        dayEnd,
+        totalRwa: Number.isFinite(totalRwa) ? Number(totalRwa.toFixed(8)) : 0,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error?.message || 'failed to query today yield' });
+  }
+});
+
 export default router;

@@ -1,4 +1,3 @@
-import { Navbar } from '@/components/navbar'
 import { BackgroundEffects } from '@/components/background-effects'
 import { NodesPageClient } from '@/components/nodes/nodes-page-client'
 import { ParticleField } from '@/components/nodes/particle-field'
@@ -13,7 +12,6 @@ export default function NodesPage() {
     <div className="relative min-h-screen bg-[#05050a]">
       <BackgroundEffects />
       <ParticleField />
-      <Navbar />
       <NodesPageClient />
     </div>
   )

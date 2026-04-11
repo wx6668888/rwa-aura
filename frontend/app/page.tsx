@@ -1,4 +1,3 @@
-import { Navbar } from '@/components/navbar'
 import { BackgroundEffects } from '@/components/background-effects'
 import { HeroSection } from '@/components/hero-section'
 import { HomeBelowFold } from '@/components/home-below-fold'
@@ -13,7 +12,6 @@ export default function HomePage() {
       {/* z-20：主内容列；底部 RWA.LAT 条在 portal 内 z-[22]，高于本层以便露出 */}
       <div className="relative z-20">
         <BackgroundEffects />
-        <Navbar />
         <HeroSection />
         <HomeBelowFold />
       </div>

@@ -1,4 +1,3 @@
-import { Navbar } from '@/components/navbar'
 import { BackgroundEffects } from '@/components/background-effects'
 import { StakePageClient } from '@/components/stake/stake-page-client'
 
@@ -15,7 +14,6 @@ export default function StakePage() {
   return (
     <div className="relative min-h-screen bg-void-black font-sans text-text-primary overflow-x-hidden">
       <BackgroundEffects />
-      <Navbar />
       <StakePageClient />
     </div>
   )

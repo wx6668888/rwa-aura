@@ -12,8 +12,11 @@ const HERO_PLANET_MOBILE_POSTER = '/videos/planet-mobile-poster.webp'
 /** 与 Tailwind `lg` 一致：窄屏只走移动端资源 */
 const MOBILE_MQ = '(max-width: 1023px)'
 const IDLE_DESKTOP_MS = 2800
-/** 窄屏：晚于首屏文案/CSS/字体后再挂 video，减轻与 LCP 在 4G 上的带宽竞争 */
-const IDLE_MOBILE_MS = 2800
+/**
+ * 窄屏：固定延迟后再挂 video（不用 requestIdleCallback 作为唯一触发器——空闲时会过早挂载，
+ * 与 LCP/首包争带宽）。PSI 4G 下约 1.2MB 的 webm 会显著拖慢 Speed Index。
+ */
+const MOBILE_VIDEO_DELAY_MS = 5500
 
 function subscribeNarrow(cb: () => void) {
   const mq = window.matchMedia(MOBILE_MQ)
@@ -34,25 +37,41 @@ function getNarrowServerSnapshot() {
  * 首屏先铺静态 poster，空闲后挂载 video。
  * 窄屏仅挂载手机片源；宽屏仅挂载桌面片源，杜绝手机同时拉 planet_compressed.mp4。
  */
+function shouldSkipHeroVideoForDataSaver(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const conn = navigator.connection as
+    | { saveData?: boolean; effectiveType?: string }
+    | undefined
+  if (conn?.saveData) return true
+  const et = conn?.effectiveType
+  if (et === 'slow-2g' || et === '2g') return true
+  return false
+}
+
 export function HeroPlanetBackground() {
   const isNarrow = useSyncExternalStore(subscribeNarrow, getNarrowSnapshot, getNarrowServerSnapshot)
   const [mountVideo, setMountVideo] = useState(false)
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (shouldSkipHeroVideoForDataSaver()) return
+
+    /** 移动端：仅固定延迟，避免 rIC 过早挂载大体积 webm */
+    if (isNarrow) {
+      const id = window.setTimeout(() => setMountVideo(true), MOBILE_VIDEO_DELAY_MS)
+      return () => window.clearTimeout(id)
+    }
+
     let handle: number
     let ric = false
     const schedule = () => setMountVideo(true)
-    const idleCap = isNarrow ? IDLE_MOBILE_MS : IDLE_DESKTOP_MS
-    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+    if ('requestIdleCallback' in window) {
       ric = true
-      handle = window.requestIdleCallback(schedule, { timeout: idleCap })
-    } else if (typeof window !== 'undefined') {
-      handle = window.setTimeout(schedule, isNarrow ? 380 : 450) as unknown as number
+      handle = window.requestIdleCallback(schedule, { timeout: IDLE_DESKTOP_MS })
     } else {
-      return
+      handle = window.setTimeout(schedule, 450) as unknown as number
     }
     return () => {
-      if (typeof window === 'undefined') return
       if (ric) window.cancelIdleCallback(handle)
       else window.clearTimeout(handle)
     }
@@ -92,7 +111,7 @@ export function HeroPlanetBackground() {
             loop
             muted
             playsInline
-            preload="metadata"
+            preload="none"
           >
             <source src={HERO_PLANET_MOBILE_WEBM} type="video/webm" />
             <source src={HERO_PLANET_MOBILE_MP4} type="video/mp4" />

@@ -1,0 +1,1516 @@
+{
+  "version": "v5-ultra-batch-enrichment-v1",
+  "total": 100,
+  "batches": [
+    {
+      "batch": 1,
+      "range": [
+        1,
+        10
+      ],
+      "count": 10,
+      "patched": [
+        {
+          "bot_id": "RWA_BOT_001",
+          "file": "RWA_BOT_001_clean.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_002",
+          "file": "RWA_BOT_002.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_003",
+          "file": "RWA_BOT_003_liuge.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_004",
+          "file": "RWA_BOT_004.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_005",
+          "file": "RWA_BOT_005_gongchang_hexin.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_006",
+          "file": "RWA_BOT_006.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_007",
+          "file": "RWA_BOT_007_siji3.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_008",
+          "file": "RWA_BOT_008_naichadian.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_009",
+          "file": "RWA_BOT_009_chejianzhugguan.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_010",
+          "file": "RWA_BOT_010.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        }
+      ]
+    },
+    {
+      "batch": 2,
+      "range": [
+        11,
+        20
+      ],
+      "count": 10,
+      "patched": [
+        {
+          "bot_id": "RWA_BOT_011",
+          "file": "RWA_BOT_011.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_012",
+          "file": "RWA_BOT_012_siji_hexin.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_013",
+          "file": "RWA_BOT_013.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_014",
+          "file": "RWA_BOT_014.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_015",
+          "file": "RWA_BOT_015_waimai.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_016",
+          "file": "RWA_BOT_016.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_017",
+          "file": "RWA_BOT_017.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_018",
+          "file": "RWA_BOT_018_siji4.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_019",
+          "file": "RWA_BOT_019.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_020",
+          "file": "RWA_BOT_020.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        }
+      ]
+    },
+    {
+      "batch": 3,
+      "range": [
+        21,
+        30
+      ],
+      "count": 10,
+      "patched": [
+        {
+          "bot_id": "RWA_BOT_021",
+          "file": "RWA_BOT_021.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_022",
+          "file": "RWA_BOT_022_gongren.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_023",
+          "file": "RWA_BOT_023.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_024",
+          "file": "RWA_BOT_024.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_025",
+          "file": "RWA_BOT_025.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_026",
+          "file": "RWA_BOT_026.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_027",
+          "file": "RWA_BOT_027.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_028",
+          "file": "RWA_BOT_028.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_029",
+          "file": "RWA_BOT_029.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_030",
+          "file": "RWA_BOT_030.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        }
+      ]
+    },
+    {
+      "batch": 4,
+      "range": [
+        31,
+        40
+      ],
+      "count": 10,
+      "patched": [
+        {
+          "bot_id": "RWA_BOT_031",
+          "file": "RWA_BOT_031_xiaolaoban.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_032",
+          "file": "RWA_BOT_032.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_033",
+          "file": "RWA_BOT_033.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_034",
+          "file": "RWA_BOT_034.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_035",
+          "file": "RWA_BOT_035.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_036",
+          "file": "RWA_BOT_036.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_037",
+          "file": "RWA_BOT_037.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_038",
+          "file": "RWA_BOT_038_fuwu.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_039",
+          "file": "RWA_BOT_039.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_040",
+          "file": "RWA_BOT_040.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        }
+      ]
+    },
+    {
+      "batch": 5,
+      "range": [
+        41,
+        50
+      ],
+      "count": 10,
+      "patched": [
+        {
+          "bot_id": "RWA_BOT_041",
+          "file": "RWA_BOT_041.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_042",
+          "file": "RWA_BOT_042.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_043",
+          "file": "RWA_BOT_043.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_044",
+          "file": "RWA_BOT_044.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_045",
+          "file": "RWA_BOT_045_pengyou1.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_046",
+          "file": "RWA_BOT_046.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_047",
+          "file": "RWA_BOT_047_pengyou2.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_048",
+          "file": "RWA_BOT_048.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_049",
+          "file": "RWA_BOT_049.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_050",
+          "file": "RWA_BOT_050.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        }
+      ]
+    },
+    {
+      "batch": 6,
+      "range": [
+        51,
+        60
+      ],
+      "count": 10,
+      "patched": [
+        {
+          "bot_id": "RWA_BOT_051",
+          "file": "RWA_BOT_051.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_052",
+          "file": "RWA_BOT_052.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_053",
+          "file": "RWA_BOT_053.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_054",
+          "file": "RWA_BOT_054.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_055",
+          "file": "RWA_BOT_055.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_056",
+          "file": "RWA_BOT_056.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_057",
+          "file": "RWA_BOT_057.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_058",
+          "file": "RWA_BOT_058.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_059",
+          "file": "RWA_BOT_059.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_060",
+          "file": "RWA_BOT_060.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        }
+      ]
+    },
+    {
+      "batch": 7,
+      "range": [
+        61,
+        70
+      ],
+      "count": 10,
+      "patched": [
+        {
+          "bot_id": "RWA_BOT_061",
+          "file": "RWA_BOT_061.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_062",
+          "file": "RWA_BOT_062.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_063",
+          "file": "RWA_BOT_063.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_064",
+          "file": "RWA_BOT_064.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_065",
+          "file": "RWA_BOT_065.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_066",
+          "file": "RWA_BOT_066.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_067",
+          "file": "RWA_BOT_067.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_068",
+          "file": "RWA_BOT_068.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_069",
+          "file": "RWA_BOT_069.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_070",
+          "file": "RWA_BOT_070.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        }
+      ]
+    },
+    {
+      "batch": 8,
+      "range": [
+        71,
+        80
+      ],
+      "count": 10,
+      "patched": [
+        {
+          "bot_id": "RWA_BOT_071",
+          "file": "RWA_BOT_071.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_072",
+          "file": "RWA_BOT_072.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_073",
+          "file": "RWA_BOT_073.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_074",
+          "file": "RWA_BOT_074.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_075",
+          "file": "RWA_BOT_075.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_076",
+          "file": "RWA_BOT_076.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_077",
+          "file": "RWA_BOT_077.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_078",
+          "file": "RWA_BOT_078.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_079",
+          "file": "RWA_BOT_079.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_080",
+          "file": "RWA_BOT_080.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        }
+      ]
+    },
+    {
+      "batch": 9,
+      "range": [
+        81,
+        90
+      ],
+      "count": 10,
+      "patched": [
+        {
+          "bot_id": "RWA_BOT_081",
+          "file": "RWA_BOT_081.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_082",
+          "file": "RWA_BOT_082.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_083",
+          "file": "RWA_BOT_083.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_084",
+          "file": "RWA_BOT_084.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_085",
+          "file": "RWA_BOT_085.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_086",
+          "file": "RWA_BOT_086.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_087",
+          "file": "RWA_BOT_087.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_088",
+          "file": "RWA_BOT_088.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_089",
+          "file": "RWA_BOT_089.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_090",
+          "file": "RWA_BOT_090.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        }
+      ]
+    },
+    {
+      "batch": 10,
+      "range": [
+        91,
+        100
+      ],
+      "count": 10,
+      "patched": [
+        {
+          "bot_id": "RWA_BOT_091",
+          "file": "RWA_BOT_091.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_092",
+          "file": "RWA_BOT_092.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_093",
+          "file": "RWA_BOT_093.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_094",
+          "file": "RWA_BOT_094.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_095",
+          "file": "RWA_BOT_095.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_096",
+          "file": "RWA_BOT_096.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_097",
+          "file": "RWA_BOT_097.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_098",
+          "file": "RWA_BOT_098.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_099",
+          "file": "RWA_BOT_099.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        },
+        {
+          "bot_id": "RWA_BOT_100",
+          "file": "RWA_BOT_100.txt",
+          "modules": [
+            "identity_guard",
+            "conversation_policy",
+            "relationship_graph_strict",
+            "timeline_anchor",
+            "knowledge_boundary",
+            "response_variation_pack",
+            "rumor_and_conflict_playbook",
+            "memory_decay_and_update"
+          ]
+        }
+      ]
+    }
+  ],
+  "module_keys": [
+    "identity_guard",
+    "conversation_policy",
+    "relationship_graph_strict",
+    "timeline_anchor",
+    "knowledge_boundary",
+    "response_variation_pack",
+    "rumor_and_conflict_playbook",
+    "memory_decay_and_update"
+  ]
+}

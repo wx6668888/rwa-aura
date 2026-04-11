@@ -1,6 +1,8 @@
 /**
  * WalletConnect / Web3Modal 依赖的 HTTPS 源；在慢网或国内环境下，
  * 晚注入会导致点击 WalletConnect 后主列表已关、中继尚未就绪 → 像「没反应」。
+ * 不在全局 layout 注入：仅在用户即将打开连接弹窗时调用（如 Navbar / Chat 里 warmConnectModal），
+ * 避免 Lighthouse 将未使用的 preconnect 计为浪费。
  */
 const WC_HTTPS_ORIGINS = [
   'https://api.web3modal.org',

@@ -304,128 +304,103 @@ export function StatCards() {
 
     {showStakeDetail && (
       <div
-        className="fixed inset-0 z-50 flex flex-col items-stretch justify-start bg-black/90 backdrop-blur-sm px-4 pt-[max(12px,env(safe-area-inset-top,24px))] pb-[max(12px,env(safe-area-inset-bottom,20px))] sm:flex-row sm:items-center sm:justify-center"
-        style={{ minHeight: '100dvh' }}
+        className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center p-0 sm:p-4"
         onClick={() => setShowStakeDetail(false)}
       >
         <div
-          className="mx-auto flex max-h-[min(85vh,calc(100dvh-env(safe-area-inset-top,24px)-env(safe-area-inset-bottom,20px)-2.5rem))] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#00f5d420] bg-gradient-to-br from-[#0d0d14] to-[#13131e] shadow-xl sm:max-h-[85vh] sm:my-auto"
+          className="relative z-[10000] flex w-full max-w-[420px] flex-col self-end overflow-hidden rounded-t-3xl border border-[#00f5d420] bg-gradient-to-b from-[#0d0d14] via-[#0a0a10] to-[#0d0d14] shadow-[0_-12px_60px_rgba(0,0,0,0.55),0_0_0_1px_rgba(0,245,212,0.06)_inset] transition-[height,max-height] duration-300 ease-out sm:self-auto sm:rounded-3xl sm:h-[min(75dvh,75vh)] sm:max-h-[min(75dvh,75vh)]"
+          style={{ height: 'min(75dvh,75vh)', maxHeight: 'min(75dvh,75vh)' }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[#00f5d420]/30">
-            <h3 className="text-lg font-semibold text-[#f1f5f9]">{t('stats.stakeDetailTitle')}</h3>
-            <button
-              type="button"
-              onClick={() => setShowStakeDetail(false)}
-              className="p-2 text-[#64748b] hover:text-[#f1f5f9] rounded-lg"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-          <div className="overflow-auto flex-1 min-h-0">
-            {stakesLoading ? (
-              <p className="p-6 text-[#64748b]">{t('fundActivity.loading')}</p>
-            ) : sortedStakes.length === 0 ? (
-              <p className="p-6 text-[#64748b]">{t('fundActivity.noRecords')}</p>
-            ) : (
-              <>
-                {/* Desktop table */}
-                <div className="hidden md:block">
-                  <table className="w-full text-left text-sm">
-                    <thead className="sticky top-0 bg-[#0d0d14] border-b border-[#00f5d420]/20">
-                      <tr>
-                        <th className="px-4 py-3 font-medium text-[#64748b]">{t('stats.stakeDetailTime')}</th>
-                        <th className="px-4 py-3 font-medium text-[#64748b]">{t('stats.stakeDetailType')}</th>
-                        <th className="px-4 py-3 font-medium text-[#64748b]">{t('stats.stakeDetailAmount')}</th>
-                        <th className="px-4 py-3 font-medium text-[#64748b]">{t('stats.stakeDetailLock')}</th>
-                        <th className="px-4 py-3 font-medium text-[#64748b]">{t('stats.stakeDetailMaturity')}</th>
-                        <th className="px-4 py-3 font-medium text-[#64748b]">{t('stats.stakeDetailBlock')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sortedStakes.map((s) => (
-                        <tr key={s.stakeId} className="border-b border-[#00f5d420]/10">
-                          <td className="px-4 py-3 font-mono text-[#64748b]">
-                            {new Date(s.timestamp * 1000).toLocaleString(locale)}
-                          </td>
-                          <td className="px-4 py-3 text-[#f1f5f9]">
-                            {s.isRWAStake ? t('stats.typeRWA') : t('stats.typeUSDT')}
-                          </td>
-                          <td className="px-4 py-3 font-mono text-[#00f5d4]">
-                            {parseFloat(formatUnits(BigInt(s.amount), 18)).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {s.isRWAStake ? 'RWA' : 'USDT'}
-                          </td>
-                          <td className="px-4 py-3 text-[#64748b]">{lockLabel(s.lockPeriod)}</td>
-                          <td className="px-4 py-3 font-mono text-[13px] text-[#94a3b8]">
-                            {formatMaturity(s.timestamp, s.lockPeriod)}
-                          </td>
-                          <td className="px-4 py-3">
-                            {s.blockNumber != null && s.blockNumber > 0 ? (
-                              <a
-                                href={`${explorerUrl}/block/${s.blockNumber}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 font-mono text-[12px] text-[#00f5d4] hover:underline"
-                                title={t('stats.stakeDetailViewBlock')}
-                              >
-                                #{s.blockNumber}
-                                <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-                              </a>
-                            ) : (
-                              <span className="text-[#64748b]">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+          <div className="relative shrink-0 border-b border-[#00f5d420]/15 px-5 py-4">
+            <div
+              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#00f5d4]/35 to-transparent"
+              aria-hidden
+            />
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="mt-0.5 h-8 w-0.5 shrink-0 rounded-full bg-gradient-to-b from-plasma-cyan to-plasma-cyan/20" aria-hidden />
+                <div className="min-w-0">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-plasma-cyan/75">Staking</div>
+                  <h3 className="mt-0.5 text-[17px] font-bold tracking-tight text-text-primary">{t('stats.stakeDetailTitle')}</h3>
                 </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowStakeDetail(false)}
+                className="shrink-0 rounded-full p-2 text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
 
-                {/* Mobile stacked cards (no horizontal scroll) */}
-                <div className="md:hidden space-y-2 px-1 pb-2">
-                  {sortedStakes.map((s) => (
-                    <div key={s.stakeId} className="rounded-xl border border-[#00f5d420]/15 bg-[#0d0d14] p-3">
-                      <div className="font-mono text-[12px] text-[#64748b]">
-                        {new Date(s.timestamp * 1000).toLocaleString(locale)}
+          <div className="min-h-0 flex-1 overflow-y-auto bg-[#05050a]/35 p-4 [overscroll-behavior:contain]">
+            {stakesLoading ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#00f5d4]/30 border-t-[#00f5d4]" />
+                <p className="text-[13px] text-text-secondary">{t('fundActivity.loading')}</p>
+              </div>
+            ) : sortedStakes.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-[#00f5d420]/20 bg-[#0d0d14]/35 px-4 py-8 text-center text-[13px] text-text-secondary">
+                {t('fundActivity.noRecords')}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {sortedStakes.map((s) => (
+                  <div
+                    key={s.stakeId}
+                    className="rounded-2xl border border-[#00f5d420]/12 bg-gradient-to-r from-[#0d0d14]/90 to-[#13131e]/60 px-4 py-3 transition-colors hover:border-[#00f5d420]/25 hover:bg-[#13131e]/80"
+                  >
+                    <div className="font-mono text-[12px] text-text-secondary">
+                      {new Date(s.timestamp * 1000).toLocaleString(locale)}
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <span className="rounded-full bg-plasma-cyan/15 px-2.5 py-0.5 text-[12px] font-semibold text-plasma-cyan ring-1 ring-plasma-cyan/25">
+                        {s.isRWAStake ? t('stats.typeRWA') : t('stats.typeUSDT')}
+                      </span>
+                      <div className="font-mono text-[13px] font-semibold tabular-nums text-plasma-cyan">
+                        {parseFloat(formatUnits(BigInt(s.amount), 18)).toLocaleString(locale, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}{' '}
+                        {s.isRWAStake ? 'RWA' : 'USDT'}
                       </div>
-                      <div className="mt-2 flex items-center justify-between gap-3">
-                        <div className="text-[#f1f5f9] text-[13px] font-medium">
-                          {s.isRWAStake ? t('stats.typeRWA') : t('stats.typeUSDT')}
-                        </div>
-                        <div className="font-mono text-[13px] font-semibold text-[#00f5d4]">
-                          {parseFloat(formatUnits(BigInt(s.amount), 18)).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {s.isRWAStake ? 'RWA' : 'USDT'}
-                        </div>
+                    </div>
+                    <div className="mt-2 space-y-1 text-[12px]">
+                      <div className="text-text-secondary">
+                        <span className="text-text-secondary/80">{t('stats.lock')}: </span>
+                        <span className="text-text-primary">{lockLabel(s.lockPeriod)}</span>
                       </div>
-                      <div className="mt-2 text-[12px] text-[#64748b]">
-                        {t('stats.lock')}: {lockLabel(s.lockPeriod)}
+                      <div className="text-text-secondary">
+                        <span className="text-text-secondary/80">{t('stats.stakeDetailMaturity')}: </span>
+                        <span className="font-mono text-[13px] text-[#94a3b8]">{formatMaturity(s.timestamp, s.lockPeriod)}</span>
                       </div>
-                      <div className="mt-1 text-[12px] text-[#94a3b8]">
-                        <span className="text-[#64748b]">{t('stats.stakeDetailMaturity')}: </span>
-                        {formatMaturity(s.timestamp, s.lockPeriod)}
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[12px]">
-                        <span className="text-[#64748b]">{t('stats.stakeDetailBlock')}: </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-text-secondary/80">{t('stats.stakeDetailBlock')}: </span>
                         {s.blockNumber != null && s.blockNumber > 0 ? (
                           <a
                             href={`${explorerUrl}/block/${s.blockNumber}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 font-mono text-[#00f5d4]"
+                            className="inline-flex items-center gap-1 font-mono text-[12px] text-plasma-cyan hover:underline"
+                            title={t('stats.stakeDetailViewBlock')}
                           >
                             #{s.blockNumber}
-                            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                            <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
                           </a>
                         ) : (
-                          <span className="text-[#64748b]">—</span>
+                          <span className="text-text-secondary">—</span>
                         )}
                       </div>
-                      <div className="mt-1 text-[11px] text-[#64748b] font-mono truncate">
-                        {s.stakeId}
-                      </div>
                     </div>
-                  ))}
-                </div>
-              </>
+                    <div className="mt-2 truncate font-mono text-[10px] text-text-secondary/70" title={s.stakeId}>
+                      ID: {s.stakeId}
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>

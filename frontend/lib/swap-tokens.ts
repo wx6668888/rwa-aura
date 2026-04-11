@@ -118,7 +118,8 @@ export function getDexTokens(chainId: number | undefined): SwapTokenListItem[] {
       symbol: 'USDT',
       name: 'Tether USD',
       address: a.usdtToken as Address,
-      decimals: 6,
+      // BSC 主网 USDT(0x55d398...) 精度为 18；此前写成 6 会导致余额放大 1e12
+      decimals: 18,
       accent: 'from-[#26a17b] to-[#1a8f6a]',
       iconUrl: pcsTokenIconUrl(a.usdtToken),
       tradeable: true,

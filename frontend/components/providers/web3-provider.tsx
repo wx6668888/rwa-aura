@@ -3,9 +3,59 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WagmiProvider } from 'wagmi'
 import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit'
+import type { Theme } from '@rainbow-me/rainbowkit'
+
+/** 与 WalletDetailsModal（钱包总览）一致的连接弹窗配色 */
+function buildRwaRainbowKitTheme(): Theme {
+  const base = darkTheme({
+    accentColor: '#00f5d4',
+    accentColorForeground: '#05050a',
+    borderRadius: 'large',
+    overlayBlur: 'small',
+  })
+  return {
+    ...base,
+    colors: {
+      ...base.colors,
+      modalBackdrop: 'rgba(5, 5, 10, 0.6)',
+      modalBackground:
+        'linear-gradient(180deg, rgb(13 13 20) 0%, rgb(10 10 16) 52%, rgb(13 13 20) 100%)',
+      modalBorder: 'rgba(0, 245, 212, 0.125)',
+      generalBorder: 'rgba(0, 245, 212, 0.14)',
+      generalBorderDim: 'rgba(0, 245, 212, 0.07)',
+      modalText: '#f1f5f9',
+      modalTextSecondary: '#94a3b8',
+      modalTextDim: 'rgba(148, 163, 184, 0.45)',
+      profileForeground: 'rgb(13 13 20)',
+      profileAction: 'rgba(0, 245, 212, 0.08)',
+      profileActionHover: 'rgba(0, 245, 212, 0.15)',
+      closeButton: '#94a3b8',
+      closeButtonBackground: 'rgba(255, 255, 255, 0.06)',
+      menuItemBackground: 'rgba(0, 245, 212, 0.06)',
+      selectedOptionBorder: 'rgba(0, 245, 212, 0.22)',
+      actionButtonBorder: 'rgba(0, 245, 212, 0.12)',
+      actionButtonBorderMobile: 'rgba(0, 245, 212, 0.16)',
+      actionButtonSecondaryBackground: 'rgba(18, 18, 26, 0.88)',
+      connectButtonBackground: 'rgb(13 13 20)',
+      connectButtonInnerBackground:
+        'linear-gradient(0deg, rgba(0,245,212,0.05), rgba(255,255,255,0.07))',
+      downloadBottomCardBackground:
+        'linear-gradient(126deg, rgba(0, 0, 0, 0) 9.49%, rgba(0, 245, 212, 0.12) 71.04%), rgb(13 13 20)',
+      downloadTopCardBackground:
+        'linear-gradient(126deg, rgba(0, 245, 212, 0.1) 9.49%, rgba(0, 0, 0, 0) 71.04%), rgb(13 13 20)',
+    },
+    shadows: {
+      ...base.shadows,
+      dialog:
+        '0 -12px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,245,212,0.06) inset, 0 8px 32px rgba(0,0,0,0.35)',
+    },
+  }
+}
+
+const rwaRainbowKitTheme = buildRwaRainbowKitTheme()
 import { config } from '@/lib/wagmi'
 import '@rainbow-me/rainbowkit/styles.css'
-import { useEffect, useLayoutEffect } from 'react'
+import { useEffect } from 'react'
 import { useLocale } from '@/components/locale-provider'
 import { AndroidWalletConnectHint } from '@/components/android-wallet-connect-hint'
 import { WalletResumeSync } from '@/components/providers/wallet-resume-sync'
@@ -13,8 +63,6 @@ import { ChatAuthSync } from '@/components/providers/chat-auth-sync'
 import { Toaster } from 'sonner'
 import { ConnectWalletErrorListener } from '@/components/connect-wallet-error-listener'
 import { WalletConnectDisclaimer } from '@/components/wallet-connect-disclaimer'
-import { injectWalletConnectInfraPreconnect } from '@/lib/wallet-connect-preconnect'
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -44,10 +92,6 @@ const getRainbowKitLocale = (locale: string): string => {
 
 export function Web3Provider({ children }: { children: React.ReactNode }) {
   const { locale } = useLocale()
-
-  useLayoutEffect(() => {
-    injectWalletConnectInfraPreconnect()
-  }, [])
 
   useEffect(() => {
     // 在客户端挂载后设置错误处理器，捕获 ethereum 属性重定义错误
@@ -92,11 +136,8 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider
-          theme={darkTheme({
-            accentColor: '#00f5d4',
-            accentColorForeground: '#0a0a12',
-            borderRadius: 'medium',
-          })}
+          id="rwa_rk"
+          theme={rwaRainbowKitTheme}
           modalSize="compact"
           locale={getRainbowKitLocale(locale)}
           appInfo={{

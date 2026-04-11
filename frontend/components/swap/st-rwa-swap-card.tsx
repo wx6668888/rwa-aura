@@ -119,7 +119,7 @@ export function StRWASwapCard() {
       }, 1500)
     } catch (error: any) {
       console.error('Approve stRWA error:', error)
-      setErrorMsg(error?.message || t('swap.approveFailed'))
+      setErrorMsg(error?.message || t('common.approveFailed'))
     } finally {
       setIsApprovingStRWA(false)
     }
@@ -143,7 +143,7 @@ export function StRWASwapCard() {
       }, 1500)
     } catch (error: any) {
       console.error('Approve RWA error:', error)
-      setErrorMsg(error?.message || t('swap.approveFailed'))
+      setErrorMsg(error?.message || t('common.approveFailed'))
     } finally {
       setIsApprovingRWA(false)
     }

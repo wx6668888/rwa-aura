@@ -8,6 +8,7 @@ import { useReferralWithdraw } from '@/hooks/useReferralWithdraw'
 import { useTeamDividend } from '@/hooks/useTeamDividend'
 import { TransactionOverlay } from '../transaction-overlay'
 import { emitDataRefresh } from '@/lib/data-refresh'
+import { useLocale } from '@/components/locale-provider'
 
 interface Props {
   onMobileBack: () => void
@@ -17,6 +18,8 @@ interface Props {
 }
 
 export function PanelQuickWithdraw({ onMobileBack, data, embedded = false }: Props) {
+  const { locale } = useLocale()
+  const isZh = locale.startsWith('zh')
   const { isConnected, address } = useAccount()
   const publicClient = usePublicClient()
   const [withdrawType, setWithdrawType] = useState<'rwa' | 'usdt'>('rwa')
@@ -45,11 +48,11 @@ export function PanelQuickWithdraw({ onMobileBack, data, embedded = false }: Pro
 
   const handleQuickWithdraw = async () => {
     if (withdrawType === 'rwa' && !hasRWA) {
-      alert('暂无可提取的 RWA')
+      alert(isZh ? '暂无可提取的 RWA' : 'No withdrawable RWA')
       return
     }
     if (withdrawType === 'usdt' && !hasUSDT) {
-      alert('暂无可提取的 USDT')
+      alert(isZh ? '暂无可提取的 USDT' : 'No withdrawable USDT')
       return
     }
 
@@ -112,13 +115,13 @@ export function PanelQuickWithdraw({ onMobileBack, data, embedded = false }: Pro
     } catch (err: any) {
       console.error('提取失败:', err)
       
-      let errorMessage = '提取失败，请重试'
+      let errorMessage = isZh ? '提取失败，请重试' : 'Withdrawal failed, please try again'
       if (err.message?.includes('User rejected') || err.message?.includes('User denied')) {
-        errorMessage = '您已取消交易'
+        errorMessage = isZh ? '您已取消交易' : 'You cancelled the transaction'
       } else if (err.message?.includes('insufficient funds')) {
-        errorMessage = 'BNB 余额不足，无法支付 Gas 费用'
+        errorMessage = isZh ? 'BNB 余额不足，无法支付 Gas 费用' : 'Insufficient BNB for gas fee'
       } else if (err.message?.includes('execution reverted')) {
-        errorMessage = '合约执行失败，请检查提取金额'
+        errorMessage = isZh ? '合约执行失败，请检查提取金额' : 'Contract execution failed, please check withdrawal amount'
       }
       
       setError(errorMessage)
@@ -137,12 +140,12 @@ export function PanelQuickWithdraw({ onMobileBack, data, embedded = false }: Pro
             className="lg:hidden flex items-center gap-2 text-[rgba(238,242,255,0.5)] hover:text-emerald-400 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm">返回</span>
+            <span className="text-sm">{isZh ? '返回' : 'Back'}</span>
           </button>
           <div className="min-w-0 ml-auto text-right">
-            <h2 className="text-[14px] font-semibold text-[#e2e8f0] tracking-tight truncate">一键提取</h2>
+            <h2 className="text-[14px] font-semibold text-[#e2e8f0] tracking-tight truncate">{isZh ? '一键提取' : 'Quick Withdraw'}</h2>
             <p className="text-[11px] text-[#64748b] mt-0.5 truncate max-w-[210px]">
-              聚合多种资产，一次签名完成提取
+              {isZh ? '聚合多种资产，一次签名完成提取' : 'Aggregate assets and complete withdrawal with one signing flow'}
             </p>
           </div>
         </div>
@@ -165,7 +168,7 @@ export function PanelQuickWithdraw({ onMobileBack, data, embedded = false }: Pro
                 <div className="absolute inset-0 bg-gradient-to-br from-[#00f5d433] to-[#22c55e26] animate-pulse" />
               )}
               <div className="relative z-10 text-center">
-                <div className="text-sm font-semibold text-[#00f5d4] mb-3">提取 RWA</div>
+                <div className="text-sm font-semibold text-[#00f5d4] mb-3">{isZh ? '提取 RWA' : 'Withdraw RWA'}</div>
                 <div className="text-2xl md:text-3xl font-bold text-white mb-2" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
                   {totalRWA.toFixed(2)}
                 </div>
@@ -187,7 +190,7 @@ export function PanelQuickWithdraw({ onMobileBack, data, embedded = false }: Pro
                 <div className="absolute inset-0 bg-gradient-to-br from-[#00f5d433] to-[#22c55e26] animate-pulse" />
               )}
               <div className="relative z-10 text-center">
-                <div className="text-sm font-semibold text-[#00f5d4] mb-3">提取 USDT</div>
+                <div className="text-sm font-semibold text-[#00f5d4] mb-3">{isZh ? '提取 USDT' : 'Withdraw USDT'}</div>
                 <div className="text-2xl md:text-3xl font-bold text-white mb-2" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
                   {totalUSDT.toFixed(2)}
                 </div>
@@ -203,10 +206,10 @@ export function PanelQuickWithdraw({ onMobileBack, data, embedded = false }: Pro
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-white/80 flex items-center gap-2">
                 <div className="w-1 h-4 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full" />
-                资产拆分
+                {isZh ? '资产拆分' : 'Asset Breakdown'}
               </h3>
               <span className="text-[10px] text-slate-400">
-                一键提取会自动按下列顺序聚合执行
+                {isZh ? '一键提取会自动按下列顺序聚合执行' : 'Quick withdrawal runs in sequence as listed below'}
               </span>
             </div>
             <div className="space-y-3">
@@ -219,8 +222,8 @@ export function PanelQuickWithdraw({ onMobileBack, data, embedded = false }: Pro
                           <Briefcase className="w-4 h-4 text-[#00f5d4]" />
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-sm text-white/80">质押本金</span>
-                          <span className="text-[11px] text-slate-400">RWA 灵活 / 到期锁仓本金</span>
+                          <span className="text-sm text-white/80">{isZh ? '质押本金' : 'Staked Principal'}</span>
+                          <span className="text-[11px] text-slate-400">{isZh ? 'RWA 灵活 / 到期锁仓本金' : 'RWA flexible / matured locked principal'}</span>
                         </div>
                       </div>
                       <div className="text-right">
@@ -240,8 +243,8 @@ export function PanelQuickWithdraw({ onMobileBack, data, embedded = false }: Pro
                           <TrendingUp className="w-4 h-4 text-[#00f5d4]" />
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-sm text-white/80">RWA 收益</span>
-                          <span className="text-[11px] text-slate-400">已结算，可立即提取或兑换 stRWA</span>
+                          <span className="text-sm text-white/80">{isZh ? 'RWA 收益' : 'RWA Yield'}</span>
+                          <span className="text-[11px] text-slate-400">{isZh ? '已结算，可立即提取或兑换 stRWA' : 'Settled, can withdraw now or redeem to stRWA'}</span>
                         </div>
                       </div>
                       <div className="text-right">
@@ -258,7 +261,7 @@ export function PanelQuickWithdraw({ onMobileBack, data, embedded = false }: Pro
                     <div className="flex items-center justify-between py-2">
                       <div className="flex items-center gap-2">
                         <Coins className="w-4 h-4 text-[#00ffc8]" />
-                        <span className="text-[13px] text-[rgba(238,242,255,0.7)]">stRWA 兑换</span>
+                        <span className="text-[13px] text-[rgba(238,242,255,0.7)]">{isZh ? 'stRWA 兑换' : 'stRWA Redemption'}</span>
                       </div>
                       <span className="text-[14px] font-[600] text-[#f1f5f9]" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
                         {strwa.toFixed(2)} stRWA
@@ -275,8 +278,8 @@ export function PanelQuickWithdraw({ onMobileBack, data, embedded = false }: Pro
                           <Briefcase className="w-4 h-4 text-[#00f5d4]" />
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-[13px] text-[rgba(238,242,255,0.9)] truncate">质押本金</span>
-                          <span className="text-[11px] text-slate-400">USDT 灵活 / 到期锁仓本金</span>
+                          <span className="text-[13px] text-[rgba(238,242,255,0.9)] truncate">{isZh ? '质押本金' : 'Staked Principal'}</span>
+                          <span className="text-[11px] text-slate-400">{isZh ? 'USDT 灵活 / 到期锁仓本金' : 'USDT flexible / matured locked principal'}</span>
                         </div>
                       </div>
                       <div className="text-right">
@@ -290,7 +293,7 @@ export function PanelQuickWithdraw({ onMobileBack, data, embedded = false }: Pro
                     <div className="flex items-center justify-between py-2">
                       <div className="flex items-center gap-2">
                         <Users className="w-4 h-4 text-[#00ffc8]" />
-                        <span className="text-[13px] text-[rgba(238,242,255,0.7)]">推荐奖励</span>
+                        <span className="text-[13px] text-[rgba(238,242,255,0.7)]">{isZh ? '推荐奖励' : 'Referral Rewards'}</span>
                       </div>
                       <span className="text-[14px] font-[600] text-[#f1f5f9]" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
                         {referral.toFixed(2)} USDT
@@ -301,7 +304,7 @@ export function PanelQuickWithdraw({ onMobileBack, data, embedded = false }: Pro
                     <div className="flex items-center justify-between py-2">
                       <div className="flex items-center gap-2">
                         <Gift className="w-4 h-4 text-[#00ffc8]" />
-                        <span className="text-[13px] text-[rgba(238,242,255,0.7)]">项目分红</span>
+                        <span className="text-[13px] text-[rgba(238,242,255,0.7)]">{isZh ? '项目分红' : 'Project Dividend'}</span>
                       </div>
                       <span className="text-[14px] font-[600] text-[#f1f5f9]" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
                         {dividend.toFixed(2)} USDT
@@ -321,11 +324,13 @@ export function PanelQuickWithdraw({ onMobileBack, data, embedded = false }: Pro
             style={{ fontFamily: 'var(--font-space-grotesk)' }}
           >
             <Zap className="w-5 h-5" />
-            {loading ? '处理中...' : `一键提取 ${withdrawType === 'rwa' ? 'RWA' : 'USDT'}`}
+            {loading ? (isZh ? '处理中...' : 'Processing...') : `${isZh ? '一键提取' : 'Quick Withdraw'} ${withdrawType === 'rwa' ? 'RWA' : 'USDT'}`}
           </button>
 
           <p className="text-[10px] text-slate-500 text-center">
-            系统将按上方顺序依次执行多笔提取操作，失败时只会回退未成功部分，已到账资产不会回滚。
+            {isZh
+              ? '系统将按上方顺序依次执行多笔提取操作，失败时只会回退未成功部分，已到账资产不会回滚。'
+              : 'The system executes multiple withdrawals in order; failed steps do not roll back assets that were already received.'}
           </p>
         </div>
       </div>

@@ -16,7 +16,7 @@ const LEVEL_CONFIG: Record<string, { name: string; icon: string; color: string; 
 };
 
 interface UserBadgeProps {
-  user: ChatUser;
+  user?: ChatUser | null;
   size?: 'sm' | 'md' | 'lg';
   showLevel?: boolean;
 }
@@ -29,7 +29,16 @@ export function shortWalletAddress(addr: string): string {
 }
 
 export default function UserBadge({ user, size = 'md', showLevel = true }: UserBadgeProps) {
-  const config = LEVEL_CONFIG[user.nodeLevel] || LEVEL_CONFIG.L1;
+  const safeUser: ChatUser = user || {
+    id: 'unknown',
+    address: '',
+    nickname: 'Unknown',
+    nodeLevel: 'L1',
+    isBot: false,
+    isAdmin: false,
+    isOnline: false,
+  };
+  const config = LEVEL_CONFIG[safeUser.nodeLevel] || LEVEL_CONFIG.L1;
   const isElite = config.tier === 'elite';
   const isHigh = config.tier === 'high' || isElite;
 
@@ -38,7 +47,7 @@ export default function UserBadge({ user, size = 'md', showLevel = true }: UserB
     md: { badge: 'text-[10px] px-1.5 py-[2px]', name: 'text-[13px]', tag: 'text-[9px] px-1' },
     lg: { badge: 'text-xs px-2 py-0.5', name: 'text-sm', tag: 'text-[10px] px-1.5' },
   }[size];
-  const isOwner = user.isBot && user.isAdmin;
+  const isOwner = safeUser.isBot && safeUser.isAdmin;
 
   return (
     <div className="flex items-center gap-1">
@@ -53,18 +62,18 @@ export default function UserBadge({ user, size = 'md', showLevel = true }: UserB
             boxShadow: isHigh ? config.glow : undefined,
           }}
         >
-          {user.nodeLevel}
+          {safeUser.nodeLevel}
         </span>
       )}
 
       <span
         className={`font-semibold truncate leading-none ${sizeClasses.name} font-mono max-w-[min(200px,72vw)]`}
         style={{ color: isHigh ? config.color : 'var(--text-primary)' }}
-        title={user.address && user.address.startsWith('0x') ? user.address : undefined}
+        title={safeUser.address && safeUser.address.startsWith('0x') ? safeUser.address : undefined}
       >
-        {user.nickname?.trim() || shortWalletAddress(user.address)}
+        {safeUser.nickname?.trim() || shortWalletAddress(safeUser.address)}
       </span>
-      {user.isAdmin && (
+      {safeUser.isAdmin && (
         <span
           className={`rounded font-mono font-medium leading-none text-white ${sizeClasses.tag}`}
           style={
@@ -85,20 +94,29 @@ export default function UserBadge({ user, size = 'md', showLevel = true }: UserB
 }
 
 /** Avatar circle with level-colored ring；机器人可带 /chat-bot-icons/*.svg */
-export function UserAvatar({ user, size = 32 }: { user: ChatUser; size?: number }) {
-  const config = LEVEL_CONFIG[user.nodeLevel] || LEVEL_CONFIG.L1;
-  const addr = (user.address || '').toLowerCase();
+export function UserAvatar({ user, size = 32 }: { user?: ChatUser | null; size?: number }) {
+  const safeUser: ChatUser = user || {
+    id: 'unknown',
+    address: '',
+    nickname: 'Unknown',
+    nodeLevel: 'L1',
+    isBot: false,
+    isAdmin: false,
+    isOnline: false,
+  };
+  const config = LEVEL_CONFIG[safeUser.nodeLevel] || LEVEL_CONFIG.L1;
+  const addr = (safeUser.address || '').toLowerCase();
   const botMark =
-    user.isBot && addr.startsWith('0x') && addr.length >= 4
+    safeUser.isBot && addr.startsWith('0x') && addr.length >= 4
       ? addr.slice(2, 4).toUpperCase()
       : null;
-  const initial = botMark ?? (user.isBot ? '?' : user.nickname?.[0]?.toUpperCase() || '?');
+  const initial = botMark ?? (safeUser.isBot ? '?' : safeUser.nickname?.[0]?.toUpperCase() || '?');
   const isElite = config.tier === 'elite';
-  const isAdmin = Boolean(user.isAdmin);
+  const isAdmin = Boolean(safeUser.isAdmin);
 
   const iconSrc =
-    user.avatar && (user.avatar.startsWith('/') || user.avatar.startsWith('http'))
-      ? user.avatar
+    safeUser.avatar && (safeUser.avatar.startsWith('/') || safeUser.avatar.startsWith('http'))
+      ? safeUser.avatar
       : null;
 
   return (
@@ -108,7 +126,7 @@ export function UserAvatar({ user, size = 32 }: { user: ChatUser; size?: number 
       style={{
         width: size,
         height: size,
-        fontSize: size * (user.isBot && !iconSrc ? 0.3 : 0.4),
+        fontSize: size * (safeUser.isBot && !iconSrc ? 0.3 : 0.4),
         background: `linear-gradient(135deg, ${config.color}20, ${config.color}08)`,
         border: `1.5px solid ${config.color}50`,
         color: config.color,
@@ -149,7 +167,7 @@ export function UserAvatar({ user, size = 32 }: { user: ChatUser; size?: number 
           ✓
         </div>
       )}
-      {user.isOnline && (
+      {safeUser.isOnline && (
         <div
           className="absolute -bottom-[1px] -right-[1px] rounded-full border-2"
           style={{

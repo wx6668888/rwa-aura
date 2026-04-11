@@ -25,9 +25,9 @@ export class TxIngestJobService {
   private readonly stakingContractAddress: string;
 
   constructor() {
-    this.workerIntervalMs = parseInt(process.env.INGEST_WORKER_INTERVAL_MS || '3000', 10);
-    this.scanIntervalMs = parseInt(process.env.INGEST_SCAN_INTERVAL_MS || '15000', 10);
-    this.batchSize = parseInt(process.env.INGEST_SCAN_BATCH_BLOCKS || '200', 10);
+    this.workerIntervalMs = parseInt(process.env.INGEST_WORKER_INTERVAL_MS || '6000', 10);
+    this.scanIntervalMs = parseInt(process.env.INGEST_SCAN_INTERVAL_MS || '30000', 10);
+    this.batchSize = parseInt(process.env.INGEST_SCAN_BATCH_BLOCKS || '80', 10);
     this.confirmations = parseInt(process.env.INGEST_CONFIRMATIONS || '6', 10);
     this.stakingContractAddress = (process.env.STAKING_CONTRACT_ADDRESS || '').toLowerCase();
 

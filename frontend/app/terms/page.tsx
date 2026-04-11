@@ -1,6 +1,5 @@
 'use client'
 
-import { Navbar } from '@/components/navbar'
 import { BackgroundEffects } from '@/components/background-effects'
 import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
@@ -12,7 +11,6 @@ export default function TermsPage() {
   return (
     <div className="min-h-screen bg-[#05050a] font-sans">
       <BackgroundEffects />
-      <Navbar />
       <main className="relative z-10 mx-auto max-w-4xl px-4 pb-16 pt-[calc(4rem+var(--app-safe-top))] lg:px-8">
         <div className="rounded-2xl border border-[#ffffff0d] bg-[#0d0d14] p-8 backdrop-blur-xl">
           <h1 className="mb-8 font-[family-name:var(--font-space-grotesk)] text-4xl font-bold text-[#f1f5f9]">

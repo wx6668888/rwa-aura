@@ -2,6 +2,7 @@
 
 import { TrendingUp, Briefcase, Users, PieChart, Shield, Zap } from 'lucide-react'
 import { useAccount } from 'wagmi'
+import { useLocale } from '@/components/locale-provider'
 
 type PanelId = 'quick' | 'yield' | 'principal' | 'referral' | 'dividend' | 'strwa'
 
@@ -13,20 +14,22 @@ interface Props {
 
 export function AssetTree({ activePanel, onPanelSwitch, data }: Props) {
   const { isConnected } = useAccount()
+  const { locale } = useLocale()
+  const isZh = locale.startsWith('zh')
 
   const RWA_TO_USD = 0.85
   const principalUSD = (parseFloat(data.rwaPrincipal || '0') * RWA_TO_USD + parseFloat(data.usdtPrincipal || '0')).toFixed(2)
 
   const items = [
     // 下方各资产行：统一使用主霓虹青绿做点缀，避免多色干扰
-    { id: 'yield' as PanelId, icon: TrendingUp, name: 'RWA 收益', sub: '每日 0.8% 收益率', amount: `${data.yieldAmount} RWA`, status: '可提取', color: '#00f5d4', value: parseFloat(data.yieldAmount || '0') * RWA_TO_USD },
-    { id: 'principal' as PanelId, icon: Briefcase, name: '质押本金', sub: `RWA: ${data.rwaPrincipal} | USDT: ${data.usdtPrincipal}`, amount: `${principalUSD} USDT`, status: '可提取', color: '#00f5d4', value: parseFloat(principalUSD) },
-    { id: 'referral' as PanelId, icon: Users, name: '推荐奖励', sub: '每周结算', amount: `${data.referralAmount} USDT`, status: '可提取', color: '#00f5d4', value: parseFloat(data.referralAmount || '0') },
-    { id: 'dividend' as PanelId, icon: PieChart, name: '项目分红', sub: '每月结算', amount: `${data.dividendAmount} USDT`, status: '可提取', color: '#00f5d4', value: parseFloat(data.dividendAmount || '0') },
-    { id: 'strwa' as PanelId, icon: Shield, name: 'stRWA 凭证', sub: '资产解锁', amount: data.strwaAmount, status: 'stRWA', color: '#00f5d4', value: parseFloat(data.strwaAmount || '0') * RWA_TO_USD },
+    { id: 'yield' as PanelId, icon: TrendingUp, name: isZh ? 'RWA 收益' : 'RWA Yield', sub: isZh ? '每日 0.8% 收益率' : 'Daily 0.8% yield', amount: `${data.yieldAmount} RWA`, status: isZh ? '可提取' : 'Withdrawable', color: '#00f5d4', value: parseFloat(data.yieldAmount || '0') * RWA_TO_USD },
+    { id: 'principal' as PanelId, icon: Briefcase, name: isZh ? '质押本金' : 'Staked Principal', sub: `RWA: ${data.rwaPrincipal} | USDT: ${data.usdtPrincipal}`, amount: `${principalUSD} USDT`, status: isZh ? '可提取' : 'Withdrawable', color: '#00f5d4', value: parseFloat(principalUSD) },
+    { id: 'referral' as PanelId, icon: Users, name: isZh ? '推荐奖励' : 'Referral Rewards', sub: isZh ? '每周结算' : 'Weekly settlement', amount: `${data.referralAmount} USDT`, status: isZh ? '可提取' : 'Withdrawable', color: '#00f5d4', value: parseFloat(data.referralAmount || '0') },
+    { id: 'dividend' as PanelId, icon: PieChart, name: isZh ? '项目分红' : 'Project Dividend', sub: isZh ? '每月结算' : 'Monthly settlement', amount: `${data.dividendAmount} USDT`, status: isZh ? '可提取' : 'Withdrawable', color: '#00f5d4', value: parseFloat(data.dividendAmount || '0') },
+    { id: 'strwa' as PanelId, icon: Shield, name: isZh ? 'stRWA 凭证' : 'stRWA Voucher', sub: isZh ? '资产解锁' : 'Asset unlock', amount: data.strwaAmount, status: 'stRWA', color: '#00f5d4', value: parseFloat(data.strwaAmount || '0') * RWA_TO_USD },
   ]
 
-  const quickItem = { id: 'quick' as PanelId, icon: Zap, name: '一键提取', sub: '快速提取所有资产', amount: `$${data.totalUSD}`, status: '快捷', color: '#fbbf24', value: 0 }
+  const quickItem = { id: 'quick' as PanelId, icon: Zap, name: isZh ? '一键提取' : 'Quick Withdraw', sub: isZh ? '快速提取所有资产' : 'Withdraw all assets quickly', amount: `$${data.totalUSD}`, status: isZh ? '快捷' : 'Quick', color: '#fbbf24', value: 0 }
   const displayItems = [quickItem, ...items]
 
   // Calculate percentages (excluding quick withdraw)
@@ -37,7 +40,7 @@ export function AssetTree({ activePanel, onPanelSwitch, data }: Props) {
 
   const activeIndex = items.findIndex(item => item.id === activePanel)
   const activePercent = activeIndex >= 0 ? percentages[activeIndex] : 0
-  const activeLabel = activeIndex >= 0 ? items[activeIndex].name : '资产类型'
+  const activeLabel = activeIndex >= 0 ? items[activeIndex].name : (isZh ? '资产类型' : 'Asset Type')
 
   return (
     <div className="bg-[#0d1018] border-r border-[rgba(255,255,255,0.08)] flex flex-col h-full relative overflow-hidden">
@@ -48,7 +51,7 @@ export function AssetTree({ activePanel, onPanelSwitch, data }: Props) {
       <div className="relative p-5 pb-4 border-b border-[rgba(255,255,255,0.08)]">
         <div className="text-[10px] uppercase tracking-[0.2em] text-[rgba(238,242,255,0.4)] mb-4 flex items-center gap-2">
           <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-          资产构成一览
+          {isZh ? '资产构成一览' : 'Asset Composition'}
         </div>
         
         {/* Enhanced Donut Chart with Percentages */}
@@ -90,7 +93,7 @@ export function AssetTree({ activePanel, onPanelSwitch, data }: Props) {
           </div>
           
           <div className="flex justify-between w-full mt-4 text-[11px] px-1">
-            <span className="text-[rgba(238,242,255,0.5)]">可提取总计</span>
+            <span className="text-[rgba(238,242,255,0.5)]">{isZh ? '可提取总计' : 'Withdrawable Total'}</span>
             <span className="font-[700] text-[#00ffc8]" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
               {data.loading ? '...' : isConnected ? `$${data.totalUSD}` : '--'}
             </span>
@@ -171,8 +174,8 @@ export function AssetTree({ activePanel, onPanelSwitch, data }: Props) {
       {/* Footer */}
       <div className="relative p-4 border-t border-[rgba(255,255,255,0.08)] text-center bg-[rgba(0,0,0,0.2)]">
         <div className="text-[10px] text-[rgba(238,242,255,0.35)] leading-[1.6]">
-          点击切换提取项目<br />
-          <span className="text-emerald-400/60">数据每30秒自动刷新</span>
+          {isZh ? '点击切换提取项目' : 'Tap to switch withdrawal item'}<br />
+          <span className="text-emerald-400/60">{isZh ? '数据每30秒自动刷新' : 'Data auto-refreshes every 30 seconds'}</span>
         </div>
       </div>
 

@@ -235,7 +235,25 @@ class BackendService {
                 lockMaturityCron: '*/10 * * * *', // Every 10 minutes
                 priceRefreshCron: '*/5 * * * *', // Every 5 minutes
                 nodeLevelSyncCron: '0 * * * *', // Every hour
-                rwaPendingSyncCron: '* * * * *' // Every minute
+                rwaPendingSyncCron: process.env.RWA_PENDING_SYNC_CRON || '*/3 * * * *', // default every 3 minutes
+                // 8:00~8:30 内每 5 分钟补跑一次，确保 429/重启后能补齐；幂等由 yield_settlements 唯一键保证
+                dailyYieldRetryCron: process.env.DAILY_YIELD_RETRY_CRON || '*/5 8 * * *',
+                dailyYieldRetryWindowEndMinute: Math.max(
+                    0,
+                    Math.min(59, Number(process.env.DAILY_YIELD_RETRY_WINDOW_END_MINUTE || '30') || 30)
+                ),
+                onDailySettlementStart: async () => {
+                    logger.info('[Scheduler] 日结窗口开始：暂停高并发链上任务（TxIngest / WithdrawSync / RwaPendingSync）');
+                    try { txIngestJobService.stop(); } catch (e) { logger.warn('[Scheduler] stop txIngest failed:', e); }
+                    try { this.withdrawDataSyncService.stop(); } catch (e) { logger.warn('[Scheduler] stop withdraw sync failed:', e); }
+                    try { this.rwaPendingSyncService.suspend(); } catch (e) { logger.warn('[Scheduler] suspend rwaPending sync failed:', e); }
+                },
+                onDailySettlementEnd: async () => {
+                    logger.info('[Scheduler] 日结窗口结束：恢复高并发链上任务（TxIngest / WithdrawSync / RwaPendingSync）');
+                    try { await txIngestJobService.start(); } catch (e) { logger.warn('[Scheduler] start txIngest failed:', e); }
+                    try { this.withdrawDataSyncService.start(); } catch (e) { logger.warn('[Scheduler] start withdraw sync failed:', e); }
+                    try { this.rwaPendingSyncService.resume(); } catch (e) { logger.warn('[Scheduler] resume rwaPending sync failed:', e); }
+                }
             },
             this.dailySettlementService,
             this.priceOracleService,

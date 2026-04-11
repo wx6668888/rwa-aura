@@ -30,6 +30,32 @@ function formatDate(ts: number, t: (key: string) => string): string {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
+function extractSupportLinksFromText(content: string): Array<{ href: string; label: string }> {
+  if (!content || typeof content !== 'string') return [];
+  const lines = content.split('\n');
+  const seen = new Set<string>();
+  const links: Array<{ href: string; label: string }> = [];
+  for (const line of lines) {
+    const m = line.match(/https?:\/\/rwa\.lat\/[^\s)]+/i);
+    if (!m) continue;
+    const href = m[0].trim();
+    if (!href || seen.has(href)) continue;
+    seen.add(href);
+    const prefix = line.slice(0, m.index ?? 0).replace(/[:：\-\s]+$/g, '').trim();
+    links.push({ href, label: prefix || '打开页面' });
+  }
+  return links;
+}
+
+function stripSupportLinkLines(content: string): string {
+  if (!content || typeof content !== 'string') return '';
+  return content
+    .split('\n')
+    .filter((line) => !/https?:\/\/rwa\.lat\/[^\s)]+/i.test(line))
+    .join('\n')
+    .trim();
+}
+
 interface MessageGroupProps {
   messages: ChatMessage[];
   isOwn: boolean;
@@ -46,11 +72,31 @@ export function MessageGroup({ messages, isOwn, onToast, onMentionUser }: Messag
   const [records, setRecords] = useState<Array<{ userId: string; nickname: string; amount: number; claimedAt: number }>>([]);
   const [loadingRecords, setLoadingRecords] = useState(false);
   if (!messages.length) return null;
-  const user = messages[0].user;
+  const fallbackUser = {
+    id: 'unknown',
+    address: '',
+    nickname: 'Unknown',
+    nodeLevel: 'L1' as const,
+    isBot: false,
+    isAdmin: false,
+    isOnline: false,
+  };
+  const user = messages[0]?.user || fallbackUser;
 
   const ownBubble =
     'rounded-2xl px-3 py-2 my-0.5 text-left inline-block max-w-full ' +
     'border border-white/20 bg-[#0f766e] text-white';
+
+  const getSafeQuickLinkPath = (msg: ChatMessage): string => {
+    const raw = (msg.metadata as any)?.quickLink?.path;
+    return typeof raw === 'string' ? raw.trim() : '';
+  };
+
+  const getSafeQuickLinkLabel = (msg: ChatMessage): string => {
+    const raw = (msg.metadata as any)?.quickLink?.label;
+    if (typeof raw === 'string' && raw.trim()) return raw.trim();
+    return typeof msg.content === 'string' ? msg.content : '';
+  };
 
   return (
     <div
@@ -190,7 +236,7 @@ export function MessageGroup({ messages, isOwn, onToast, onMentionUser }: Messag
                     </button>
                   </div>
                 </div>
-              ) : msg.metadata?.quickLink?.path ? (
+              ) : getSafeQuickLinkPath(msg) ? (
                 <div
                   className={`my-0.5 inline-block max-w-full text-left rounded-2xl px-3 py-2 border ${
                     isOwn
@@ -204,14 +250,14 @@ export function MessageGroup({ messages, isOwn, onToast, onMentionUser }: Messag
                     {t('chat.quickLinkCardHint')}
                   </div>
                   <Link
-                    href={msg.metadata.quickLink.path}
+                    href={getSafeQuickLinkPath(msg)}
                     className="break-words text-[13px] font-medium text-white hover:underline"
                   >
-                    {msg.metadata.quickLink.label || msg.content}
+                    {getSafeQuickLinkLabel(msg)}
                   </Link>
                   <div className="mt-1.5">
                     <Link
-                      href={msg.metadata.quickLink.path}
+                      href={getSafeQuickLinkPath(msg)}
                       className="inline-flex rounded-md border border-white/15 bg-[#0d9488] px-2 py-1 text-[11px] text-white hover:bg-[#0f766e]"
                     >
                       {t('chat.quickLinkOpen')} →
@@ -224,18 +270,39 @@ export function MessageGroup({ messages, isOwn, onToast, onMentionUser }: Messag
                   )}
                 </div>
               ) : (
+                (() => {
+                  const supportLinks = extractSupportLinksFromText(msg.content);
+                  const displayContent = stripSupportLinkLines(msg.content);
+                  return (
                 <div
                   className={`break-words whitespace-pre-wrap py-[1px] text-[13px] leading-[1.45] ${
                     isOwn ? ownBubble : 'text-text-primary'
                   }`}
                 >
-                  {msg.content}
+                  {displayContent}
+                  {supportLinks.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {supportLinks.map((item) => (
+                        <Link
+                          key={`${msg.id}-${item.href}`}
+                          href={item.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex rounded-md border border-[#6eff8f] bg-[#6eff8f] px-2.5 py-1 text-[11px] font-semibold text-black hover:bg-[#57e97a]"
+                        >
+                          {item.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                   {msg.edited && (
                     <span className={`ml-1 text-[9px] ${isOwn ? 'text-white/55' : 'text-text-disabled'}`}>
                       {t('chat.edited')}
                     </span>
                   )}
                 </div>
+                  );
+                })()
               )
             )}
           </div>

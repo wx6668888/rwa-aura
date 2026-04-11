@@ -1,0 +1,91 @@
+/**
+ * 官方客服弹层：知识库深链索引（slug + 中文标题，供 LLM 生成 /knowledge?article= 链接）
+ * 由仓库脚本从 frontend/lib/knowledge-data + knowledge-content-zh-full 生成；勿手改长列表。
+ */
+export const SUPPORT_KNOWLEDGE_ARTICLE_LINK_INDEX = `
+=== KNOWLEDGE_BASE_DEEP_LINKS ===
+- 站点内知识库路径：/knowledge
+- 单篇文章深链：/knowledge?article=<slug>（slug 必须完全匹配下列 id，禁止编造）
+- 在回复末尾如适用，可加一行「延伸阅读：」并给出 1–3 个 Markdown 链接，示例：[如何选择 BSC 网络？](/knowledge?article=choose-bsc-network)
+
+ARTICLE_SLUGS (id — 中文标题):
+- what-is-rwa — 什么是 RWA 协议？
+- rwa-token-what — RWA 代币是什么？用来做什么？
+- how-to-start — 如何开始使用？分几步？
+- supported-wallets — 支持哪些钱包？
+- how-to-connect — 如何连接钱包？
+- what-is-gas — 什么是 Gas？为什么需要 BNB？
+- how-to-get-usdt — 如何获得 USDT？
+- withdraw-from-exchange — 如何从交易所提币到钱包？
+- choose-bsc-network — 如何选择 BSC 网络？
+- min-deposit — 最低充值/质押金额是多少？
+- what-is-staking — 什么是质押？
+- usdt-vs-rwa-stake — USDT 质押和 RWA 质押有什么区别？
+- lock-period-and-yield — 锁仓期限有哪些？收益倍数怎么算？
+- daily-yield-calc — 每日收益如何计算？
+- yield-calculation — 收益如何计算？为什么每天收益不一样？
+- when-rewards-arrive — 收益什么时候到账？如何查看？
+- what-is-approve — 授权（Approve）是什么？为什么要两笔交易？
+- balance-insufficient-why — 显示「余额不足」但钱包里有 USDT？
+- can-cancel-stake — 我能取消质押吗？
+- multiple-stakes — 可以同时有多笔质押吗？
+- strwa-vs-rwa — stRWA 和 RWA 有什么区别？
+- wrong-amount-sent-tx — 质押时填错金额，交易已发出能撤回吗？
+- transfer-stake-to-other — 能把质押份额转给别人吗？
+- how-to-withdraw-rwa — 如何提现 RWA 收益？
+- principal-withdraw-guide — 如何提取本金？灵活/锁仓本金怎么提？
+- withdraw-arrival-time — 提现后多久到账？
+- withdraw-cooldown-fee — 提现冷却期和手续费是多少？
+- rewards-manual-claim — 收益是自动到账还是要手动领取？
+- withdraw-amount-mismatch — 为什么可提 RWA 金额和我算的不一样？
+- withdraw-not-received — 提现后 RWA 没到钱包怎么查？
+- rwa-usdt-separate-claim — USDT 奖励和 RWA 收益要分开领取吗？
+- what-is-strwa-unlock — 什么是 stRWA 解锁？如何操作？
+- claim-usdt-rewards — 如何领取 USDT 推荐奖励？
+- what-is-emergency-withdraw — 什么是紧急提取？有什么后果？
+- what-are-node-levels — 什么是节点等级？L1～L9 分别是什么？
+- no-referrals-still-earn — 没有下级推荐还能赚钱吗？
+- what-is-referrer — 推荐人是什么？如何绑定？
+- wrong-referrer-address — 推荐人地址填错了怎么办？
+- referral-reward-calc — 推荐奖励如何计算？什么时候发放？
+- referral-quality-score — 什么是推荐质量？为什么我需要关注？
+- project-dividend-mechanism — 什么是项目分红?如何参与?
+- node-level-downgrade — 节点等级降级是怎么回事？
+- direct-vs-indirect-referral — 只有直推奖励吗？有多级推荐吗？
+- same-wallet-multiple-referrers — 同一个钱包能被多人推荐吗？
+- how-to-upgrade-node — 如何升级节点等级？
+- lottery-rules — 抽奖规则是什么？
+- four-pools-diff — 四种奖池（实时/周/月/年）有什么区别？
+- draw-time-utc — 开奖时间是怎么定的？（UTC）
+- buy-tickets-and-claim — 如何购买彩票与领取奖金？
+- how-to-buy-rwa-with-usdt — 如何用 USDT 购买 RWA？
+- where-to-see-price — 在哪里查看 RWA 行情？
+- swap-limits-slippage — 兑换有额度或滑点限制吗？
+- sell-rwa-for-usdt — 能用 RWA 换回 USDT 吗？
+- protocol-fund-model — 协议的资金模型是什么？（50/50）
+- treasury-and-community-pool — 国库和社区池是什么？
+- lottery-5-percent-treasury — 抽奖奖池中 5% 进国库是什么意思？
+- tvl-data-verify — 协议的 TVL 和数据在哪里能独立验证？
+- treasury-address-public — 国库地址公开吗？怎么查余额？
+- rwa-dynamic-sell-tax — RWA 动态卖出税说明
+- avoid-phishing — 如何防范钓鱼网站？
+- protect-private-key — 私钥和助记词如何保管？
+- audit-where — 协议有审计报告吗？在哪里看？
+- fund-safety — 协议会跑路吗？资金安全怎么保障？
+- site-or-wallet-stuck — 网站打不开或连接钱包一直转圈怎么办？
+- tx-pending — 交易一直待确认怎么办？
+- rewards-not-arrived — 奖励没到账怎么办？
+- change-wallet-history — 换了钱包/手机，之前的质押还在吗？
+- wallet-hacked-stake — 钱包被盗，质押中的资金怎么办？
+- protocol-shutdown — 如果协议停止运营，我的资金能取回吗？
+- bsc-down-affect — BSC 链出问题会影响我的收益吗？
+- where-history-stake — 在哪里能看到我的历史质押记录？
+- contact-support — 如何联系客服？
+- binance-builtin-browser-issues — 币安/欧易内置浏览器常见问题排查（连接失败、页面错位、不跳转）
+- app-vs-system-browser-diff — 为什么同一地址在 App 内置浏览器和系统浏览器显示不一致？
+- compare-pancake — RWA 和 PancakeSwap 流动性挖矿有什么区别？
+- compare-other-platforms — RWA 和其他高收益质押平台有什么不同？
+- referral-link-where — 节点推荐链接在哪里生成？
+- calculator-where — 收益计算器在哪里？怎么用？
+- beginner-full-tutorial — RWA 协议 · 小白投资完整教程
+`.trim()

@@ -1,6 +1,5 @@
 'use client'
 
-import { Navbar } from '@/components/navbar'
 import { BackgroundEffects } from '@/components/background-effects'
 import { HeroSection } from '@/components/about/hero-section'
 import { MissionValues } from '@/components/about/mission-values'
@@ -16,7 +15,6 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen bg-[#05050a] font-sans">
       <BackgroundEffects />
-      <Navbar />
       <main className="pb-24">
         <HeroSection />
         <MissionValues />

@@ -28,6 +28,7 @@ const FUND_TYPE_KEYS = [
 type FundTypeKey = (typeof FUND_TYPE_KEYS)[number]
 
 interface FundActivityRow {
+  timestamp: number
   blockNumber: bigint
   logIndex: number
   time: string
@@ -37,6 +38,18 @@ interface FundActivityRow {
   amount: string
   amountColor: string
   txHash?: string
+}
+
+function sortFundRowsByRecent(a: FundActivityRow, b: FundActivityRow) {
+  if (a.timestamp !== b.timestamp) return b.timestamp - a.timestamp
+  if (a.blockNumber !== b.blockNumber) return Number(b.blockNumber - a.blockNumber)
+  return b.logIndex - a.logIndex
+}
+
+function shortTxHash(txHash?: string) {
+  if (!txHash) return ''
+  if (txHash.length <= 14) return txHash
+  return `${txHash.slice(0, 8)}...${txHash.slice(-6)}`
 }
 
 /** 每个 typeKey 对应的颜色 variant，用于下拉选项展示 */
@@ -246,6 +259,7 @@ async function parseLogsToRows(
             : 'withdraw'
 
       activities.push({
+        timestamp: timestampMs,
         blockNumber: log.blockNumber,
         logIndex: Number(log.logIndex ?? 0),
         time: timeStr,
@@ -261,10 +275,7 @@ async function parseLogsToRows(
     }
   }
 
-  activities.sort((a, b) => {
-    if (a.blockNumber !== b.blockNumber) return Number(b.blockNumber - a.blockNumber)
-    return b.logIndex - a.logIndex
-  })
+  activities.sort(sortFundRowsByRecent)
   if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development' && logs.length > 0 && activities.length === 0) {
     console.warn('[FundActivity] parseLogsToRows: 收到', logs.length, '条日志但解析后 0 条，可能被事件名或 user 过滤掉，或 decode 失败')
   }
@@ -299,6 +310,7 @@ async function parseStRWABurnLogs(
         second: '2-digit',
       })
       rows.push({
+        timestamp: timestampMs,
         blockNumber: log.blockNumber,
         logIndex: Number(log.logIndex ?? 0),
         time: timeStr,
@@ -313,7 +325,7 @@ async function parseStRWABurnLogs(
       // skip
     }
   }
-  rows.sort((a, b) => (a.blockNumber !== b.blockNumber ? Number(b.blockNumber - a.blockNumber) : b.logIndex - a.logIndex))
+  rows.sort(sortFundRowsByRecent)
   return rows
 }
 
@@ -392,6 +404,7 @@ async function fetchStakesFromApi(
       const { amount, amountColor } = amountForRow()
 
       return {
+        timestamp: Number(s.timestamp ?? 0) * 1000,
         blockNumber: BigInt(s.block_number ?? 0),
         logIndex: 0,
         time: timeStr,
@@ -403,7 +416,7 @@ async function fetchStakesFromApi(
         txHash: s.tx_hash as `0x${string}` | undefined,
       }
     })
-    rows.sort((a, b) => Number(b.blockNumber - a.blockNumber))
+    rows.sort(sortFundRowsByRecent)
     return rows
   } catch {
     return []
@@ -493,10 +506,7 @@ export function FundActivityCard() {
         parseLogsToRows(stakingLogs, normalizedUser, publicClient, locale),
         parseStRWABurnLogs(burnLogs, normalizedUser, publicClient, locale),
       ])
-      const merged = [...stakingRows, ...burnRows].sort((a, b) => {
-        if (a.blockNumber !== b.blockNumber) return Number(b.blockNumber - a.blockNumber)
-        return b.logIndex - a.logIndex
-      })
+      const merged = [...stakingRows, ...burnRows].sort(sortFundRowsByRecent)
       const out = limit != null ? merged.slice(0, limit) : merged
       if (process.env.NODE_ENV === 'development') {
         console.log('[FundActivity] 解析后 stakingRows:', stakingRows.length, 'burnRows:', burnRows.length, 'merged:', out.length, 'user:', normalizedUser.slice(0, 10) + '...')
@@ -609,66 +619,67 @@ export function FundActivityCard() {
           <>
             {/* Desktop table */}
             <div className="hidden md:block">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-[#ffffff0d]">
-                    <th className="pb-3 text-start text-[11px] font-medium uppercase tracking-widest text-[#334155]">
+              <table className="w-full text-left text-sm">
+                <thead className="sticky top-0 border-b border-[#00f5d420]/20 bg-[#0d0d14]">
+                  <tr>
+                    <th className="px-4 py-3 font-medium text-[#64748b]">
                       {t('fundActivity.colTime')}
                     </th>
-                    <th className="pb-3 text-start text-[11px] font-medium uppercase tracking-widest text-[#334155]">
+                    <th className="px-4 py-3 font-medium text-[#64748b]">
                       {t('fundActivity.colType')}
                     </th>
-                    <th className="pb-3 text-start text-[11px] font-medium uppercase tracking-widest text-[#334155]">
+                    <th className="px-4 py-3 font-medium text-[#64748b]">
                       {t('fundActivity.colAmount')}
                     </th>
-                    <th className="pb-3 text-start text-[11px] font-medium uppercase tracking-widest text-[#334155]">
+                    <th className="px-4 py-3 font-medium text-[#64748b]">
                       {t('fundActivity.colBlock')}
                     </th>
-                    <th className="w-8 pb-3" />
+                    <th className="px-4 py-3 font-medium text-[#64748b]">Tx</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.slice(0, 3).map((row, i) => (
                     <tr
                       key={`${row.blockNumber}-${row.logIndex}-${i}`}
-                      className="border-b border-[#ffffff0d] transition-colors hover:bg-white/[0.02]"
+                      className="border-b border-[#00f5d420]/10"
                     >
-                      <td className="py-3 pe-4 font-mono text-[12px] text-[#94a3b8]">
+                      <td className="px-4 py-3 font-mono text-[#64748b]">
                         {row.time}
                       </td>
-                      <td className="py-3 pe-4">
+                      <td className="px-4 py-3 text-[#f1f5f9]">
                         <TypePill label={t(`fundActivity.${row.typeKey}`)} variant={row.typeVariant} />
                       </td>
-                      <td className="py-3 pe-4">
-                        <span className="font-mono text-[12px]" style={{ color: row.amountColor }}>
+                      <td className="px-4 py-3 font-mono" style={{ color: row.amountColor }}>
+                        <span className="text-[13px]">
                           {row.amount}
                         </span>
                       </td>
-                      <td className="py-3 pe-4">
+                      <td className="px-4 py-3">
                         {row.blockNumber > 0n ? (
                           <a
                             href={`${explorerUrl}/block/${row.blockNumber.toString()}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 font-mono text-[11px] text-[#00f5d4]/90 hover:underline"
+                            className="inline-flex items-center gap-1 font-mono text-[12px] text-[#00f5d4] hover:underline"
                           >
                             #{row.blockNumber.toString()}
-                            <ExternalLink className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+                            <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
                           </a>
                         ) : (
-                          <span className="text-[11px] text-[#64748b]">—</span>
+                          <span className="text-[#64748b]">—</span>
                         )}
                       </td>
-                      <td className="py-3">
+                      <td className="px-4 py-3">
                         {row.txHash && (
                           <a
                             href={`${explorerUrl}/tx/${row.txHash}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[#64748b] hover:opacity-80"
+                            className="inline-flex items-center gap-1 font-mono text-[12px] text-[#00f5d4] hover:underline"
                             aria-label="View transaction"
                           >
-                            <ExternalLink className="h-3.5 w-3.5" />
+                            {shortTxHash(row.txHash)}
+                            <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" />
                           </a>
                         )}
                       </td>
@@ -679,51 +690,52 @@ export function FundActivityCard() {
             </div>
 
             {/* Mobile stacked rows */}
-            <div className="md:hidden space-y-2.5">
+            <div className="md:hidden space-y-2 px-1 pb-2">
               {rows.slice(0, 3).map((row, i) => {
-                const accent = VARIANT_COLORS[row.typeVariant].color
                 return (
                   <div
                     key={`m-${row.blockNumber}-${row.logIndex}-${i}`}
-                    className="rounded-xl border border-[#ffffff0d] bg-[#0d0d14] p-3.5 pl-3"
-                    style={{ borderLeftWidth: 3, borderLeftColor: accent }}
+                    className="rounded-xl border border-[#00f5d420]/15 bg-[#0d0d14] p-3"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="font-mono text-[12px] text-[#94a3b8]">{row.time}</div>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                          <TypePill label={t(`fundActivity.${row.typeKey}`)} variant={row.typeVariant} />
-                        </div>
-                        <div className="mt-2 font-mono text-[13px] font-semibold" style={{ color: row.amountColor }}>
-                          {row.amount}
-                        </div>
-                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
-                          {row.blockNumber > 0n ? (
-                            <a
-                              href={`${explorerUrl}/block/${row.blockNumber.toString()}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 font-mono text-[#00f5d4]/90"
-                            >
-                              {t('fundActivity.colBlock')} #{row.blockNumber.toString()}
-                              <ExternalLink className="h-3 w-3" aria-hidden />
-                            </a>
-                          ) : null}
-                          {row.txHash ? (
-                            <a
-                              href={`${explorerUrl}/tx/${row.txHash}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-[#64748b] hover:text-[#00f5d4] transition-colors"
-                            >
-                              Tx
-                              <ExternalLink className="h-3 w-3" aria-hidden />
-                            </a>
-                          ) : null}
-                        </div>
+                    <div className="font-mono text-[12px] text-[#64748b]">{row.time}</div>
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <div className="text-[#f1f5f9] text-[13px] font-medium">
+                        <TypePill label={t(`fundActivity.${row.typeKey}`)} variant={row.typeVariant} />
+                      </div>
+                      <div className="font-mono text-[13px] font-semibold" style={{ color: row.amountColor }}>
+                        {row.amount}
                       </div>
                     </div>
-                  </div>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[12px]">
+                      <span className="text-[#64748b]">{t('fundActivity.colBlock')}: </span>
+                      {row.blockNumber > 0n ? (
+                        <a
+                          href={`${explorerUrl}/block/${row.blockNumber.toString()}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 font-mono text-[#00f5d4]"
+                        >
+                          #{row.blockNumber.toString()}
+                          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                        </a>
+                      ) : (
+                        <span className="text-[#64748b]">—</span>
+                      )}
+                    </div>
+                    {row.txHash ? (
+                      <div className="mt-1 text-[11px] text-[#64748b] font-mono truncate">
+                        <a
+                          href={`${explorerUrl}/tx/${row.txHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 hover:text-[#00f5d4]"
+                        >
+                          {shortTxHash(row.txHash)}
+                          <ExternalLink className="h-3 w-3" aria-hidden />
+                        </a>
+                      </div>
+                    ) : null}
+                    </div>
                 )
               })}
             </div>
@@ -736,54 +748,48 @@ export function FundActivityCard() {
         </div>
       )}
 
-      {/* 查看全部 - 弹窗：整页全屏，风格与仪表盘一致 */}
+      {/* 查看全部 - 弹窗：改为钱包总览同款尺寸与圆角风格 */}
       {showModal && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-[9999] flex flex-col items-stretch justify-start sm:items-center sm:justify-center sm:p-4 pt-[max(12px,env(safe-area-inset-top,24px))] pb-[max(12px,env(safe-area-inset-bottom,20px))] pl-[max(0px,env(safe-area-inset-left,0px))] pr-[max(0px,env(safe-area-inset-right,0px))]"
-          style={{
-            width: '100%',
-            minHeight: '100dvh',
-            background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(0,245,212,0.06) 0%, transparent 50%), rgba(5,5,10,0.96)',
-            backdropFilter: 'blur(12px)',
-          }}
+          className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center p-0 sm:p-4"
+          onClick={() => setShowModal(false)}
         >
           <div
-            className="flex w-full min-h-[45dvh] flex-1 flex-col overflow-hidden sm:h-auto sm:min-h-0 sm:max-h-[88vh] sm:w-full sm:max-w-4xl sm:flex-none sm:rounded-2xl"
-            style={{
-              background: 'linear-gradient(165deg, #0d0d14 0%, #0a0a10 50%, #0d0d14 100%)',
-              boxShadow: '0 0 0 1px rgba(0,245,212,0.08), 0 24px 48px -12px rgba(0,0,0,0.6), 0 0 80px -20px rgba(0,245,212,0.12)',
-            }}
+            className="relative z-[10000] flex w-full max-w-[420px] flex-col self-end overflow-hidden rounded-t-3xl border border-[#00f5d420] bg-gradient-to-b from-[#0d0d14] via-[#0a0a10] to-[#0d0d14] shadow-[0_-12px_60px_rgba(0,0,0,0.55),0_0_0_1px_rgba(0,245,212,0.06)_inset] transition-[height,max-height] duration-300 ease-out sm:self-auto sm:rounded-3xl sm:h-[min(75dvh,75vh)] sm:max-h-[min(75dvh,75vh)]"
+            style={{ height: 'min(75dvh,75vh)', maxHeight: 'min(75dvh,75vh)' }}
+            onClick={(e) => e.stopPropagation()}
           >
-            {/* 标题栏：细线点缀 + 关闭 */}
-            <div className="shrink-0 px-4 sm:px-6 py-4 border-b border-white/[0.06]">
-              <div className="flex items-start justify-between gap-4">
+            {/* 顶栏：与钱包总览一致 */}
+            <div className="relative shrink-0 border-b border-[#00f5d420]/15 px-5 py-4">
+              <div
+                className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#00f5d4]/35 to-transparent"
+                aria-hidden
+              />
+              <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">
-                  <div className="mt-1 h-9 w-0.5 shrink-0 rounded-full bg-gradient-to-b from-[#00f5d4] to-[#00f5d4]/20" aria-hidden />
+                  <div className="mt-0.5 h-8 w-0.5 shrink-0 rounded-full bg-gradient-to-b from-plasma-cyan to-plasma-cyan/20" aria-hidden />
                   <div className="min-w-0">
-                    <h2 className="font-[family-name:var(--font-heading)] text-lg font-semibold tracking-tight text-[#f1f5f9]">
-                      {t('fundActivity.title')}
-                    </h2>
-                    <p className="mt-1 max-w-xl text-[12px] leading-relaxed text-[#64748b]">
-                      {t('fundActivity.modalSubtitle')}
-                    </p>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-plasma-cyan/75">Activity</div>
+                    <h2 className="mt-0.5 text-[17px] font-bold tracking-tight text-text-primary">{t('fundActivity.title')}</h2>
+                    <p className="mt-1 max-w-xl text-[12px] leading-relaxed text-text-secondary">{t('fundActivity.modalSubtitle')}</p>
                   </div>
                 </div>
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="shrink-0 self-start rounded-full p-2 text-[#64748b] hover:text-[#f1f5f9] hover:bg-white/[0.06] transition-colors duration-200"
-                aria-label="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="shrink-0 rounded-full p-2 text-text-secondary transition-colors hover:bg-white/[0.06] hover:text-text-primary"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
             </div>
 
-            {/* 分类筛选：胶囊下拉，与页面风格统一 */}
-            <div className="shrink-0 px-4 sm:px-6 py-3.5 border-b border-white/[0.06] bg-[#08080c]/40">
+            {/* 分类筛选 */}
+            <div className="shrink-0 border-b border-[#00f5d420]/10 px-5 py-3.5">
               <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 text-[#64748b]">
-                  <Filter className="h-4 w-4 text-[#00f5d4]/50" aria-hidden />
+                <div className="flex items-center gap-2 text-text-secondary">
+                  <Filter className="h-4 w-4 text-plasma-cyan/50" aria-hidden />
                   <span className="text-[12px] font-medium uppercase tracking-wider">
                     {t('fundActivity.filterByType')}
                   </span>
@@ -792,7 +798,7 @@ export function FundActivityCard() {
                   <button
                     type="button"
                     onClick={() => setDropdownOpen((o) => !o)}
-                    className="flex min-w-[200px] items-center justify-between gap-2 rounded-full border border-white/[0.08] bg-[#13131e] py-2.5 pl-4 pr-3 text-[13px] text-[#f1f5f9] transition-all duration-200 hover:border-[#00f5d4]/30 focus:border-[#00f5d4]/50 focus:outline-none focus:ring-2 focus:ring-[#00f5d4]/20"
+                    className="flex min-w-[200px] items-center justify-between gap-2 rounded-full border border-[#00f5d420]/20 bg-[#0a0a10]/80 py-2.5 pl-4 pr-3 text-[13px] text-text-primary transition-all duration-200 hover:border-plasma-cyan/35 focus:border-plasma-cyan/50 focus:outline-none focus:ring-2 focus:ring-plasma-cyan/20"
                     aria-haspopup="listbox"
                     aria-expanded={dropdownOpen}
                     aria-label={t('fundActivity.filterByType') || '按类型筛选'}
@@ -804,7 +810,7 @@ export function FundActivityCard() {
                   </button>
                   {dropdownOpen && (
                     <div
-                      className="absolute left-0 top-full z-50 mt-2 max-h-[min(320px,60vh)] min-w-[240px] overflow-auto rounded-xl border border-white/[0.08] bg-[#13131e] py-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.5)]"
+                      className="absolute left-0 top-full z-50 mt-2 max-h-[min(320px,60vh)] min-w-[240px] overflow-auto rounded-2xl border border-[#00f5d420]/20 bg-[#0d0d14] py-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.5)]"
                       role="listbox"
                     >
                       <button
@@ -815,7 +821,7 @@ export function FundActivityCard() {
                         className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-[13px] transition-colors hover:bg-white/[0.06] aria-selected:bg-[#00f5d4]/10"
                       >
                         <span className="h-2 w-2 shrink-0 rounded-full bg-[#64748b]" aria-hidden />
-                        <span className={modalCategory === '' ? 'text-[#00f5d4] font-medium' : 'text-[#94a3b8]'}>
+                        <span className={modalCategory === '' ? 'text-plasma-cyan font-medium' : 'text-[#94a3b8]'}>
                           {t('fundActivity.filterAll') || '全部'}
                         </span>
                       </button>
@@ -833,7 +839,7 @@ export function FundActivityCard() {
                             className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-[13px] transition-colors hover:bg-white/[0.06] aria-selected:bg-[#00f5d4]/10"
                           >
                             <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: dotColor }} aria-hidden />
-                            <span className={isSelected ? 'text-[#00f5d4] font-medium' : 'text-[#e2e8f0]'}>
+                            <span className={isSelected ? 'text-plasma-cyan font-medium' : 'text-[#e2e8f0]'}>
                               {t(`fundActivity.${key}`)}
                             </span>
                           </button>
@@ -845,7 +851,7 @@ export function FundActivityCard() {
                 {(() => {
                   const filteredCount = modalCategory === '' ? modalRows.length : modalRows.filter((r) => r.typeKey === modalCategory).length
                   return modalRows.length > 0 ? (
-                    <span className="text-[12px] text-[#64748b] tabular-nums">
+                    <span className="text-[12px] text-text-secondary tabular-nums">
                       {filteredCount} {locale?.startsWith('zh') ? '条' : 'records'}
                     </span>
                   ) : null
@@ -853,152 +859,79 @@ export function FundActivityCard() {
               </div>
             </div>
 
-            {/* 表格区域 */}
-            <div className="flex-1 min-h-0 overflow-auto overscroll-contain">
+            {/* 内容区域：圆角卡片列表 */}
+            <div className="flex-1 min-h-0 overflow-auto overscroll-contain bg-[#05050a]/35 p-4">
               {modalLoading ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-3">
                   <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#00f5d4]/30 border-t-[#00f5d4]" />
-                  <p className="text-[13px] text-[#64748b]">{t('fundActivity.loading')}</p>
+                  <p className="text-[13px] text-text-secondary">{t('fundActivity.loading')}</p>
                 </div>
               ) : modalRows.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-3 px-6">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.08] bg-[#13131e] text-[#64748b]">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[#00f5d420]/15 bg-[#0d0d14]/80 text-text-secondary">
                     <Inbox className="h-7 w-7" strokeWidth={1.25} aria-hidden />
                   </div>
-                  <p className="text-center text-[14px] text-[#94a3b8]">{t('fundActivity.noRecords')}</p>
+                  <p className="text-center text-[14px] text-text-secondary">{t('fundActivity.noRecords')}</p>
                 </div>
               ) : (() => {
-                const filteredRows = modalCategory === '' ? modalRows : modalRows.filter((r) => r.typeKey === modalCategory)
+                const filteredRows = (modalCategory === '' ? modalRows : modalRows.filter((r) => r.typeKey === modalCategory))
+                  .slice()
+                  .sort(sortFundRowsByRecent)
                 return filteredRows.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-20 gap-3 px-6">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.08] bg-[#13131e] text-[#64748b]">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-[#00f5d420]/15 bg-[#0d0d14]/80 text-text-secondary">
                       <Filter className="h-5 w-5" strokeWidth={1.5} aria-hidden />
                     </div>
-                    <p className="text-center text-[14px] text-[#94a3b8]">{t('fundActivity.noRecordsForType')}</p>
+                    <p className="text-center text-[14px] text-text-secondary">{t('fundActivity.noRecordsForType')}</p>
                   </div>
                 ) : (
-                  <>
-                    {/* Desktop table */}
-                    <div className="hidden md:block overflow-x-auto px-1">
-                      <table className="w-full min-w-[640px]">
-                        <thead>
-                          <tr className="border-b border-white/[0.06] bg-gradient-to-r from-[#0a0a10] to-[#0d0d14]">
-                            <th className="px-4 sm:px-6 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-[#64748b]">
-                              {t('fundActivity.colTime')}
-                            </th>
-                            <th className="px-4 sm:px-6 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-[#64748b]">
-                              {t('fundActivity.colType')}
-                            </th>
-                            <th className="px-4 sm:px-6 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-[#64748b]">
-                              {t('fundActivity.colAmount')}
-                            </th>
-                            <th className="px-4 sm:px-6 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-[#64748b]">
-                              {t('fundActivity.colBlock')}
-                            </th>
-                            <th className="w-14 px-4 py-3.5 text-right text-[11px] font-semibold uppercase tracking-widest text-[#64748b]">
-                              Tx
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredRows.map((row, i) => (
-                            <tr
-                              key={`modal-${row.blockNumber}-${row.logIndex}-${i}`}
-                              className="border-b border-white/[0.04] transition-colors duration-150 hover:bg-[#00f5d4]/[0.04]"
-                            >
-                              <td className="px-4 sm:px-6 py-3.5 font-mono text-[12px] text-[#94a3b8]">
-                                {row.time}
-                              </td>
-                              <td className="px-4 sm:px-6 py-3.5">
-                                <TypePill label={t(`fundActivity.${row.typeKey}`)} variant={row.typeVariant} />
-                              </td>
-                              <td className="px-4 sm:px-6 py-3.5">
-                                <span className="font-mono text-[13px] font-medium" style={{ color: row.amountColor }}>
-                                  {row.amount}
-                                </span>
-                              </td>
-                              <td className="px-4 sm:px-6 py-3.5">
-                                {row.blockNumber > 0n ? (
-                                  <a
-                                    href={`${explorerUrl}/block/${row.blockNumber.toString()}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 font-mono text-[12px] text-[#00f5d4] hover:underline"
-                                  >
-                                    #{row.blockNumber.toString()}
-                                    <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-                                  </a>
-                                ) : (
-                                  <span className="text-[12px] text-[#64748b]">—</span>
-                                )}
-                              </td>
-                              <td className="px-4 sm:px-6 py-3.5 text-right">
-                                {row.txHash && (
-                                  <a
-                                    href={`${explorerUrl}/tx/${row.txHash}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center justify-center rounded-lg p-1.5 text-[#64748b] hover:bg-white/[0.06] hover:text-[#00f5d4] transition-colors duration-150"
-                                    aria-label="View transaction"
-                                  >
-                                    <ExternalLink className="h-4 w-4" />
-                                  </a>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Mobile stacked list */}
-                    <div className="md:hidden space-y-2.5 px-1 pb-4">
-                      {filteredRows.map((row, i) => {
-                        const accent = VARIANT_COLORS[row.typeVariant].color
-                        return (
-                          <div
-                            key={`modal-m-${row.blockNumber}-${row.logIndex}-${i}`}
-                            className="rounded-xl border border-white/[0.06] bg-[#0d0d14]/90 p-3.5 pl-3 shadow-sm shadow-black/20"
-                            style={{ borderLeftWidth: 3, borderLeftColor: accent }}
-                          >
-                            <div className="min-w-0">
-                              <div className="font-mono text-[12px] text-[#94a3b8]">{row.time}</div>
-                              <div className="mt-2 flex flex-wrap items-center gap-2">
-                                <TypePill label={t(`fundActivity.${row.typeKey}`)} variant={row.typeVariant} />
-                              </div>
-                              <div className="mt-2 font-mono text-[14px] font-semibold" style={{ color: row.amountColor }}>
-                                {row.amount}
-                              </div>
-                              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 border-t border-white/[0.05] pt-3">
-                                {row.blockNumber > 0n ? (
-                                  <a
-                                    href={`${explorerUrl}/block/${row.blockNumber.toString()}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-[12px] font-mono text-[#00f5d4]"
-                                  >
-                                    {t('fundActivity.colBlock')} #{row.blockNumber.toString()}
-                                    <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                                  </a>
-                                ) : null}
-                                {row.txHash ? (
-                                  <a
-                                    href={`${explorerUrl}/tx/${row.txHash}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-[12px] text-[#94a3b8] hover:text-[#00f5d4]"
-                                  >
-                                    Tx
-                                    <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                                  </a>
-                                ) : null}
-                              </div>
-                            </div>
+                  <div className="space-y-2">
+                    {filteredRows.map((row, i) => (
+                      <div
+                        key={`modal-card-${row.blockNumber}-${row.logIndex}-${i}`}
+                        className="rounded-2xl border border-[#00f5d420]/12 bg-gradient-to-r from-[#0d0d14]/90 to-[#13131e]/60 px-4 py-3 transition-colors hover:border-[#00f5d420]/25 hover:bg-[#13131e]/80"
+                      >
+                        <div className="font-mono text-[12px] text-text-secondary">{row.time}</div>
+                        <div className="mt-2 flex items-center justify-between gap-3">
+                          <div className="text-text-primary text-[13px] font-medium">
+                            <TypePill label={t(`fundActivity.${row.typeKey}`)} variant={row.typeVariant} />
                           </div>
-                        )
-                      })}
-                    </div>
-                  </>
+                          <div className="font-mono text-[13px] font-semibold" style={{ color: row.amountColor }}>
+                            {row.amount}
+                          </div>
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[12px]">
+                          <span className="text-text-secondary">{t('fundActivity.colBlock')}: </span>
+                          {row.blockNumber > 0n ? (
+                            <a
+                              href={`${explorerUrl}/block/${row.blockNumber.toString()}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 font-mono text-plasma-cyan"
+                            >
+                              #{row.blockNumber.toString()}
+                              <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                            </a>
+                          ) : (
+                            <span className="text-text-secondary">—</span>
+                          )}
+                        </div>
+                        {row.txHash ? (
+                          <div className="mt-1 truncate font-mono text-[11px] text-text-secondary">
+                            <a
+                              href={`${explorerUrl}/tx/${row.txHash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 hover:text-plasma-cyan"
+                            >
+                              {shortTxHash(row.txHash)}
+                              <ExternalLink className="h-3 w-3" aria-hidden />
+                            </a>
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
                 )
               })()}
             </div>

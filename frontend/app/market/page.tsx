@@ -1,4 +1,3 @@
-import { Navbar } from '@/components/navbar'
 import { BackgroundEffects } from '@/components/background-effects'
 import { PriceHeader } from '@/components/market/price-header'
 import { ChartPanel } from '@/components/market/chart-panel'
@@ -14,8 +13,7 @@ export default function MarketPage() {
   return (
     <div className="min-h-screen bg-[#05050a] font-sans">
       <BackgroundEffects opacity={8} />
-      <Navbar />
-      
+
       <PriceHeader />
 
       <main className="mx-auto max-w-7xl px-4 pb-[100px] pt-4 lg:px-8">

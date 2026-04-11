@@ -1,0 +1,419 @@
+{
+  "version": "leak-risk-eval-v1",
+  "summary": {
+    "total": 100,
+    "risk_distribution": {
+      "high": 0,
+      "medium": 0,
+      "low": 100
+    },
+    "top20_max_score": 23,
+    "top20_min_score": 17
+  },
+  "top20": [
+    {
+      "bot_id": "RWA_BOT_096",
+      "file": "RWA_BOT_096.txt",
+      "score": 23,
+      "risk_level": "low",
+      "top_reasons": [
+        "timeline_events_too_few",
+        "episodic_memories_low=3",
+        "semantic_knowledge_low=1"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_047",
+      "file": "RWA_BOT_047_pengyou2.txt",
+      "score": 18,
+      "risk_level": "low",
+      "top_reasons": [
+        "timeline_events_too_few",
+        "episodic_memories_low=2"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_049",
+      "file": "RWA_BOT_049.txt",
+      "score": 18,
+      "risk_level": "low",
+      "top_reasons": [
+        "timeline_events_too_few",
+        "episodic_memories_low=3"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_050",
+      "file": "RWA_BOT_050.txt",
+      "score": 18,
+      "risk_level": "low",
+      "top_reasons": [
+        "timeline_events_too_few",
+        "episodic_memories_low=3"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_051",
+      "file": "RWA_BOT_051.txt",
+      "score": 18,
+      "risk_level": "low",
+      "top_reasons": [
+        "timeline_events_too_few",
+        "episodic_memories_low=3"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_052",
+      "file": "RWA_BOT_052.txt",
+      "score": 18,
+      "risk_level": "low",
+      "top_reasons": [
+        "timeline_events_too_few",
+        "episodic_memories_low=3"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_053",
+      "file": "RWA_BOT_053.txt",
+      "score": 18,
+      "risk_level": "low",
+      "top_reasons": [
+        "timeline_events_too_few",
+        "episodic_memories_low=3"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_055",
+      "file": "RWA_BOT_055.txt",
+      "score": 18,
+      "risk_level": "low",
+      "top_reasons": [
+        "timeline_events_too_few",
+        "episodic_memories_low=3"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_056",
+      "file": "RWA_BOT_056.txt",
+      "score": 18,
+      "risk_level": "low",
+      "top_reasons": [
+        "timeline_events_too_few",
+        "episodic_memories_low=3"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_057",
+      "file": "RWA_BOT_057.txt",
+      "score": 18,
+      "risk_level": "low",
+      "top_reasons": [
+        "timeline_events_too_few",
+        "episodic_memories_low=3"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_058",
+      "file": "RWA_BOT_058.txt",
+      "score": 18,
+      "risk_level": "low",
+      "top_reasons": [
+        "timeline_events_too_few",
+        "episodic_memories_low=3"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_060",
+      "file": "RWA_BOT_060.txt",
+      "score": 18,
+      "risk_level": "low",
+      "top_reasons": [
+        "timeline_events_too_few",
+        "episodic_memories_low=3"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_064",
+      "file": "RWA_BOT_064.txt",
+      "score": 18,
+      "risk_level": "low",
+      "top_reasons": [
+        "timeline_events_too_few",
+        "episodic_memories_low=3"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_066",
+      "file": "RWA_BOT_066.txt",
+      "score": 18,
+      "risk_level": "low",
+      "top_reasons": [
+        "timeline_events_too_few",
+        "episodic_memories_low=3"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_067",
+      "file": "RWA_BOT_067.txt",
+      "score": 18,
+      "risk_level": "low",
+      "top_reasons": [
+        "timeline_events_too_few",
+        "episodic_memories_low=3"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_068",
+      "file": "RWA_BOT_068.txt",
+      "score": 18,
+      "risk_level": "low",
+      "top_reasons": [
+        "timeline_events_too_few",
+        "episodic_memories_low=3"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_069",
+      "file": "RWA_BOT_069.txt",
+      "score": 18,
+      "risk_level": "low",
+      "top_reasons": [
+        "timeline_events_too_few",
+        "episodic_memories_low=3"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_090",
+      "file": "RWA_BOT_090.txt",
+      "score": 18,
+      "risk_level": "low",
+      "top_reasons": [
+        "timeline_events_too_few",
+        "episodic_memories_low=3"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_091",
+      "file": "RWA_BOT_091.txt",
+      "score": 18,
+      "risk_level": "low",
+      "top_reasons": [
+        "timeline_events_too_few",
+        "episodic_memories_low=3"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_001",
+      "file": "RWA_BOT_001_clean.txt",
+      "score": 17,
+      "risk_level": "low",
+      "top_reasons": [
+        "episodic_memories_low=0",
+        "semantic_knowledge_low=0"
+      ]
+    }
+  ],
+  "targeted_fix_plan_top20": [
+    {
+      "bot_id": "RWA_BOT_096",
+      "file": "RWA_BOT_096.txt",
+      "score": 23,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充至少3-5个关键事件并加先后约束",
+        "补充可追问的episodic memories（含时间/触发/情绪）",
+        "增加语义知识点，区分知道/听说/不懂"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_047",
+      "file": "RWA_BOT_047_pengyou2.txt",
+      "score": 18,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充至少3-5个关键事件并加先后约束",
+        "补充可追问的episodic memories（含时间/触发/情绪）"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_049",
+      "file": "RWA_BOT_049.txt",
+      "score": 18,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充至少3-5个关键事件并加先后约束",
+        "补充可追问的episodic memories（含时间/触发/情绪）"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_050",
+      "file": "RWA_BOT_050.txt",
+      "score": 18,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充至少3-5个关键事件并加先后约束",
+        "补充可追问的episodic memories（含时间/触发/情绪）"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_051",
+      "file": "RWA_BOT_051.txt",
+      "score": 18,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充至少3-5个关键事件并加先后约束",
+        "补充可追问的episodic memories（含时间/触发/情绪）"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_052",
+      "file": "RWA_BOT_052.txt",
+      "score": 18,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充至少3-5个关键事件并加先后约束",
+        "补充可追问的episodic memories（含时间/触发/情绪）"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_053",
+      "file": "RWA_BOT_053.txt",
+      "score": 18,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充至少3-5个关键事件并加先后约束",
+        "补充可追问的episodic memories（含时间/触发/情绪）"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_055",
+      "file": "RWA_BOT_055.txt",
+      "score": 18,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充至少3-5个关键事件并加先后约束",
+        "补充可追问的episodic memories（含时间/触发/情绪）"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_056",
+      "file": "RWA_BOT_056.txt",
+      "score": 18,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充至少3-5个关键事件并加先后约束",
+        "补充可追问的episodic memories（含时间/触发/情绪）"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_057",
+      "file": "RWA_BOT_057.txt",
+      "score": 18,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充至少3-5个关键事件并加先后约束",
+        "补充可追问的episodic memories（含时间/触发/情绪）"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_058",
+      "file": "RWA_BOT_058.txt",
+      "score": 18,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充至少3-5个关键事件并加先后约束",
+        "补充可追问的episodic memories（含时间/触发/情绪）"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_060",
+      "file": "RWA_BOT_060.txt",
+      "score": 18,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充至少3-5个关键事件并加先后约束",
+        "补充可追问的episodic memories（含时间/触发/情绪）"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_064",
+      "file": "RWA_BOT_064.txt",
+      "score": 18,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充至少3-5个关键事件并加先后约束",
+        "补充可追问的episodic memories（含时间/触发/情绪）"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_066",
+      "file": "RWA_BOT_066.txt",
+      "score": 18,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充至少3-5个关键事件并加先后约束",
+        "补充可追问的episodic memories（含时间/触发/情绪）"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_067",
+      "file": "RWA_BOT_067.txt",
+      "score": 18,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充至少3-5个关键事件并加先后约束",
+        "补充可追问的episodic memories（含时间/触发/情绪）"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_068",
+      "file": "RWA_BOT_068.txt",
+      "score": 18,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充至少3-5个关键事件并加先后约束",
+        "补充可追问的episodic memories（含时间/触发/情绪）"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_069",
+      "file": "RWA_BOT_069.txt",
+      "score": 18,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充至少3-5个关键事件并加先后约束",
+        "补充可追问的episodic memories（含时间/触发/情绪）"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_090",
+      "file": "RWA_BOT_090.txt",
+      "score": 18,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充至少3-5个关键事件并加先后约束",
+        "补充可追问的episodic memories（含时间/触发/情绪）"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_091",
+      "file": "RWA_BOT_091.txt",
+      "score": 18,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充至少3-5个关键事件并加先后约束",
+        "补充可追问的episodic memories（含时间/触发/情绪）"
+      ]
+    },
+    {
+      "bot_id": "RWA_BOT_001",
+      "file": "RWA_BOT_001_clean.txt",
+      "score": 17,
+      "risk_level": "low",
+      "fix_plan": [
+        "补充可追问的episodic memories（含时间/触发/情绪）",
+        "增加语义知识点，区分知道/听说/不懂"
+      ]
+    }
+  ]
+}

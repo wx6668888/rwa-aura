@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback, startTransition } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { 
   Menu, 
   X, 
@@ -41,6 +41,12 @@ import { useTranslation } from '@/lib/i18n'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { WalletDetailsModal } from '@/components/wallet-details-modal'
 import { LazyDotLottieAnimation } from '@/components/lazy-dot-lottie'
+import { MobileOfficialSupportSheet } from '@/components/mobile-official-support-sheet'
+
+const CHAT_LOTTIE_SRC = new URL('./assets/chat.lottie', import.meta.url).toString()
+const SUPPORT_MENU_LOTTIE = '/在线客服.lottie'
+/** 侧栏 / 顶栏「群聊」菜单图标（public） */
+const GROUP_CHAT_MENU_LOTTIE = '/Chat.lottie'
 
 // 导航分组配置
 type NavItem = {
@@ -196,9 +202,17 @@ function MobileNavItem({
   t: (key: string) => string
   onClose: () => void
 }) {
+  const router = useRouter()
   const [expanded, setExpanded] = useState(isGroupActive(group))
   const Icon = group.icon
   const groupActive = isGroupActive(group)
+
+  const navigateMobile = (e: React.MouseEvent, href: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    void router.push(href)
+    startTransition(() => onClose())
+  }
 
   // 独立项
   if (group.standalone) {
@@ -207,7 +221,7 @@ function MobileNavItem({
     return (
       <Link
         href={item.href}
-        onClick={onClose}
+        onClick={(e) => navigateMobile(e, item.href)}
         className={`flex items-center gap-3 rounded-lg px-4 py-3 text-base font-semibold transition-all ${
           itemActive
             ? 'bg-[#00f5d4] text-[#0a0a12] shadow-[0_0_20px_rgba(0,245,212,0.5)]'
@@ -247,7 +261,7 @@ function MobileNavItem({
               <Link
                 key={item.key}
                 href={item.href}
-                onClick={onClose}
+                onClick={(e) => navigateMobile(e, item.href)}
                 className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all ${
                   itemActive
                     ? 'bg-[#00f5d4]/10 text-[#00f5d4]'
@@ -279,6 +293,7 @@ function MobileNavItem({
 }
 
 export function Navbar() {
+  const router = useRouter()
   const { locale } = useLocale()
   const { t } = useTranslation(locale)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -286,7 +301,9 @@ export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isHidden, setIsHidden] = useState(false)
   const [walletModalOpen, setWalletModalOpen] = useState(false)
+  const [supportSheetOpen, setSupportSheetOpen] = useState(false)
   const [openChainModalRef, setOpenChainModalRef] = useState<(() => void) | undefined>(undefined)
+  const closeSupportSheet = useCallback(() => setSupportSheetOpen(false), [])
   const pathname = usePathname()
   const allowHideOnScroll = pathname === '/'
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -360,6 +377,34 @@ export function Navbar() {
     }, 200)
   }
 
+  /** 点击任意导航链接触发跳转前收起下拉，避免软路由时下拉层仍挂在树上拦截第二次点击 */
+  const closeDesktopMenus = useCallback(() => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+      hoverTimeoutRef.current = null
+    }
+    setHoveredGroup(null)
+  }, [])
+
+  /**
+   * 下拉在 `{isHovered && …}` 内：若先 closeDesktopMenus 会立刻卸载当前 `<Link>`，router.push 可能丢单。
+   * 必须先发起导航，再用 startTransition 延迟收起菜单（与首页独立项「碰巧」先不卸载的体验对齐）。
+   */
+  const navigateFromMenuLink = useCallback(
+    (e: React.MouseEvent, href: string) => {
+      e.preventDefault()
+      e.stopPropagation()
+      void router.push(href)
+      startTransition(() => closeDesktopMenus())
+    },
+    [closeDesktopMenus, router]
+  )
+
+  /** 软路由切换后强制收起下拉，避免悬停层与 portal 叠层竞态 */
+  useEffect(() => {
+    closeDesktopMenus()
+  }, [pathname, closeDesktopMenus])
+
   const isSwapPage = pathname === '/swap'
 
   const headerBg = isScrolled 
@@ -373,7 +418,7 @@ export function Navbar() {
   return (
     <>
       <header
-        className={`fixed left-0 right-0 top-0 z-[100] flex w-full min-w-0 flex-col transition-opacity duration-300 ${isHidden ? 'pointer-events-none opacity-0' : 'opacity-100'}`}
+        className={`fixed left-0 right-0 top-0 z-[110] flex w-full min-w-0 flex-col transition-opacity duration-300 ${isHidden ? 'pointer-events-none opacity-0' : 'opacity-100'}`}
       >
         {/* 文档流占位（勿用 absolute）：把导航行推到安全区之下；全宽底色与页面一致 */}
         <div
@@ -386,7 +431,11 @@ export function Navbar() {
           <nav className="relative z-10 mx-auto flex h-16 w-full min-w-0 max-w-7xl items-center justify-between px-4 lg:px-8">
           {/* Left: Logo + Language Switcher（桌面端单行不换行） */}
           <div className="flex items-center gap-3 shrink-0 min-w-0">
-            <Link href="/" className="flex items-center gap-2 font-[family-name:var(--font-space-grotesk)] shrink-0">
+            <Link
+              href="/"
+              onClick={(e) => navigateFromMenuLink(e, '/')}
+              className="flex items-center gap-2 font-[family-name:var(--font-space-grotesk)] shrink-0"
+            >
               <Image
                 src="/app-icon-48.webp"
                 alt="RWA Protocol"
@@ -417,6 +466,7 @@ export function Navbar() {
                   <Link
                     key={group.key}
                     href={item.href}
+                    onClick={(e) => navigateFromMenuLink(e, item.href)}
                     className={`relative flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-all whitespace-nowrap ${
                       itemActive
                         ? 'text-[#00f5d4]'
@@ -462,7 +512,7 @@ export function Navbar() {
                       )}
                     </button>
                     {isHovered && (
-                      <div className="absolute top-full right-0 mt-2 w-64 rounded-xl border border-[#00f5d4]/20 bg-[#0d0d14]/95 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] opacity-0 animate-[fadeIn_0.3s_ease-out_forwards] pointer-events-auto">
+                      <div className="animate-fadeIn-forwards pointer-events-auto absolute top-full right-0 mt-2 w-64 rounded-xl border border-[#00f5d4]/20 bg-[#0d0d14]/95 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
                         <div className="p-2 space-y-3">
                           {moreGroup.sections.map((section, idx) => (
                             <div key={idx}>
@@ -477,6 +527,7 @@ export function Navbar() {
                                     <Link
                                       key={item.key}
                                       href={item.href}
+                                      onClick={(e) => navigateFromMenuLink(e, item.href)}
                                       className={`group relative flex items-start gap-3 rounded-lg px-4 py-3 transition-all ${
                                         itemActive
                                           ? 'bg-[#00f5d4]/10 text-[#00f5d4]'
@@ -554,7 +605,7 @@ export function Navbar() {
 
                   {/* Mega Menu */}
                   {isHovered && (
-                    <div className="absolute top-full left-0 mt-2 w-64 rounded-xl border border-[#00f5d4]/20 bg-[#0d0d14]/95 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] opacity-0 animate-[fadeIn_0.3s_ease-out_forwards] pointer-events-auto">
+                    <div className="animate-fadeIn-forwards pointer-events-auto absolute top-full left-0 mt-2 w-64 rounded-xl border border-[#00f5d4]/20 bg-[#0d0d14]/95 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
                       <div className="p-2">
                         {g.items.map((item) => {
                           const itemActive = isActive(item.href)
@@ -563,6 +614,7 @@ export function Navbar() {
                             <Link
                               key={item.key}
                               href={item.href}
+                              onClick={(e) => navigateFromMenuLink(e, item.href)}
                               className={`group relative flex items-start gap-3 rounded-lg px-4 py-3 transition-all ${
                                 itemActive
                                   ? 'bg-[#00f5d4]/10 text-[#00f5d4]'
@@ -607,6 +659,33 @@ export function Navbar() {
                 </div>
               )
             })}
+            <Link
+              href="/chat"
+              onClick={(e) => navigateFromMenuLink(e, '/chat')}
+              className={`relative flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-all whitespace-nowrap ${
+                isActive('/chat')
+                  ? 'text-[#00f5d4]'
+                  : 'text-[#64748b] hover:text-[#f1f5f9] hover:bg-[#13131e]'
+              }`}
+            >
+              <span className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden">
+                <LazyDotLottieAnimation
+                  src={GROUP_CHAT_MENU_LOTTIE}
+                  className="h-7 w-7"
+                  autoplay
+                  loop
+                  speed={1}
+                  rootMargin="80px"
+                />
+              </span>
+              <span className="whitespace-nowrap">{t('swap.toolbarGroupChat')}</span>
+              {isActive('/chat') && (
+                <span
+                  className="absolute bottom-0 left-1/2 h-0.5 w-4 -translate-x-1/2 rounded-full bg-[#00f5d4]"
+                  style={{ boxShadow: '0 0 8px #00f5d440' }}
+                />
+              )}
+            </Link>
           </div>
 
           {/* Right: Wallet（桌面端单行不换行） */}
@@ -733,57 +812,105 @@ export function Navbar() {
       {mobileOpen && (
         <>
           <div
-            className="fixed left-0 right-0 bottom-0 z-[90] bg-black/80 backdrop-blur-md lg:hidden"
+            className="fixed left-0 right-0 bottom-0 z-[105] bg-black/80 backdrop-blur-md lg:hidden"
             style={{ top: mobileDrawerTop }}
             onClick={() => setMobileOpen(false)}
             aria-hidden
           />
           <div
-            className="fixed end-0 z-[110] flex w-[min(100vw-3rem,20rem)] flex-col overflow-hidden rounded-l-2xl border-s border-[#64748b]/30 bg-[#334155]/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-3xl lg:hidden"
+            className="pointer-events-none fixed end-0 z-[115] w-[min(100vw-3rem,20rem)] lg:hidden"
             style={{ top: mobileDrawerTop, bottom: mobileDrawerBottom }}
           >
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-1">
-              {navGroupsMobile.map((group) => (
-                <MobileNavItem
-                  key={group.key}
-                  group={group}
-                  isGroupActive={isGroupActive}
-                  isActive={isActive}
-                  t={t}
-                  onClose={() => setMobileOpen(false)}
-                />
-              ))}
+            <div className="pointer-events-auto relative h-full w-full">
+              <div className="flex h-full w-full flex-col overflow-hidden rounded-l-2xl border-s border-[#64748b]/30 bg-[#334155]/60 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-3xl">
+                <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-4">
+                  {navGroupsMobile.map((group) => (
+                    <MobileNavItem
+                      key={group.key}
+                      group={group}
+                      isGroupActive={isGroupActive}
+                      isActive={isActive}
+                      t={t}
+                      onClose={() => setMobileOpen(false)}
+                    />
+                  ))}
+                  <div className="mt-1 space-y-0.5 border-t border-[#ffffff0d] pt-2">
+                    <Link
+                      href="/chat"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        void router.push('/chat')
+                        startTransition(() => setMobileOpen(false))
+                      }}
+                      className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-base font-semibold transition-all hover:bg-[#13131e] ${
+                        isActive('/chat') ? 'bg-[#00f5d4]/10 text-[#00f5d4]' : 'text-[#e2e8f0]'
+                      }`}
+                    >
+                      <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden">
+                        <LazyDotLottieAnimation
+                          src={GROUP_CHAT_MENU_LOTTIE}
+                          className="h-9 w-9"
+                          autoplay
+                          loop
+                          speed={1}
+                          rootMargin="80px"
+                        />
+                      </span>
+                      <span>{t('swap.toolbarGroupChat')}</span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        startTransition(() => setMobileOpen(false))
+                        setSupportSheetOpen(true)
+                      }}
+                      className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-base font-semibold text-[#e2e8f0] transition-all hover:bg-[#13131e]"
+                    >
+                      <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden">
+                        <LazyDotLottieAnimation
+                          src={SUPPORT_MENU_LOTTIE}
+                          className="h-9 w-9"
+                          autoplay
+                          loop
+                          speed={1}
+                          rootMargin="80px"
+                        />
+                      </span>
+                      <span>{t('nav.supportSheetTitle')}</span>
+                    </button>
+                  </div>
+                </div>
+                {/* 右下角动图：进入社区群聊 /chat */}
+                <Link
+                  href="/chat"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    void router.push('/chat')
+                    startTransition(() => setMobileOpen(false))
+                  }}
+                  className="pointer-events-auto absolute bottom-0 right-[-6px] z-[2] block h-[13rem] w-[13rem] cursor-pointer overflow-hidden border-0 bg-transparent p-0 text-left"
+                  aria-label={t('swap.toolbarGroupChat')}
+                  title={t('swap.toolbarGroupChat')}
+                >
+                  <LazyDotLottieAnimation
+                    src={CHAT_LOTTIE_SRC}
+                    className="h-full w-full"
+                    autoplay
+                    loop
+                    speed={1}
+                    rootMargin="200px 0px 200px 0px"
+                    posterSrc=""
+                  />
+                </Link>
+              </div>
             </div>
-            {/* 右下角 /chat 动图入口（较原 160px 放大约 30% → 208px） */}
-            <Link
-              href="/chat"
-              onClick={() => setMobileOpen(false)}
-              className="pointer-events-auto absolute bottom-0 right-[-6px] z-[2] block h-[13rem] w-[13rem] overflow-hidden"
-              aria-label="Chat"
-              title="Chat"
-            >
-              <LazyDotLottieAnimation
-                src="/chat.lottie"
-                className="h-full w-full"
-                autoplay
-                loop
-                speed={1}
-                rootMargin="200px 0px 200px 0px"
-              />
-            </Link>
-            {/* 群聊按钮：放在菜单框内、动图下层，贴紧抽屉底部（允许被动图覆盖） */}
-            <Link
-              href="/chat"
-              onClick={() => setMobileOpen(false)}
-              className="pointer-events-auto absolute bottom-0 right-[2.35rem] z-[1] inline-flex -translate-x-[60%] items-center justify-center rounded-t-lg rounded-b-none bg-[#00f5d4] px-3 py-1.5 text-sm font-semibold leading-none text-[#0a0a12] shadow-[0_0_20px_rgba(0,245,212,0.5)] transition-transform active:scale-[0.98]"
-              aria-label="群聊"
-              title="群聊"
-            >
-              群聊
-            </Link>
           </div>
           <div
-            className="pointer-events-auto fixed z-[120] flex items-center gap-4 lg:hidden"
+            className="pointer-events-auto fixed z-[125] flex items-center gap-4 lg:hidden"
             style={{
               bottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
               right: 'max(1rem, env(safe-area-inset-right, 0px))',
@@ -818,6 +945,7 @@ export function Navbar() {
           </div>
         </>
       )}
+      <MobileOfficialSupportSheet open={supportSheetOpen} onClose={closeSupportSheet} />
       <WalletDetailsModal
         open={walletModalOpen}
         onClose={() => setWalletModalOpen(false)}

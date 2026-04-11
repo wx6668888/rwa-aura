@@ -85,8 +85,8 @@ interface ChatContextType {
 
   // Actions
   login: (address: string, signer: any) => Promise<void>;
-  /** 已持有签名时建立会话（可与站点 Wagmi 连接复用，避免二次 requestAccounts） */
-  establishSession: (address: string, signature: string) => Promise<void>;
+  /** 已持有会话令牌或签名时建立会话（令牌有效期内无需再调钱包签名） */
+  establishSession: (address: string, creds: { signature?: string; sessionToken?: string }) => Promise<void>;
   logout: () => void;
   setActiveRoom: (roomId: string) => void;
   sendMessage: (
@@ -116,6 +116,8 @@ interface ChatContextType {
   getAuthHeaders: () => Record<string, string>;
   clearActionError: () => void;
   createGroupRoom: (name: string, description: string) => Promise<ChatRoom>;
+  /** 按地址创建/打开 1v1 私聊（返回房间，且会切换到该房间） */
+  openDmByAddress: (peerAddress: string) => Promise<ChatRoom | null>;
   fetchWalletBalances: () => Promise<void>;
   withdrawWallet: (currency: ChatCurrency, amount: number) => Promise<{ txHash: string }>;
   updateMyNickname: (nickname: string) => Promise<ChatUser>;
@@ -141,19 +143,52 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [walletLoading, setWalletLoading] = useState(false);
   const [jumpTargetMessageId, setJumpTargetMessageId] = useState<string | null>(null);
   const signatureRef = useRef<string>('');
+  const sessionTokenRef = useRef<string>('');
   const addressRef = useRef<string>('');
   const socketRef = useRef<Socket | null>(null);
+  const activeRoomIdRef = useRef<string | null>(null);
+  const lastManualReconnectAttemptRef = useRef(0);
+  const reconnectSyncTimerRef = useRef<number | null>(null);
+  const lastSocketConnectAtRef = useRef(0);
+  const lastMessagesReloadAtRef = useRef(0);
+  const currentUserRef = useRef<ChatUser | null>(null);
+
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
 
   useEffect(() => {
     socketRef.current = socket;
   }, [socket]);
 
+  useEffect(() => {
+    activeRoomIdRef.current = activeRoomId;
+  }, [activeRoomId]);
+
+  const authHeadersFromRefs = () => {
+    const headers: Record<string, string> = {};
+    if (!addressRef.current) return headers;
+    headers['x-wallet-address'] = addressRef.current;
+    if (sessionTokenRef.current) headers['x-chat-session'] = sessionTokenRef.current;
+    else if (signatureRef.current) headers['x-wallet-signature'] = signatureRef.current;
+    return headers;
+  };
+
   // ─── Load rooms ────────────────────────────────────
   const loadRooms = useCallback(async () => {
     try {
-      const res = await fetchWithTimeout(chatHttpUrl('rooms'), { timeoutMs: 22000 });
+      const headers = authHeadersFromRefs();
+      const res = await fetchWithTimeout(chatHttpUrl('rooms'), { timeoutMs: 22000, headers });
       const data = await res.json();
-      setRooms(data.rooms || []);
+      const incoming = Array.isArray(data?.rooms) ? data.rooms : [];
+      setRooms((prev) => {
+        const activeId = activeRoomIdRef.current;
+        if (!activeId) return incoming;
+        const hasActive = incoming.some((r: any) => r?.id === activeId);
+        if (hasActive) return incoming;
+        const prevActive = prev.find((r) => r.id === activeId);
+        return prevActive ? [prevActive, ...incoming] : incoming;
+      });
     } catch (err) {
       console.error('Failed to load rooms:', err);
     }
@@ -163,11 +198,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const loadMessages = useCallback(async (roomId: string) => {
     try {
       // 后端 messages 接口需要 x-wallet-*（否则会 401，导致 messages 被置空，看起来像聊天记录被清空）
-      const headers: Record<string, string> = {}
-      if (addressRef.current && signatureRef.current) {
-        headers['x-wallet-address'] = addressRef.current
-        headers['x-wallet-signature'] = signatureRef.current
-      }
+      const headers = authHeadersFromRefs();
 
       const res = await fetchWithTimeout(chatHttpUrl(`rooms/${roomId}/messages?limit=50`), {
         timeoutMs: 22000,
@@ -180,73 +211,177 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const saveAuth = useCallback((auth: { address: string; signature: string }) => {
-    writePersistedChatAuth(auth);
+  const ensureSocketReady = useCallback((s: Socket | null): boolean => {
+    if (!s) {
+      setLastActionError('聊天连接不可用，请刷新页面后重试');
+      return false;
+    }
+    if (s.connected) return true;
+    setLastActionError('正在重连聊天服务，请稍后重试');
+    const now = Date.now();
+    if (now - lastManualReconnectAttemptRef.current < 1200) {
+      return false;
+    }
+    lastManualReconnectAttemptRef.current = now;
+    try {
+      s.connect();
+    } catch {
+      // no-op: keep friendly error message above
+    }
+    return false;
   }, []);
+
+  const saveAuth = useCallback(
+    (auth: { address: string; signature?: string; sessionToken?: string }) => {
+      const prev = readPersistedChatAuth();
+      const next = {
+        address: auth.address,
+        signature: auth.signature !== undefined ? auth.signature : prev?.signature,
+        sessionToken: auth.sessionToken !== undefined ? auth.sessionToken : prev?.sessionToken,
+      };
+      if (!next.signature && !next.sessionToken) return;
+      writePersistedChatAuth(next);
+    },
+    []
+  );
 
   const clearSavedAuth = useCallback(() => {
     clearPersistedChatAuth();
   }, []);
 
-  const connectWithSignature = useCallback(async (address: string, signature: string, persist: boolean) => {
-    try {
-      const addr = (address ?? '').trim();
-      const sig = typeof signature === 'string' ? signature.trim() : '';
-      if (!addr) {
-        throw new Error('缺少钱包地址');
-      }
-      const isGuest = addr.toLowerCase().startsWith('guest_');
-      if (!sig || (!isGuest && !sig.startsWith('0x'))) {
-        throw new Error('签名无效或已损坏，请重新连接钱包登录');
-      }
-
-      socketRef.current?.disconnect();
-      setSocket(null);
-      setIsConnected(false);
-
-      signatureRef.current = sig;
-      addressRef.current = addr;
-
-      // Login（TP / 弱网下无超时会导致永久「连接中」）
-      let loginRes: Response;
+  const connectWithCredentials = useCallback(
+    async (address: string, creds: { signature?: string; sessionToken?: string }, persist: boolean) => {
       try {
-        loginRes = await fetchWithTimeout(chatHttpUrl('auth/login'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address: addr, signature: sig }),
-          timeoutMs: 22000,
-        });
-      } catch (e: unknown) {
-        const name = e instanceof Error ? e.name : '';
-        if (name === 'AbortError') {
-          throw new Error('连接聊天服务超时，请检查网络或关闭 VPN 后重试。');
+        const addr = (address ?? '').trim();
+        if (!addr) {
+          throw new Error('缺少钱包地址');
         }
-        throw e;
-      }
-      if (!loginRes.ok) {
-        const err = await loginRes.json().catch(() => ({ error: 'Login failed' }));
-        if (loginRes.status === 401) {
-          clearSavedAuth();
-        }
-        throw new Error(err?.error || 'Login failed');
-      }
-      const { user } = await loginRes.json();
-      setCurrentUser(user);
-      setIsAuthenticated(true);
-      if (persist) {
-        saveAuth({ address: addr, signature: sig });
-      }
+        const isGuest = addr.toLowerCase().startsWith('guest_');
+        const stIn = typeof creds.sessionToken === 'string' ? creds.sessionToken.trim() : '';
+        const sigIn = typeof creds.signature === 'string' ? creds.signature.trim() : '';
 
-      // Connect WebSocket
-      const s = io(chatSocketUrl(), {
-        path: '/chat-ws',
-        auth: { address: addr, signature: sig },
-        transports: ['websocket', 'polling'],
-      });
+        if (!isGuest) {
+          if (!stIn && (!sigIn || !sigIn.startsWith('0x'))) {
+            throw new Error('签名无效或已损坏，请重新连接钱包登录');
+          }
+        } else if (!stIn && sigIn !== 'guest') {
+          throw new Error('访客登录参数无效');
+        }
+
+        const sameAddr = addressRef.current.toLowerCase() === addr.toLowerCase();
+        const tokenMatch = !!stIn && sessionTokenRef.current === stIn;
+        const sigGuestMatch =
+          isGuest && !stIn && !sessionTokenRef.current && sigIn === 'guest' && signatureRef.current === 'guest';
+        const sigWalletMatch =
+          !isGuest &&
+          !stIn &&
+          !sessionTokenRef.current &&
+          !!sigIn &&
+          signatureRef.current === sigIn;
+        const alreadySession =
+          sameAddr &&
+          (tokenMatch || sigGuestMatch || sigWalletMatch) &&
+          socketRef.current?.connected &&
+          currentUserRef.current;
+        if (alreadySession) {
+          if (persist) {
+            const prev = readPersistedChatAuth();
+            saveAuth({
+              address: addr,
+              signature: sigIn.startsWith('0x') ? sigIn : prev?.signature,
+              sessionToken: sessionTokenRef.current || stIn || prev?.sessionToken,
+            });
+          }
+          return;
+        }
+
+        socketRef.current?.disconnect();
+        setSocket(null);
+        setIsConnected(false);
+
+        addressRef.current = addr;
+
+        const loginBody: Record<string, string> = { address: addr };
+        if (stIn) loginBody.sessionToken = stIn;
+        else loginBody.signature = sigIn;
+
+        let loginRes: Response;
+        try {
+          loginRes = await fetchWithTimeout(chatHttpUrl('auth/login'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(loginBody),
+            timeoutMs: 22000,
+          });
+        } catch (e: unknown) {
+          const name = e instanceof Error ? e.name : '';
+          if (name === 'AbortError') {
+            throw new Error('连接聊天服务超时，请检查网络或关闭 VPN 后重试。');
+          }
+          throw e;
+        }
+        if (!loginRes.ok) {
+          const err = await loginRes.json().catch(() => ({ error: 'Login failed' }));
+          if (loginRes.status === 401) {
+            clearSavedAuth();
+          }
+          throw new Error(err?.error || 'Login failed');
+        }
+        const data = await loginRes.json();
+        const user = data.user;
+        const nextTok = typeof data.sessionToken === 'string' ? data.sessionToken : stIn;
+        sessionTokenRef.current = nextTok && nextTok.length > 8 ? nextTok : '';
+        if (isGuest) {
+          signatureRef.current = sessionTokenRef.current ? '' : 'guest';
+        } else {
+          signatureRef.current = sigIn.startsWith('0x') ? sigIn : sessionTokenRef.current ? '' : '';
+        }
+
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+        if (persist) {
+          const prev = readPersistedChatAuth();
+          saveAuth({
+            address: addr,
+            signature: sigIn.startsWith('0x') ? sigIn : prev?.address?.toLowerCase() === addr.toLowerCase() ? prev?.signature : undefined,
+            sessionToken: sessionTokenRef.current || undefined,
+          });
+        }
+
+        const wsAuth: Record<string, string> = { address: addr };
+        if (sessionTokenRef.current) wsAuth.sessionToken = sessionTokenRef.current;
+        else wsAuth.signature = signatureRef.current || sigIn;
+
+        const s = io(chatSocketUrl(), {
+          path: '/chat-ws',
+          auth: wsAuth,
+          transports: ['websocket', 'polling'],
+          reconnection: true,
+          reconnectionAttempts: Infinity,
+          reconnectionDelay: 1000,
+          reconnectionDelayMax: 8000,
+        });
 
       s.on('connect', () => {
         setIsConnected(true);
         console.log('[Chat] WebSocket connected');
+        const now = Date.now();
+        const reconnectBurst = now - lastSocketConnectAtRef.current < 2500;
+        lastSocketConnectAtRef.current = now;
+        if (reconnectSyncTimerRef.current) {
+          window.clearTimeout(reconnectSyncTimerRef.current);
+        }
+        reconnectSyncTimerRef.current = window.setTimeout(() => {
+          const currentRoomId = activeRoomIdRef.current;
+          if (!currentRoomId) return;
+          s.emit('room:join', currentRoomId, (ok: boolean) => {
+            if (!ok) return;
+            const ts = Date.now();
+            if (ts - lastMessagesReloadAtRef.current < 2500) return;
+            lastMessagesReloadAtRef.current = ts;
+            void loadMessages(currentRoomId);
+          });
+        }, reconnectBurst ? 1200 : 180);
       });
 
       s.on('disconnect', () => {
@@ -255,6 +390,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       });
 
       s.on('message:new', (msg: ChatMessage) => {
+        if (activeRoomIdRef.current && msg.roomId !== activeRoomIdRef.current) return;
         setMessages((prev) => {
           if (prev.some((m) => m.id === msg.id)) return prev;
           return [...prev, msg];
@@ -262,10 +398,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       });
 
       s.on('message:edit', (msg: Partial<ChatMessage> & { id: string }) => {
+        if (activeRoomIdRef.current && msg.roomId && msg.roomId !== activeRoomIdRef.current) return;
         setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, ...msg } as ChatMessage : m)));
       });
 
-      s.on('user:typing', (userId: string) => {
+      s.on('user:typing', (userId: string, roomId: string) => {
+        if (activeRoomIdRef.current && roomId && roomId !== activeRoomIdRef.current) return;
         setTypingUsers((prev) => {
           if (prev.includes(userId)) return prev;
           const next = [...prev, userId];
@@ -288,27 +426,52 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }, [loadRooms, saveAuth, clearSavedAuth]);
 
   // ─── Login with wallet ─────────────────────────────
-  const login = useCallback(async (address: string, signer: any) => {
-    let signature = '';
-    if (signer) {
-      const message = await fetchChatAuthSigningMessage();
-      signature = await signer.signMessage(message);
-      if (typeof signature !== 'string' || !signature.startsWith('0x')) {
-        throw new Error('钱包未返回有效签名，请换浏览器或暂时关闭冲突的扩展后重试。');
+  const login = useCallback(
+    async (address: string, signer: any) => {
+      const addr = (address ?? '').trim();
+      let signature = '';
+      if (signer) {
+        const cached = readPersistedChatAuth();
+        if (cached && cached.address.toLowerCase() === addr.toLowerCase()) {
+          if (cached.sessionToken && cached.sessionToken.length > 8) {
+            await connectWithCredentials(
+              cached.address,
+              { sessionToken: cached.sessionToken, signature: cached.signature },
+              true
+            );
+            return;
+          }
+          if (cached.signature?.startsWith('0x')) {
+            await connectWithCredentials(cached.address, { signature: cached.signature }, true);
+            return;
+          }
+        }
+        const message = await fetchChatAuthSigningMessage();
+        signature = await signer.signMessage(message);
+        if (typeof signature !== 'string' || !signature.startsWith('0x')) {
+          throw new Error('钱包未返回有效签名，请换浏览器或暂时关闭冲突的扩展后重试。');
+        }
+      } else {
+        signature = 'guest';
       }
-    } else {
-      // Guest login for quick testing mode
-      signature = 'guest';
-    }
-    await connectWithSignature(address, signature, true);
-  }, [connectWithSignature]);
+      await connectWithCredentials(addr, { signature }, true);
+    },
+    [connectWithCredentials]
+  );
 
-  const establishSession = useCallback(async (address: string, signature: string) => {
-    await connectWithSignature(address, signature, true);
-  }, [connectWithSignature]);
+  const establishSession = useCallback(
+    async (address: string, creds: { signature?: string; sessionToken?: string }) => {
+      await connectWithCredentials(address, creds, true);
+    },
+    [connectWithCredentials]
+  );
 
   // ─── Logout ────────────────────────────────────────
   const logout = useCallback(() => {
+    if (reconnectSyncTimerRef.current) {
+      window.clearTimeout(reconnectSyncTimerRef.current);
+      reconnectSyncTimerRef.current = null;
+    }
     socketRef.current?.disconnect();
     setSocket(null);
     setIsConnected(false);
@@ -318,17 +481,19 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setRooms([]);
     setActiveRoomId(null);
     signatureRef.current = '';
+    sessionTokenRef.current = '';
     addressRef.current = '';
     clearSavedAuth();
   }, [clearSavedAuth]);
 
   // ─── Set active room ──────────────────────────────
   const setActiveRoom = useCallback((roomId: string) => {
+    activeRoomIdRef.current = roomId;
     setActiveRoomId(roomId);
     if (socket) {
       // 先 join 再拉取，避免 membership 尚未写入导致 REST 拉不到消息
-      socket.emit('room:join', roomId, () => {
-        void loadMessages(roomId);
+      socket.emit('room:join', roomId, (ok: boolean) => {
+        if (ok) void loadMessages(roomId);
       });
     } else {
       void loadMessages(roomId);
@@ -343,7 +508,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       messageType?: 'text' | 'image',
       opts?: { metadata?: Record<string, unknown> }
     ) => {
-      if (!socket || !activeRoomId || !content.trim()) return;
+      if (!activeRoomId || !content.trim()) return;
+      if (!ensureSocketReady(socket)) return;
+      let acked = false;
+      const ackTimer = window.setTimeout(() => {
+        if (!acked) {
+          setLastActionError('消息发送超时，请重试');
+        }
+      }, 8000);
       socket.emit(
         'message:send',
         {
@@ -354,6 +526,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           metadata: opts?.metadata,
         },
         (ack: any) => {
+          acked = true;
+          window.clearTimeout(ackTimer);
           if (!ack?.ok) {
             const code = ack?.errorCode;
             setLastActionError(
@@ -367,12 +541,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         }
       );
     },
-    [socket, activeRoomId]
+    [socket, activeRoomId, ensureSocketReady]
   );
 
   const sendQuickLink = useCallback(
     (path: string, label: string) => {
-      if (!socket || !activeRoomId || !label.trim()) return;
+      if (!activeRoomId || !label.trim()) return;
+      if (!ensureSocketReady(socket)) return;
       const content = label.trim();
       socket.emit(
         'message:send',
@@ -395,12 +570,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         }
       );
     },
-    [socket, activeRoomId]
+    [socket, activeRoomId, ensureSocketReady]
   );
 
   const createRedPacket = useCallback(
     (totalAmount: number, totalCount: number, greeting: string | undefined, currency: 'USDT' | 'RWA') => {
-    if (!socket || !activeRoomId) return;
+    if (!activeRoomId) return;
+      if (!ensureSocketReady(socket)) return;
       socket.emit(
         'redpacket:create',
         { roomId: activeRoomId, totalAmount, totalCount, greeting, currency },
@@ -418,7 +594,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         }
       );
     },
-    [socket, activeRoomId]
+    [socket, activeRoomId, ensureSocketReady]
   );
 
   const claimRedPacket = useCallback(async (packetId: string): Promise<number | null> => {
@@ -438,13 +614,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const getRedPacketRecords = useCallback(async (packetId: string) => {
     try {
-      const headers: Record<string, string> =
-        addressRef.current && signatureRef.current
-          ? {
-              'x-wallet-address': addressRef.current,
-              'x-wallet-signature': signatureRef.current,
-            }
-          : {};
+      const headers = authHeadersFromRefs();
       const res = await fetch(chatHttpUrl(`redpackets/${packetId}/records`), { headers });
       if (!res.ok) return [];
       const data = await res.json();
@@ -456,13 +626,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const fetchWalletBalances = useCallback(async () => {
     try {
-      if (!addressRef.current || !signatureRef.current) return;
+      if (!addressRef.current || (!sessionTokenRef.current && !signatureRef.current)) return;
       setWalletLoading(true);
       setLastActionError(null);
-      const headers: Record<string, string> = {
-        'x-wallet-address': addressRef.current,
-        'x-wallet-signature': signatureRef.current,
-      };
+      const headers = authHeadersFromRefs();
       const res = await fetch(chatHttpUrl('wallet/balances'), { headers });
       if (!res.ok) throw new Error('Failed to load wallet balances');
       const data = await res.json();
@@ -478,12 +645,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const withdrawWallet = useCallback(
     async (currency: ChatCurrency, amount: number): Promise<{ txHash: string }> => {
-      if (!addressRef.current || !signatureRef.current) throw new Error('Not authenticated');
+      if (!addressRef.current || (!sessionTokenRef.current && !signatureRef.current)) {
+        throw new Error('Not authenticated');
+      }
       setLastActionError(null);
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        'x-wallet-address': addressRef.current,
-        'x-wallet-signature': signatureRef.current,
+        ...authHeadersFromRefs(),
       };
       const res = await fetch(chatHttpUrl('wallet/withdraw'), {
         method: 'POST',
@@ -502,7 +670,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Typing indicator ─────────────────────────────
   const sendTyping = useCallback(() => {
-    if (!socket || !activeRoomId) return;
+    if (!activeRoomId) return;
+    if (!socket?.connected) return;
     socket.emit('user:typing', activeRoomId);
   }, [socket, activeRoomId]);
 
@@ -511,11 +680,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (!activeRoomId || messages.length === 0) return;
     const oldest = messages[0]?.timestamp;
     try {
-      const headers: Record<string, string> = {}
-      if (addressRef.current && signatureRef.current) {
-        headers['x-wallet-address'] = addressRef.current
-        headers['x-wallet-signature'] = signatureRef.current
-      }
+      const headers = authHeadersFromRefs();
 
       const res = await fetch(
         chatHttpUrl(`rooms/${activeRoomId}/messages?limit=50&before=${oldest}`),
@@ -536,11 +701,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setActiveRoomId(roomId);
       socketRef.current?.emit('room:join', roomId, () => {});
       try {
-        const headers: Record<string, string> = {}
-        if (addressRef.current && signatureRef.current) {
-          headers['x-wallet-address'] = addressRef.current
-          headers['x-wallet-signature'] = signatureRef.current
-        }
+        const headers = authHeadersFromRefs();
 
         const res = await fetchWithTimeout(
           chatHttpUrl(`rooms/${roomId}/messages/around/${messageId}?limit=50`),
@@ -561,13 +722,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   );
 
   const getAuthHeaders = useCallback((): Record<string, string> => {
-    if (!addressRef.current || !signatureRef.current) {
+    const h = authHeadersFromRefs();
+    if (!h['x-wallet-address'] || (!h['x-chat-session'] && !h['x-wallet-signature'])) {
       return {};
     }
-    return {
-      'x-wallet-address': addressRef.current,
-      'x-wallet-signature': signatureRef.current,
-    };
+    return h;
   }, []);
 
   const clearActionError = useCallback(() => {
@@ -577,7 +736,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const uploadChatImage = useCallback(
     async (file: File): Promise<string | null> => {
       const headers = getAuthHeaders();
-      if (!headers['x-wallet-address'] || !headers['x-wallet-signature']) {
+      if (!headers['x-wallet-address'] || (!headers['x-chat-session'] && !headers['x-wallet-signature'])) {
         setLastActionError('Not authenticated');
         return null;
       }
@@ -621,7 +780,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         'Content-Type': 'application/json',
         ...getAuthHeaders(),
       };
-      if (!headers['x-wallet-address'] || !headers['x-wallet-signature']) {
+      if (!headers['x-wallet-address'] || (!headers['x-chat-session'] && !headers['x-wallet-signature'])) {
         throw new Error('Not authenticated');
       }
       const res = await fetch(chatHttpUrl('rooms'), {
@@ -648,13 +807,47 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [getAuthHeaders, loadRooms, setActiveRoom]
   );
 
+  // ─── DM Open by address ─────────────────────────────
+  const openDmByAddress = useCallback(
+    async (peerAddress: string) => {
+      const addr = (peerAddress || '').trim();
+      if (!addr) throw new Error('peerAddress required');
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      };
+      if (!headers['x-wallet-address'] || (!headers['x-chat-session'] && !headers['x-wallet-signature'])) {
+        throw new Error('Not authenticated');
+      }
+
+      const res = await fetch(chatHttpUrl('dm/open'), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ peerAddress: addr }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.room?.id) {
+        throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to open DM');
+      }
+
+      const room = data.room as ChatRoom;
+      setRooms((prev) => (prev.some((r) => r.id === room.id) ? prev : [room, ...prev]));
+      setActiveRoom(room.id);
+      void loadRooms();
+      return room;
+    },
+    [getAuthHeaders, loadRooms, setActiveRoom]
+  );
+
   const updateMyNickname = useCallback(
     async (nickname: string) => {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         ...getAuthHeaders(),
       };
-      if (!headers['x-wallet-address'] || !headers['x-wallet-signature']) {
+      if (!headers['x-wallet-address'] || (!headers['x-chat-session'] && !headers['x-wallet-signature'])) {
         throw new Error('Not authenticated');
       }
       const res = await fetch(chatHttpUrl('me/nickname'), {
@@ -676,10 +869,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [getAuthHeaders]
   );
 
-  // Auto-select first room
+  // 默认进「官方群」：房间 API 可能按 id/时间戳排序把公告频道放在前面，不能盲选 rooms[0]
   useEffect(() => {
     if (rooms.length > 0 && !activeRoomId) {
-      setActiveRoom(rooms[0].id);
+      const preferred =
+        rooms.find((r) => r.id === 'room-general')?.id ||
+        rooms.find((r) => r.type === 'group' && r.id !== 'room-announcements')?.id ||
+        rooms[0]?.id;
+      if (preferred) setActiveRoom(preferred);
     }
   }, [rooms, activeRoomId, setActiveRoom]);
 
@@ -722,7 +919,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         const parsed = readPersistedChatAuth();
-        if (!parsed?.address || !parsed?.signature) {
+        if (!parsed?.address || (!parsed.signature && !parsed.sessionToken)) {
           if (!cancelled) setIsAuthRestoring(false);
           return;
         }
@@ -736,7 +933,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         }
 
         try {
-          await connectWithSignature(parsed.address, parsed.signature, false);
+          await connectWithCredentials(
+            parsed.address,
+            { signature: parsed.signature, sessionToken: parsed.sessionToken },
+            true
+          );
         } catch (e) {
           console.warn('[Chat] auto-restore failed (network or server); keeping saved session for retry:', e);
         }
@@ -750,7 +951,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
       window.clearTimeout(maxTimer);
     };
-  }, [connectWithSignature, isAuthenticated]);
+  }, [connectWithCredentials, isAuthenticated]);
 
   return (
     <ChatContext.Provider value={{
@@ -787,6 +988,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       getAuthHeaders,
       clearActionError,
       createGroupRoom,
+      openDmByAddress,
       updateMyNickname,
     }}>
       {children}

@@ -13,7 +13,7 @@ export type HumanizeMode = 'normal' | 'micro';
 /** formal：多保留逗号句号；casual：常省略句末、逗号变空格；mixed：两者随机 */
 export type PunctuationStyle = 'formal' | 'casual' | 'mixed';
 
-export type HumanizeOpts = { mode?: HumanizeMode; punctuation?: PunctuationStyle };
+export type HumanizeOpts = { mode?: HumanizeMode; punctuation?: PunctuationStyle; emojiRate?: number };
 
 /** 句末或句首随机加一个表情（正式人设更少用） */
 export function appendCasualEmoji(input: string, emojiRate = 0.12): string {
@@ -89,7 +89,11 @@ export function humanizeCasualChinese(input: string, opts?: HumanizeOpts): strin
   if (!s) return s;
 
   const style = resolveStyle(opts?.punctuation);
-  const emojiRate = style === 'formal' ? 0.05 : 0.12;
+  const baseEmojiRate = style === 'formal' ? 0.05 : 0.12;
+  const emojiRate =
+    typeof opts?.emojiRate === 'number' && Number.isFinite(opts.emojiRate)
+      ? Math.max(0, Math.min(0.3, opts.emojiRate))
+      : baseEmojiRate;
 
   if (opts?.mode === 'micro' || s.length <= 6) {
     if (style === 'formal') {

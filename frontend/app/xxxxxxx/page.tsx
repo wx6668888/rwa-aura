@@ -1,5 +1,4 @@
 import { BackgroundEffects } from '@/components/background-effects'
-import { Navbar } from '@/components/navbar'
 
 // 由于该页面会被边缘网络（如 Cloudflare）缓存到较长 TTL，
 // 为了确保上线后内容能尽快生效，这里强制该路由动态渲染、禁用静态缓存。
@@ -61,7 +60,6 @@ export default function GuideXPage() {
   return (
     <div className="min-h-screen bg-[#05050a] font-sans">
       <BackgroundEffects />
-      <Navbar />
 
       <main className="mx-auto max-w-5xl px-4 pb-[90px] pt-below-navbar-safe lg:px-8">
         <section

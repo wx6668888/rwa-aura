@@ -19,6 +19,7 @@ const ABI = [
 export class RwaPendingSyncService {
   private provider: ethers.JsonRpcProvider;
   private contract: ethers.Contract;
+  private suspended = false;
 
   constructor() {
     this.provider = new ethers.JsonRpcProvider(RPC_URL);
@@ -26,6 +27,10 @@ export class RwaPendingSyncService {
   }
 
   async syncAllUsers(): Promise<void> {
+    if (this.suspended) {
+      logger.info('rwaPending 同步已暂停（结算窗口保护）');
+      return;
+    }
     try {
       logger.info('开始同步 rwaPending 数据...');
 
@@ -73,6 +78,16 @@ export class RwaPendingSyncService {
          rwa_pending_updated_at = NOW()`,
       [userAddress, usdtRwaPending, rwaRwaPending]
     );
+  }
+
+  suspend(): void {
+    this.suspended = true;
+    logger.info('rwaPending 同步已进入暂停状态');
+  }
+
+  resume(): void {
+    this.suspended = false;
+    logger.info('rwaPending 同步已恢复');
   }
 }
 

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { Navbar } from '@/components/navbar'
 import { BackgroundEffects } from '@/components/background-effects'
 import LuckyHeader from '@/components/lucky/lucky-header'
 import PoolSwitcher from '@/components/lucky/pool-switcher'
@@ -62,7 +61,6 @@ export default function LuckyPage() {
       </div>
 
       <BackgroundEffects />
-      <Navbar />
 
       <main className="relative z-10 container mx-auto px-4 pb-24 pt-below-navbar-safe sm:px-6 lg:px-8">
         <LuckyHeader />

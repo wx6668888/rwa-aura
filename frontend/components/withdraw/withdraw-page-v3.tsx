@@ -21,6 +21,7 @@ import { PanelStRWA } from './panels/panel-strwa'
 import { PanelQuickWithdraw } from './panels/panel-quick-withdraw'
 import { useWithdrawData } from '@/hooks/useWithdrawData'
 import { useCountUp } from '@/hooks/useCountUp'
+import { useLocale } from '@/components/locale-provider'
 
 export type WithdrawPanelId = 'quick' | 'yield' | 'principal' | 'referral' | 'dividend' | 'strwa'
 
@@ -50,6 +51,8 @@ type CyberItem = {
  */
 export function WithdrawPageV3() {
   const { isConnected } = useAccount()
+  const { locale } = useLocale()
+  const isZh = locale.startsWith('zh')
   const router = useRouter()
   const searchParams = useSearchParams()
   const data = useWithdrawData()
@@ -122,8 +125,8 @@ export function WithdrawPageV3() {
       {
         id: 'quick',
         icon: Zap,
-        name: '一键提取',
-        desc: '快速提取所有资产',
+        name: isZh ? '一键提取' : 'Quick Withdraw',
+        desc: isZh ? '快速提取所有资产' : 'Withdraw all assets quickly',
         amount: String(data.totalUSD ?? '0'),
         unit: 'USD',
         color: '#fbbf24',
@@ -132,8 +135,8 @@ export function WithdrawPageV3() {
       {
         id: 'yield',
         icon: TrendingUp,
-        name: 'RWA 收益',
-        desc: '每日 0.8% 收益率',
+        name: isZh ? 'RWA 收益' : 'RWA Yield',
+        desc: isZh ? '每日 0.8% 收益率' : 'Daily 0.8% yield rate',
         amount: String(data.yieldAmount ?? '0'),
         unit: 'RWA',
         color: '#22c55e',
@@ -142,7 +145,7 @@ export function WithdrawPageV3() {
       {
         id: 'principal',
         icon: Briefcase,
-        name: '质押本金',
+        name: isZh ? '质押本金' : 'Staked Principal',
         desc: `RWA ${rwaP} | USDT ${usdtP}`,
         amount: principalUSD,
         unit: 'USD',
@@ -152,8 +155,8 @@ export function WithdrawPageV3() {
       {
         id: 'referral',
         icon: Users,
-        name: '推荐奖励',
-        desc: '每周结算',
+        name: isZh ? '推荐奖励' : 'Referral Rewards',
+        desc: isZh ? '每周结算' : 'Weekly settlement',
         amount: String(data.referralAmount ?? '0'),
         unit: 'USDT',
         color: '#f59e0b',
@@ -162,8 +165,8 @@ export function WithdrawPageV3() {
       {
         id: 'dividend',
         icon: PieChart,
-        name: '项目分红',
-        desc: '每月结算',
+        name: isZh ? '项目分红' : 'Project Dividend',
+        desc: isZh ? '每月结算' : 'Monthly settlement',
         amount: String(data.dividendAmount ?? '0'),
         unit: 'USDT',
         color: '#a855f7',
@@ -172,15 +175,15 @@ export function WithdrawPageV3() {
       {
         id: 'strwa',
         icon: Shield,
-        name: 'stRWA 凭证',
-        desc: '资产解锁',
+        name: isZh ? 'stRWA 凭证' : 'stRWA Voucher',
+        desc: isZh ? '资产解锁' : 'Asset unlock',
         amount: String(data.strwaAmount ?? '0'),
         unit: 'stRWA',
         color: '#06b6d4',
         gradient: 'from-cyan-500 to-blue-500',
       },
     ]
-  }, [data])
+  }, [data, isZh])
 
   const renderPanels = (panelId: WithdrawPanelId) => (
     <>
@@ -198,7 +201,7 @@ export function WithdrawPageV3() {
       <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 backdrop-blur-sm">
         <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
         <span className="text-[11px] font-medium uppercase tracking-[0.15em] text-emerald-400/80">
-          可提取总金额
+          {isZh ? '可提取总金额' : 'Total Withdrawable'}
         </span>
       </div>
       <div
@@ -310,7 +313,7 @@ export function WithdrawPageV3() {
                 : '--'}
           </h1>
           <p className="hero-mobile-label text-sm font-medium tracking-wide text-white/50">
-            可提取的总额
+            {isZh ? '可提取的总额' : 'Total Withdrawable'}
           </p>
         </div>
 

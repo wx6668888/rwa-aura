@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
-import { useChat, type ChatMessage } from './chat-context';
+import { useChat, type ChatMessage, type ChatUser } from './chat-context';
 import { useLocale } from '@/components/locale-provider';
 import { useTranslation } from '@/lib/i18n';
 import { chatHttpUrl } from '@/lib/chat-api';
+import { chatAuthHeadersReady } from '@/lib/chat-auth-storage';
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 
 export default function RoomList(
@@ -13,12 +14,14 @@ export default function RoomList(
     onOpenWallet,
   }: { closeMobileSidebar?: () => void; onOpenWallet?: () => void } = {}
 ) {
+  const OFFICIAL_SUPPORT_BOT_ADDRESS = '0xe28c687a9ae85d9145defc1d78961bd3567ffec7';
   const {
     rooms,
     activeRoomId,
     setActiveRoom,
     isConnected,
     createGroupRoom,
+    openDmByAddress,
     isAuthenticated,
     jumpToMessage,
     getAuthHeaders,
@@ -36,14 +39,34 @@ export default function RoomList(
   >([]);
   const [msgSearchLoading, setMsgSearchLoading] = React.useState(false);
 
+  const [userSearchResults, setUserSearchResults] = React.useState<ChatUser[]>([]);
+  const [userSearchLoading, setUserSearchLoading] = React.useState(false);
+  const [dmAdding, setDmAdding] = React.useState(false);
+  const [dmAddError, setDmAddError] = React.useState('');
+  const [supportOpening, setSupportOpening] = React.useState(false);
+  const [dmPeerByRoomId, setDmPeerByRoomId] = React.useState<Record<string, ChatUser>>({});
+
+  const addressQuery = search.trim();
+  const isAddressQuery =
+    addressQuery.toLowerCase().startsWith('guest_') || /^0x[a-fA-F0-9]{6,40}$/.test(addressQuery);
+  const shortAddr = React.useCallback((address: string) => {
+    const a = (address || '').trim().toLowerCase();
+    if (!a.startsWith('0x') || a.length < 12) return a || '—';
+    return `${a.slice(0, 6)}…${a.slice(-4)}`;
+  }, []);
+
   React.useEffect(() => {
     const q = search.trim();
+    if (/^0x[a-fA-F0-9]{6,40}$/.test(q) || q.toLowerCase().startsWith('guest_')) {
+      setMessageHits([]);
+      return;
+    }
     if (q.length < 2 || !isAuthenticated) {
       setMessageHits([]);
       return;
     }
     const headers = getAuthHeaders();
-    if (!headers['x-wallet-address'] || !headers['x-wallet-signature']) {
+    if (!chatAuthHeadersReady(headers)) {
       setMessageHits([]);
       return;
     }
@@ -66,6 +89,43 @@ export default function RoomList(
     }, 350);
     return () => clearTimeout(id);
   }, [search, isAuthenticated, getAuthHeaders]);
+
+  React.useEffect(() => {
+    const q = search.trim();
+    const headers = getAuthHeaders();
+
+    // Address mode: search user -> start DM
+    if (q.length < 6 || !isAuthenticated || !isAddressQuery) {
+      setUserSearchResults([]);
+      setUserSearchLoading(false);
+      return;
+    }
+    if (!chatAuthHeadersReady(headers)) {
+      setUserSearchResults([]);
+      return;
+    }
+
+    const id = window.setTimeout(() => {
+      void (async () => {
+        setDmAddError('');
+        setUserSearchLoading(true);
+        try {
+          const res = await fetchWithTimeout(
+            chatHttpUrl(`users/search?address=${encodeURIComponent(q)}&limit=5`),
+            { headers, timeoutMs: 22000 }
+          );
+          const data = await res.json().catch(() => ({}));
+          setUserSearchResults(Array.isArray(data?.users) ? data.users : []);
+        } catch {
+          setUserSearchResults([]);
+        } finally {
+          setUserSearchLoading(false);
+        }
+      })();
+    }, 350);
+
+    return () => clearTimeout(id);
+  }, [search, isAuthenticated, isAddressQuery, getAuthHeaders]);
 
   const submitNewGroup = async () => {
     if (!newName.trim()) {
@@ -90,6 +150,13 @@ export default function RoomList(
   const stripRoomPrefix = (name: string) => name.replace(/^[\p{Emoji}\s]+/u, '');
 
   const getRoomDisplayName = (room: { id: string; name: string }) => {
+    if ((room as any).type === 'dm') {
+      const peer = dmPeerByRoomId[room.id];
+      if (peer?.address?.toLowerCase() === OFFICIAL_SUPPORT_BOT_ADDRESS) {
+        return locale === 'en' ? 'Official Support' : '官方客服';
+      }
+      if (peer?.address) return shortAddr(peer.address);
+    }
     switch (room.id) {
       case 'room-general':
         return t('chat.roomGeneral');
@@ -105,6 +172,38 @@ export default function RoomList(
         return stripRoomPrefix(room.name || '');
     }
   };
+
+  React.useEffect(() => {
+    if (!isAuthenticated) return;
+    const dmRooms = rooms.filter((r) => r.type === 'dm');
+    if (dmRooms.length === 0) return;
+    const headers = getAuthHeaders();
+    if (!chatAuthHeadersReady(headers)) return;
+    const selfAddr = String(headers['x-wallet-address'] || '').toLowerCase();
+    void (async () => {
+      const entries = await Promise.all(
+        dmRooms.map(async (room) => {
+          try {
+            const res = await fetchWithTimeout(chatHttpUrl(`rooms/${room.id}/members`), { headers, timeoutMs: 22000 });
+            if (!res.ok) return null;
+            const data = await res.json().catch(() => ({} as any));
+            const members = Array.isArray(data?.members) ? (data.members as ChatUser[]) : [];
+            const peer = members.find((m) => String(m.address || '').toLowerCase() !== selfAddr);
+            if (!peer) return null;
+            return [room.id, peer] as const;
+          } catch {
+            return null;
+          }
+        })
+      );
+      const next: Record<string, ChatUser> = {};
+      for (const item of entries) {
+        if (!item) continue;
+        next[item[0]] = item[1];
+      }
+      setDmPeerByRoomId((prev) => ({ ...prev, ...next }));
+    })();
+  }, [rooms, isAuthenticated, getAuthHeaders]);
 
   return (
     <div className="flex flex-col h-full bg-surface-1 min-h-0">
@@ -202,9 +301,42 @@ export default function RoomList(
 
       {/* Room list + 聊天记录搜索 + 保留条数说明 */}
       <div className="flex-1 overflow-y-auto px-2 pb-2 scrollbar-thin scrollbar-thumb-white/5 scrollbar-track-transparent min-h-0">
+        {isAuthenticated && (
+          <button
+            type="button"
+            disabled={supportOpening}
+            onClick={async () => {
+              setDmAddError('');
+              setSupportOpening(true);
+              try {
+                await openDmByAddress(OFFICIAL_SUPPORT_BOT_ADDRESS);
+                closeMobileSidebar?.();
+              } catch (e: unknown) {
+                setDmAddError(e instanceof Error ? e.message : 'Failed to open support chat');
+              } finally {
+                setSupportOpening(false);
+              }
+            }}
+            className="w-full text-left px-2.5 py-2 rounded-lg transition-all duration-150 flex items-center gap-2.5 group mb-[6px] bg-[#0d9488]/18 text-[#9ffcf1] border border-[#0d9488]/45 hover:bg-[#0d9488]/28 disabled:opacity-60"
+          >
+            <div className="w-7 h-7 rounded-md flex items-center justify-center text-[13px] flex-shrink-0 border border-[#0d9488]/45 bg-[#0d9488]/22">
+              ✓
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[12px] font-medium truncate leading-none">
+                {locale === 'en' ? 'Official Support' : '官方客服'}
+              </div>
+              <div className="mt-1 font-mono text-[9px] text-[#9ffcf1]/80">
+                {locale === 'en' ? 'Direct private chat' : '一键私聊官方助手'}
+              </div>
+            </div>
+          </button>
+        )}
+
         {rooms
           .filter((r) => {
             if (!search.trim()) return true;
+            if (isAddressQuery) return true; // address mode: don't filter rooms by address
             const dn = getRoomDisplayName(r).toLowerCase();
             return dn.includes(search.toLowerCase());
           })
@@ -239,7 +371,14 @@ export default function RoomList(
                   border: '1px solid var(--border-subtle)',
                 }}
               >
-                {room.type === 'channel' ? '#' : room.icon || '#'}
+                {room.type === 'dm' ? (
+                  dmPeerByRoomId[room.id]?.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={dmPeerByRoomId[room.id]!.avatar} alt="" className="w-full h-full object-cover rounded-md" />
+                  ) : (
+                    <span>{dmPeerByRoomId[room.id]?.address ? '💬' : (room.icon || '💬')}</span>
+                  )
+                ) : room.type === 'channel' ? '#' : room.icon || '#'}
               </div>
 
               {/* Info */}
@@ -254,6 +393,15 @@ export default function RoomList(
                     {t('chat.readOnly')}
                   </div>
                 )}
+                {room.type === 'dm' && (
+                  <div className={`mt-1 font-mono text-[9px] ${isActive ? 'text-white/65' : 'text-text-disabled'}`}>
+                    {dmPeerByRoomId[room.id]?.address
+                      ? (dmPeerByRoomId[room.id]!.address.toLowerCase() === OFFICIAL_SUPPORT_BOT_ADDRESS
+                        ? (locale === 'en' ? 'Official assistant' : '官方助手')
+                        : shortAddr(dmPeerByRoomId[room.id]!.address))
+                      : 'DM'}
+                  </div>
+                )}
               </div>
 
               {/* Active indicator */}
@@ -264,7 +412,7 @@ export default function RoomList(
           );
         })}
 
-        {search.trim().length >= 2 && isAuthenticated && (
+        {!isAddressQuery && search.trim().length >= 2 && isAuthenticated && (
           <div className="mt-3 border-t border-border-subtle/80 pt-2 px-1">
             <div className="text-[10px] font-mono font-semibold text-text-disabled uppercase tracking-[0.12em] mb-1.5">
               {t('chat.searchMessagesLabel')}
@@ -310,7 +458,62 @@ export default function RoomList(
           </div>
         )}
 
-        {search.trim().length >= 2 && !isAuthenticated && (
+        {isAddressQuery && isAuthenticated && (
+          <div className="mt-3 border-t border-border-subtle/80 pt-2 px-1">
+            <div className="text-[10px] font-mono font-semibold text-text-disabled uppercase tracking-[0.12em] mb-1.5">
+              Users
+            </div>
+            {userSearchLoading && <p className="text-[10px] text-text-disabled font-mono px-1 py-1">…</p>}
+            {!userSearchLoading && userSearchResults.length === 0 && search.trim().length >= 6 && (
+              <p className="text-[10px] text-text-disabled px-1 py-0.5">No user found</p>
+            )}
+            {dmAddError && <p className="text-[11px] text-danger mt-2 mb-0.5 px-1">{dmAddError}</p>}
+            {!userSearchLoading && userSearchResults.length > 0 && (
+              <div className="flex flex-col gap-1.5 mt-2 px-1 pb-1">
+                {userSearchResults.map((u) => (
+                  <div key={u.id} className="flex items-center gap-2.5">
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center overflow-hidden border border-border-subtle bg-surface-2 flex-shrink-0"
+                      style={{ background: u.avatar ? undefined : 'linear-gradient(135deg, #0d9488, #0f766e)' }}
+                    >
+                      {u.avatar ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={u.avatar} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-[11px] font-bold text-white">{(u.nickname || 'U').slice(0, 1).toUpperCase()}</span>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[12px] font-medium truncate">{u.nickname || u.address}</div>
+                      <div className="text-[10px] font-mono text-text-disabled truncate">{u.address}</div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={dmAdding}
+                      onClick={async () => {
+                        setDmAddError('');
+                        setDmAdding(true);
+                        try {
+                          await openDmByAddress(u.address);
+                          closeMobileSidebar?.();
+                        } catch (e: unknown) {
+                          setDmAddError(e instanceof Error ? e.message : 'Failed to open DM');
+                        } finally {
+                          setDmAdding(false);
+                        }
+                      }}
+                      className="text-[10px] font-mono px-2 py-1 rounded-md bg-[#0d9488] text-white border border-white/15 hover:bg-[#0f766e] transition-colors shrink-0 disabled:opacity-50"
+                    >
+                      发起私聊
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {isAddressQuery && !isAuthenticated && search.trim().length >= 6 && (
           <p className="mt-2 px-1 text-[10px] text-text-disabled">{t('chat.searchLoginHint')}</p>
         )}
 

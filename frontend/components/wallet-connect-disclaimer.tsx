@@ -9,16 +9,15 @@ function guideHref() {
   return `${base}/xxxxxxx`
 }
 
-/** 连接弹窗底部：优先 VPN + 教程链接，推荐币安 DApp / TP 钱包 */
+/** 连接弹窗底部：极简一行 + 教程链接（正文区由全局 CSS 收紧） */
 export const WalletConnectDisclaimer: DisclaimerComponent = ({ Text, Link }) => {
   const { locale } = useLocale()
   const { t } = useTranslation(locale)
   const href = guideHref()
   return (
     <Text>
-      {t('nav.walletDomesticDisclaimerBefore')}
-      <Link href={href}>{t('nav.walletDomesticDisclaimerLink')}</Link>
-      {t('nav.walletDomesticDisclaimerAfter')}
+      {t('nav.walletConnectDisclaimerLine')}{' '}
+      <Link href={href}>{t('nav.walletConnectDisclaimerCta')}</Link>
     </Text>
   )
 }

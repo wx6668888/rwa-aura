@@ -8,6 +8,8 @@ import { ChatToast, useToast } from './ChatToast';
 import { useLocale } from '@/components/locale-provider';
 import { useTranslation } from '@/lib/i18n';
 import { getBaseDisplayedMemberCount } from '@/lib/chat-member-display';
+import { chatHttpUrl } from '@/lib/chat-api';
+import { chatAuthHeadersReady } from '@/lib/chat-auth-storage';
 import { ChatMembersModal } from './ChatMembersModal';
 
 /** Group consecutive messages from same user within 5 minutes */
@@ -49,6 +51,7 @@ function groupMessages(messages: ChatMessage[]): { type: 'messages' | 'date'; da
 }
 
 export default function ChatRoom() {
+  const OFFICIAL_SUPPORT_BOT_ADDRESS = '0xe28c687a9ae85d9145defc1d78961bd3567ffec7';
   const {
     messages,
     activeRoomId,
@@ -76,6 +79,7 @@ export default function ChatRoom() {
     [activeRoom?.id, activeRoom?.memberIds?.length]
   );
   const [memberDisplayBump, setMemberDisplayBump] = React.useState(0);
+  const [activeDmPeer, setActiveDmPeer] = React.useState<null | { nickname: string; address: string; avatar?: string }>(null);
 
   React.useEffect(() => {
     setMemberDisplayBump(0);
@@ -92,8 +96,44 @@ export default function ChatRoom() {
 
   const displayedMemberCount = baseMemberDisplay + memberDisplayBump;
 
+  const shortAddr = React.useCallback((address: string) => {
+    const a = (address || '').trim().toLowerCase();
+    if (!a.startsWith('0x') || a.length < 12) return a || '—';
+    return `${a.slice(0, 6)}…${a.slice(-4)}`;
+  }, []);
+
+  React.useEffect(() => {
+    setActiveDmPeer(null);
+    if (!activeRoomId || !activeRoom || activeRoom.type !== 'dm' || !currentUser?.id) return;
+    const headers = getAuthHeaders();
+    if (!chatAuthHeadersReady(headers)) return;
+    const selfAddr = String(headers['x-wallet-address'] || '').toLowerCase();
+    void (async () => {
+      try {
+        const res = await fetch(chatHttpUrl(`rooms/${activeRoomId}/members`), { headers });
+        if (!res.ok) return;
+        const data = await res.json().catch(() => ({} as any));
+        const members = Array.isArray(data?.members) ? data.members : [];
+        const peer = members.find((m: any) => String(m?.address || '').toLowerCase() !== selfAddr);
+        if (!peer) return;
+        setActiveDmPeer({
+          nickname: String(peer.nickname || '').trim(),
+          address: String(peer.address || '').trim().toLowerCase(),
+          avatar: typeof peer.avatar === 'string' ? peer.avatar : undefined,
+        });
+      } catch {}
+    })();
+  }, [activeRoomId, activeRoom, currentUser?.id, getAuthHeaders]);
+
   const getRoomDisplayName = (room: typeof activeRoom) => {
     if (!room) return '';
+    if (room.type === 'dm') {
+      if (activeDmPeer?.address === OFFICIAL_SUPPORT_BOT_ADDRESS) {
+        return locale === 'en' ? 'Official Support' : '官方客服';
+      }
+      if (activeDmPeer?.address) return shortAddr(activeDmPeer.address);
+      return room.name || 'DM';
+    }
     switch (room.id) {
       case 'room-general':
         return t('chat.roomGeneral');
@@ -112,6 +152,12 @@ export default function ChatRoom() {
 
   const getRoomDisplayDescription = (room: typeof activeRoom) => {
     if (!room) return '';
+    if (room.type === 'dm') {
+      if (activeDmPeer?.address === OFFICIAL_SUPPORT_BOT_ADDRESS) {
+        return locale === 'en' ? 'Direct private chat with official assistant' : '与官方助手一对一私聊';
+      }
+      return activeDmPeer?.nickname || activeDmPeer?.address || (locale === 'en' ? 'Direct Message' : '私聊');
+    }
     switch (room.id) {
       case 'room-general':
         return t('chat.roomGeneralDesc');

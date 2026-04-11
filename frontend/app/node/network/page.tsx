@@ -1,4 +1,3 @@
-import { Navbar } from '@/components/navbar'
 import { BackgroundEffects } from '@/components/background-effects'
 import { ParticleField } from '@/components/nodes/particle-field'
 import { MyNetworkPageClient } from '@/components/node/network/my-network-page-client'
@@ -13,7 +12,6 @@ export default function NodeNetworkPage() {
     <div className="relative min-h-screen bg-[#05050a]">
       <BackgroundEffects />
       <ParticleField />
-      <Navbar />
       <MyNetworkPageClient />
     </div>
   )

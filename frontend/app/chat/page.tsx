@@ -11,6 +11,7 @@ import RedWalletPanel from '@/components/chat/RedWalletPanel';
 import { useLocale } from '@/components/locale-provider';
 import { useTranslation } from '@/lib/i18n';
 import { ensureChatCredentials } from '@/lib/ensure-chat-credentials';
+import { readPersistedChatAuth } from '@/lib/chat-auth-storage';
 import { warmConnectModal } from '@/lib/wallet-connect-preconnect';
 
 // Error boundary to catch extension injection errors (TronLink etc.)
@@ -94,15 +95,33 @@ function ChatApp() {
   }, []);
 
   const runWalletChatLogin = useCallback(async () => {
+    if (isAuthenticated) return;
     if (!address) {
       throw new Error(t('chat.installWallet'));
+    }
+    const cached = readPersistedChatAuth();
+    if (cached?.address?.toLowerCase() === address.toLowerCase()) {
+      if (cached.sessionToken && cached.sessionToken.length > 8) {
+        await establishSession(cached.address, {
+          sessionToken: cached.sessionToken,
+          signature: cached.signature,
+        });
+        return;
+      }
+      if (cached.signature?.startsWith('0x')) {
+        await establishSession(cached.address, { signature: cached.signature });
+        return;
+      }
     }
     const auth = await ensureChatCredentials(address, signMessageAsync);
     if (!auth) {
       throw new Error(t('chat.failedToConnect'));
     }
-    await establishSession(auth.address, auth.signature);
-  }, [address, establishSession, signMessageAsync, t]);
+    await establishSession(auth.address, {
+      signature: auth.signature,
+      sessionToken: auth.sessionToken,
+    });
+  }, [address, establishSession, isAuthenticated, signMessageAsync, t]);
 
   /** RainbowKit 连接完成后自动走签名，避免「连一次钱包再点一次」 */
   useEffect(() => {
@@ -394,6 +413,14 @@ function ChatApp() {
           </div>
 
           <div className="flex items-center gap-2">
+            {currentUser?.isAdmin && (
+              <Link
+                href="/chat/admin"
+                className="hidden sm:inline-flex items-center rounded-lg border border-[#00f5d460] bg-[#00f5d41a] px-2.5 py-1.5 text-[11px] font-mono text-[#00f5d4] hover:bg-[#00f5d42a]"
+              >
+                Admin
+              </Link>
+            )}
             <div className="flex items-center rounded-lg border border-border-subtle bg-surface-2 p-0.5">
               <button
                 type="button"

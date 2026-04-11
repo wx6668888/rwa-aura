@@ -1,4 +1,3 @@
-import { Navbar } from '@/components/navbar'
 import { BackgroundEffects } from '@/components/background-effects'
 import { HelpPageClient } from '@/components/help/help-page-client'
 
@@ -11,7 +10,6 @@ export default function HelpPage() {
   return (
     <div className="min-h-screen bg-[#05050a] font-sans">
       <BackgroundEffects />
-      <Navbar />
       <HelpPageClient />
     </div>
   )

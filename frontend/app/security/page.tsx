@@ -1,4 +1,3 @@
-import { Navbar } from '@/components/navbar'
 import { BackgroundEffects } from '@/components/background-effects'
 import { SecurityHeader } from '@/components/security/security-header'
 import { AuditReports } from '@/components/security/audit-reports'
@@ -17,8 +16,7 @@ export default function SecurityPage() {
   return (
     <div className="min-h-screen bg-[#05050a] font-sans">
       <BackgroundEffects opacity={8} />
-      <Navbar />
-      
+
       <main className="relative">
         <div className="relative z-10 mx-auto max-w-7xl px-4 pb-[100px] pt-below-navbar-safe sm:px-6 lg:px-8">
           <SecurityHeader />

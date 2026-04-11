@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { Navbar } from '@/components/navbar'
 import { GovernancePageClient } from '@/components/governance/governance-page-client'
 
 export const metadata: Metadata = {
@@ -26,7 +25,6 @@ export default function GovernancePage() {
         }}
       />
 
-      <Navbar />
       <GovernancePageClient />
     </div>
   )

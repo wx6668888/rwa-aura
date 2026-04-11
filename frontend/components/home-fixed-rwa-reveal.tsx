@@ -18,7 +18,7 @@ type Props = {
 /**
  * 固定贴底、不随滚动平移；用 clip-path 从底部向上「揭开」。
  * 须高于首页主列 stacking（page 内为 z-20），否则会被页脚实色底完全挡住而「看不见」；
- * 仍低于导航 z-[100]，避免挡菜单。
+ * 仍低于导航 z-[110]，避免挡菜单。
  */
 export function HomeFixedRwaReveal({ progress }: Props) {
   const { locale } = useLocale()

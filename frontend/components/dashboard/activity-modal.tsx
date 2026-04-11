@@ -168,8 +168,8 @@ export function ActivityModal({ isOpen, onClose }: ActivityModalProps) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-stretch justify-start bg-black bg-opacity-80 px-4 pt-[max(12px,env(safe-area-inset-top,24px))] pb-[max(12px,env(safe-area-inset-bottom,20px))] backdrop-blur-sm animate-fade-in sm:flex-row sm:items-center sm:justify-center">
-      <div className="relative mx-auto flex max-h-[min(90vh,calc(100dvh-env(safe-area-inset-top,24px)-env(safe-area-inset-bottom,20px)-2.5rem))] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[#00f5d420] bg-gradient-to-br from-[#0d0d14] to-[#13131e] shadow-lg sm:max-h-[90vh] sm:my-auto">
+    <div className="fixed inset-0 z-50 flex flex-col items-stretch justify-start bg-black bg-opacity-80 px-4 pt-[calc(var(--navbar-stack)+12px)] pb-[calc(var(--app-safe-bottom)+12px)] backdrop-blur-sm animate-fade-in sm:p-4 sm:pt-[calc(var(--navbar-stack)+12px)]">
+      <div className="relative mx-auto flex w-full max-w-4xl flex-1 max-h-[calc(100dvh-var(--navbar-stack)-var(--app-safe-bottom)-24px)] flex-col overflow-hidden rounded-2xl border border-[#00f5d420] bg-gradient-to-br from-[#0d0d14] to-[#13131e] shadow-lg">
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-[#00f5d420] p-6">
           <h3 className="text-xl font-semibold text-[#f1f5f9]">{t('activity.title') || '最近活动'}</h3>

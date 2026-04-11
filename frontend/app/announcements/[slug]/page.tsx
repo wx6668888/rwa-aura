@@ -6,7 +6,6 @@ import { ArrowLeft, Eye, Clock, Calendar, Share2, Twitter, Send, Copy, Check } f
 import { useState } from 'react'
 import { useTranslation, Locale } from '@/lib/i18n'
 import { useLocale } from '@/components/locale-provider'
-import { Navbar } from '@/components/navbar'
 import { BackgroundEffects } from '@/components/background-effects'
 import { getAnnouncementBySlug, announcements } from '@/lib/announcements-data'
 import { getLocalizedAnnouncementMeta } from '@/lib/announcements-localized'
@@ -28,7 +27,6 @@ export default function AnnouncementDetailPage() {
     return (
       <div className="min-h-screen bg-void-black text-text-primary">
         <BackgroundEffects />
-        <Navbar />
         <main className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center">
           <h1 className="text-4xl font-bold text-text-primary mb-4">404</h1>
           <p className="text-text-secondary mb-8">{t('announce.notFound')}</p>
@@ -78,7 +76,6 @@ export default function AnnouncementDetailPage() {
   return (
     <div className="min-h-screen bg-void-black text-text-primary">
       <BackgroundEffects />
-      <Navbar />
 
       <main className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 pt-below-navbar-safe pb-24">
         {/* Back Link */}

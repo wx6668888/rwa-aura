@@ -1,0 +1,20 @@
+{
+  "version": "human-refine-v2",
+  "patched": 100,
+  "region_distribution": {
+    "guangdong": 100
+  },
+  "job_distribution": {
+    "driver": 13,
+    "catering": 15,
+    "small_biz": 12,
+    "generic": 43,
+    "factory": 14,
+    "sales": 3
+  },
+  "focus": [
+    "response_variation_pack localization",
+    "conversation_policy anti-question-only",
+    "rumor_and_conflict_playbook persona conflict style"
+  ]
+}

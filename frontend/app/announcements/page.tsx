@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useTranslation, Locale } from '@/lib/i18n'
 import { useLocale } from '@/components/locale-provider'
-import { Navbar } from '@/components/navbar'
 import { BackgroundEffects } from '@/components/background-effects'
 import AnnouncementHeader from '@/components/announcements/announcement-header'
 import AnnouncementFilters from '@/components/announcements/announcement-filters'
@@ -19,7 +18,6 @@ export default function AnnouncementsPage() {
   return (
     <div className="min-h-screen bg-void-black text-text-primary">
       <BackgroundEffects />
-      <Navbar />
 
       <main className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 pt-below-navbar-safe pb-24">
         {/* Header */}

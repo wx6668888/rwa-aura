@@ -1,7 +1,6 @@
 'use client';
 
 import { Suspense } from 'react';
-import { Navbar } from '@/components/navbar';
 import { BackgroundEffects } from '@/components/background-effects';
 import CalculatorHeader from '@/components/calculator/calculator-header';
 import CalculatorInputPanel from '@/components/calculator/calculator-input-panel';
@@ -16,9 +15,7 @@ export default function CalculatorPage() {
     <CalculatorProvider>
       <div className="relative min-h-screen bg-void-black text-text-primary">
         <BackgroundEffects />
-        
-        <Navbar />
-        
+
         <main className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 pt-below-navbar-safe pb-24">
           <CalculatorHeader />
           

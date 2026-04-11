@@ -1,4 +1,3 @@
-import { Navbar } from '@/components/navbar'
 import { BackgroundEffects } from '@/components/background-effects'
 import { KnowledgePageClient } from '@/components/knowledge/knowledge-page-client'
 
@@ -14,7 +13,6 @@ export default function KnowledgePage() {
   return (
     <div className="min-h-screen bg-[#05050a] font-sans">
       <BackgroundEffects />
-      <Navbar />
       <KnowledgePageClient />
     </div>
   )

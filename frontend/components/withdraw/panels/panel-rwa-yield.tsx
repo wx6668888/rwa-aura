@@ -7,6 +7,7 @@ import { useStakingContract } from '@/hooks/useStakingContract'
 import { TransactionOverlay } from '../transaction-overlay'
 import { useStakesContext } from '@/contexts/StakesContext'
 import { pollDashboardUntilTxIndexed } from '@/lib/dashboard-index-poll'
+import { useLocale } from '@/components/locale-provider'
 
 interface Props {
   onMobileBack: () => void
@@ -45,6 +46,8 @@ function calculateUnsettledYield(stake: any, currentTime: number): number {
 }
 
 export function PanelRwaYield({ onMobileBack, data, embedded = false }: Props) {
+  const { locale } = useLocale()
+  const isZh = locale.startsWith('zh')
   const { isConnected, address, chainId } = useAccount()
   const [amount, setAmount] = useState('')
   const { withdrawRWARewards } = useStakingContract()
@@ -100,11 +103,11 @@ export function PanelRwaYield({ onMobileBack, data, embedded = false }: Props) {
 
   const handleWithdraw = async () => {
     if (!amount || parseFloat(amount) <= 0) {
-      alert('请输入有效金额')
+      alert(isZh ? '请输入有效金额' : 'Please enter a valid amount')
       return
     }
     if (parseFloat(amount) > settledYield) {
-      alert('提取金额不能超过可提现收益')
+      alert(isZh ? '提取金额不能超过可提现收益' : 'Withdrawal amount cannot exceed withdrawable yield')
       return
     }
     setShowOverlay(true)
@@ -133,13 +136,13 @@ export function PanelRwaYield({ onMobileBack, data, embedded = false }: Props) {
       setAmount('')
     } catch (err: any) {
       console.error('提取失败:', err)
-      let errorMessage = '提取失败，请重试'
+      let errorMessage = isZh ? '提取失败，请重试' : 'Withdrawal failed, please try again'
       if (err.message?.includes('User rejected') || err.message?.includes('User denied')) {
-        errorMessage = '您已取消交易'
+        errorMessage = isZh ? '您已取消交易' : 'You cancelled the transaction'
       } else if (err.message?.includes('insufficient funds')) {
-        errorMessage = 'BNB 余额不足，无法支付 Gas 费用'
+        errorMessage = isZh ? 'BNB 余额不足，无法支付 Gas 费用' : 'Insufficient BNB for gas fee'
       } else if (err.message?.includes('execution reverted')) {
-        errorMessage = '合约执行失败，请检查提取金额'
+        errorMessage = isZh ? '合约执行失败，请检查提取金额' : 'Contract execution failed, please check withdrawal amount'
       }
       setError(errorMessage)
       setOverlayStatus('error')
@@ -154,11 +157,11 @@ export function PanelRwaYield({ onMobileBack, data, embedded = false }: Props) {
         <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/[0.06] bg-white/[0.03] backdrop-blur-xl">
           <button onClick={onMobileBack} className="lg:hidden flex items-center gap-2 text-white/50 hover:text-[#00f5d4] transition-colors">
             <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm">返回</span>
+            <span className="text-sm">{isZh ? '返回' : 'Back'}</span>
           </button>
           <div className="min-w-0 ml-auto text-right">
-            <h2 className="text-[14px] font-semibold text-[#e2e8f0] tracking-tight truncate">RWA 收益</h2>
-            <p className="text-[11px] text-[#64748b] mt-0.5 truncate max-w-[210px]">实时预估 + 每日 08:00 结算</p>
+            <h2 className="text-[14px] font-semibold text-[#e2e8f0] tracking-tight truncate">{isZh ? 'RWA 收益' : 'RWA Yield'}</h2>
+            <p className="text-[11px] text-[#64748b] mt-0.5 truncate max-w-[210px]">{isZh ? '实时预估 + 每日 08:00 结算' : 'Real-time estimate + settled daily at 08:00'}</p>
           </div>
         </div>
       ) : null}
@@ -179,8 +182,8 @@ export function PanelRwaYield({ onMobileBack, data, embedded = false }: Props) {
                     <Clock className="w-4 h-4 text-yellow-400" />
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-yellow-400">未结算收益</div>
-                    <div className="text-[10px] text-white/40">实时计算中</div>
+                    <div className="text-sm font-semibold text-yellow-400">{isZh ? '未结算收益' : 'Unsettled yield'}</div>
+                    <div className="text-[10px] text-white/40">{isZh ? '实时计算中' : 'Real-time calculation'}</div>
                   </div>
                 </div>
                 <Sparkles className="w-4 h-4 text-yellow-400/50 animate-pulse" />
@@ -191,7 +194,7 @@ export function PanelRwaYield({ onMobileBack, data, embedded = false }: Props) {
                 <div className="text-2xl font-bold text-[#00f5d4] mb-1" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
                   {unsettledYield.toFixed(6)} RWA
                 </div>
-                <div className="text-[10px] text-[#94a3b8]">从上次 08:00 到现在，每秒实时累积</div>
+                <div className="text-[10px] text-[#94a3b8]">{isZh ? '从上次 08:00 到现在，每秒实时累积' : 'Accumulated every second since last 08:00'}</div>
               </div>
 
               {/* 倒计时：数字和单位同一行显示 */}
@@ -201,7 +204,7 @@ export function PanelRwaYield({ onMobileBack, data, embedded = false }: Props) {
                     className="text-sm font-bold text-yellow-400 whitespace-nowrap text-center"
                     style={{ fontFamily: 'var(--font-jetbrains-mono)' }}
                   >
-                    {String(countdown.hours).padStart(2, '0')} 小时
+                    {String(countdown.hours).padStart(2, '0')} {isZh ? '小时' : 'H'}
                   </div>
                 </div>
                 <div className="bg-black/30 backdrop-blur-sm rounded-lg p-2 border border-yellow-500/10">
@@ -209,7 +212,7 @@ export function PanelRwaYield({ onMobileBack, data, embedded = false }: Props) {
                     className="text-sm font-bold text-yellow-400 whitespace-nowrap text-center"
                     style={{ fontFamily: 'var(--font-jetbrains-mono)' }}
                   >
-                    {String(countdown.minutes).padStart(2, '0')} 分钟
+                    {String(countdown.minutes).padStart(2, '0')} {isZh ? '分钟' : 'M'}
                   </div>
                 </div>
                 <div className="bg-black/30 backdrop-blur-sm rounded-lg p-2 border border-yellow-500/10">
@@ -217,12 +220,12 @@ export function PanelRwaYield({ onMobileBack, data, embedded = false }: Props) {
                     className="text-sm font-bold text-yellow-400 animate-pulse whitespace-nowrap text-center"
                     style={{ fontFamily: 'var(--font-jetbrains-mono)' }}
                   >
-                    {String(countdown.seconds).padStart(2, '0')} 秒
+                    {String(countdown.seconds).padStart(2, '0')} {isZh ? '秒' : 'S'}
                   </div>
                 </div>
               </div>
               
-              <div className="mt-2 text-[10px] text-white/30">距离下次发放（每日 08:00 北京时间）</div>
+              <div className="mt-2 text-[10px] text-white/30">{isZh ? '距离下次发放（每日 08:00 北京时间）' : 'Until next payout (daily 08:00 UTC+8)'}</div>
             </div>
           </div>
 
@@ -238,8 +241,8 @@ export function PanelRwaYield({ onMobileBack, data, embedded = false }: Props) {
                         <CheckCircle2 className="w-4 h-4 text-[#22c55e]" />
                       </div>
                       <div>
-                        <div className="text-sm font-semibold text-[#22c55e]">可提现收益</div>
-                        <div className="text-[10px] text-white/40">已发放到合约</div>
+                        <div className="text-sm font-semibold text-[#22c55e]">{isZh ? '可提现收益' : 'Withdrawable yield'}</div>
+                        <div className="text-[10px] text-white/40">{isZh ? '已发放到合约' : 'Settled to contract'}</div>
                       </div>
                     </div>
                     <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
@@ -250,7 +253,7 @@ export function PanelRwaYield({ onMobileBack, data, embedded = false }: Props) {
                     <div className="text-3xl font-bold text-[#22c55e]" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
                       {settledYield.toFixed(6)} RWA
                     </div>
-                    <div className="text-[10px] text-white/40 mt-1">可随时提取到钱包</div>
+                    <div className="text-[10px] text-white/40 mt-1">{isZh ? '可随时提取到钱包' : 'Can be withdrawn to wallet anytime'}</div>
                   </div>
                 </div>
               </div>
@@ -258,7 +261,7 @@ export function PanelRwaYield({ onMobileBack, data, embedded = false }: Props) {
               {/* 提取表单 */}
               <div className="bg-white/[0.02] backdrop-blur-sm rounded-xl p-4 border border-white/10">
                 <div className="flex justify-between items-center mb-3">
-                  <label className="text-xs font-semibold text-white/70">提取金额</label>
+                  <label className="text-xs font-semibold text-white/70">{isZh ? '提取金额' : 'Withdrawal Amount'}</label>
                   <button 
                     className="px-2.5 py-1 rounded-lg bg-green-500/10 border border-green-500/20 text-[10px] font-semibold text-green-400 hover:bg-green-500/20 transition" 
                     onClick={() => setAmount(settledYield.toFixed(8))}
@@ -277,10 +280,10 @@ export function PanelRwaYield({ onMobileBack, data, embedded = false }: Props) {
                 <div className="mt-3 flex items-start gap-2 text-[10px] text-white/50">
                   <Info className="w-3 h-3 flex-shrink-0 mt-0.5" />
                   <div>
-                    <div>扣除 8% 手续费</div>
+                    <div>{isZh ? '扣除 8% 手续费' : '8% fee deducted'}</div>
                     {amount && parseFloat(amount) > 0 && (
                       <div className="mt-1 text-green-400 font-semibold">
-                        实际到账: {(parseFloat(amount) * 0.92).toFixed(6)} RWA
+                        {isZh ? '实际到账' : 'Net received'}: {(parseFloat(amount) * 0.92).toFixed(6)} RWA
                       </div>
                     )}
                   </div>
@@ -293,7 +296,7 @@ export function PanelRwaYield({ onMobileBack, data, embedded = false }: Props) {
                 className="w-full h-12 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 text-black text-sm font-bold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-green-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0"
               >
                 <TrendingUp className="w-4 h-4" />
-                {loading ? '处理中...' : '提取 RWA 收益'}
+                {loading ? (isZh ? '处理中...' : 'Processing...') : (isZh ? '提取 RWA 收益' : 'Withdraw RWA Yield')}
               </button>
             </>
           ) : (
@@ -301,8 +304,8 @@ export function PanelRwaYield({ onMobileBack, data, embedded = false }: Props) {
               <div className="w-14 h-14 rounded-xl bg-white/[0.02] flex items-center justify-center mb-3">
                 <CheckCircle2 className="w-7 h-7 text-white/20" />
               </div>
-              <div className="text-white/40 text-sm">暂无可提现收益</div>
-              <div className="text-white/30 text-xs mt-1">收益将在每日 08:00 发放</div>
+              <div className="text-white/40 text-sm">{isZh ? '暂无可提现收益' : 'No withdrawable yield'}</div>
+              <div className="text-white/30 text-xs mt-1">{isZh ? '收益将在每日 08:00 发放' : 'Yield is settled daily at 08:00'}</div>
             </div>
           )}
         </div>

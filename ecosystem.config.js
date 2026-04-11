@@ -32,7 +32,11 @@ module.exports = {
       instances: 1,
       env: {
         NODE_ENV: 'production',
-        PORT: 3002
+        PORT: 3002,
+        // Chat snapshot storage: mysql | file
+        CHAT_STORAGE: 'mysql',
+        // 0=机器人不向群里发图片（收益截图/贴纸）；避免清历史后立刻又被刷满
+        BOT_CHAT_BOT_IMAGE_ENABLED: '0'
       }
     }
   ]

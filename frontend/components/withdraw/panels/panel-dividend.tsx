@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { useTeamDividend } from '@/hooks/useTeamDividend'
 import { TransactionOverlay } from '../transaction-overlay'
 import { emitDataRefresh } from '@/lib/data-refresh'
+import { useLocale } from '@/components/locale-provider'
 
 interface Props {
   onMobileBack: () => void
@@ -28,6 +29,8 @@ function getNextDividendCountdown() {
 }
 
 export function PanelDividend({ onMobileBack, data, embedded = false }: Props) {
+  const { locale } = useLocale()
+  const isZh = locale.startsWith('zh')
   const { isConnected, address } = useAccount()
   const [amount, setAmount] = useState('')
   const { withdraw: withdrawDividend } = useTeamDividend()
@@ -50,7 +53,7 @@ export function PanelDividend({ onMobileBack, data, embedded = false }: Props) {
 
   const handleWithdraw = async () => {
     if (!amount || parseFloat(amount) <= 0) {
-      alert('请输入有效金额')
+      alert(isZh ? '请输入有效金额' : 'Please enter a valid amount')
       return
     }
 
@@ -72,13 +75,13 @@ export function PanelDividend({ onMobileBack, data, embedded = false }: Props) {
     } catch (err: any) {
       console.error('提取失败:', err)
       
-      let errorMessage = '提取失败，请重试'
+      let errorMessage = isZh ? '提取失败，请重试' : 'Withdrawal failed, please try again'
       if (err.message?.includes('User rejected') || err.message?.includes('User denied')) {
-        errorMessage = '您已取消交易'
+        errorMessage = isZh ? '您已取消交易' : 'You cancelled the transaction'
       } else if (err.message?.includes('insufficient funds')) {
-        errorMessage = 'BNB 余额不足，无法支付 Gas 费用'
+        errorMessage = isZh ? 'BNB 余额不足，无法支付 Gas 费用' : 'Insufficient BNB for gas fee'
       } else if (err.message?.includes('execution reverted')) {
-        errorMessage = '合约执行失败，请检查提取金额'
+        errorMessage = isZh ? '合约执行失败，请检查提取金额' : 'Contract execution failed, please check withdrawal amount'
       }
       
       setError(errorMessage)
@@ -97,12 +100,12 @@ export function PanelDividend({ onMobileBack, data, embedded = false }: Props) {
             className="lg:hidden flex items-center gap-2 text-white/50 hover:text-[#00f5d4] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm">返回</span>
+            <span className="text-sm">{isZh ? '返回' : 'Back'}</span>
           </button>
           <div className="min-w-0 ml-auto text-right">
-            <h2 className="text-[14px] font-semibold text-[#e2e8f0] tracking-tight truncate">项目分红</h2>
+            <h2 className="text-[14px] font-semibold text-[#e2e8f0] tracking-tight truncate">{isZh ? '项目分红' : 'Project Dividend'}</h2>
             <p className="text-[11px] text-[#64748b] mt-0.5 truncate max-w-[220px]">
-              每月结算分红 · USDT 发放
+              {isZh ? '每月结算分红 · USDT 发放' : 'Monthly dividend settlement · paid in USDT'}
             </p>
           </div>
         </div>
@@ -122,8 +125,8 @@ export function PanelDividend({ onMobileBack, data, embedded = false }: Props) {
                       <Gift className="w-4 h-4 text-[#fbbf24]" />
                     </div>
                     <div>
-                      <div className="text-sm font-semibold text-[#fbbf24]">下次发放</div>
-                      <div className="text-[10px] text-white/40">每月 1号 00:00 结算</div>
+                      <div className="text-sm font-semibold text-[#fbbf24]">{isZh ? '下次发放' : 'Next settlement'}</div>
+                      <div className="text-[10px] text-white/40">{isZh ? '每月 1号 00:00 结算' : 'Settled on the 1st 00:00 monthly'}</div>
                     </div>
                   </div>
                 </div>
@@ -132,25 +135,25 @@ export function PanelDividend({ onMobileBack, data, embedded = false }: Props) {
                     <div className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
                       {String(countdown.days).padStart(2, '0')}
                     </div>
-                    <div className="text-[10px] text-white/40">天</div>
+                    <div className="text-[10px] text-white/40">{isZh ? '天' : 'D'}</div>
                   </div>
                   <div className="rounded-xl bg-black/30 border border-white/10 px-3 py-2 text-center">
                     <div className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
                       {String(countdown.hours).padStart(2, '0')}
                     </div>
-                    <div className="text-[10px] text-white/40">小时</div>
+                    <div className="text-[10px] text-white/40">{isZh ? '小时' : 'H'}</div>
                   </div>
                   <div className="rounded-xl bg-black/30 border border-white/10 px-3 py-2 text-center">
                     <div className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
                       {String(countdown.minutes).padStart(2, '0')}
                     </div>
-                    <div className="text-[10px] text-white/40">分钟</div>
+                    <div className="text-[10px] text-white/40">{isZh ? '分钟' : 'M'}</div>
                   </div>
                   <div className="rounded-xl bg-black/30 border border-white/10 px-3 py-2 text-center">
                     <div className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
                       {String(countdown.seconds).padStart(2, '0')}
                     </div>
-                    <div className="text-[10px] text-white/40">秒</div>
+                    <div className="text-[10px] text-white/40">{isZh ? '秒' : 'S'}</div>
                   </div>
                 </div>
               </div>
@@ -159,7 +162,7 @@ export function PanelDividend({ onMobileBack, data, embedded = false }: Props) {
             <div className="group relative overflow-hidden rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.06]">
               <div className="relative z-10 p-5">
                 <div className="flex items-center justify-between">
-                  <div className="text-sm font-semibold text-[#fbbf24]">当前可提取</div>
+                  <div className="text-sm font-semibold text-[#fbbf24]">{isZh ? '当前可提取' : 'Currently withdrawable'}</div>
                   <div className="text-base font-bold text-[#00f5d4]" style={{ fontFamily: 'var(--font-jetbrains-mono)' }}>
                     {Number.isFinite(dividendAmount) ? dividendAmount.toFixed(2) : '0.00'} USDT
                   </div>
@@ -169,7 +172,7 @@ export function PanelDividend({ onMobileBack, data, embedded = false }: Props) {
             {/* 金额卡片：玻璃风格 */}
             <div className="bg-white/[0.03] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.06]">
               <div className="flex justify-between items-center mb-3">
-                <label className="text-sm font-semibold text-white/70">提取金额</label>
+                <label className="text-sm font-semibold text-white/70">{isZh ? '提取金额' : 'Withdrawal Amount'}</label>
               </div>
               <div className="relative">
                 <input
@@ -191,10 +194,10 @@ export function PanelDividend({ onMobileBack, data, embedded = false }: Props) {
               <div className="mt-4 flex items-start gap-2 text-xs text-[#94a3b8]">
                 <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <div>
-                  <div>扣除 8% 手续费</div>
+                  <div>{isZh ? '扣除 8% 手续费' : '8% fee deducted'}</div>
                   {amount && parseFloat(amount) > 0 && (
                     <div className="mt-1 text-[#22c55e] font-semibold">
-                      实际到账: {(parseFloat(amount) * 0.92).toFixed(2)} USDT
+                      {isZh ? '实际到账' : 'Net received'}: {(parseFloat(amount) * 0.92).toFixed(2)} USDT
                     </div>
                   )}
                 </div>
@@ -208,11 +211,11 @@ export function PanelDividend({ onMobileBack, data, embedded = false }: Props) {
               className="w-full h-14 rounded-2xl bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-[#0a0a0f] text-base font-bold flex items-center justify-center gap-2 hover:shadow-[0_0_30px_rgba(251,191,36,0.4)] hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0"
             >
               <Gift className="w-5 h-5" />
-              {loading ? '处理中...' : '提取项目分红'}
+              {loading ? (isZh ? '处理中...' : 'Processing...') : (isZh ? '提取项目分红' : 'Withdraw Dividend')}
             </button>
             {!hasDividend && (
               <div className="text-center text-[13px] text-[rgba(238,242,255,0.52)]">
-                当前暂无可提取项目分红
+                {isZh ? '当前暂无可提取项目分红' : 'No project dividend available'}
               </div>
             )}
           </div>

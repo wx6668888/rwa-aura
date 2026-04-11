@@ -321,6 +321,27 @@ export function isTimeContextContradiction(text: string, hour: number): boolean 
   const t = text.replace(/\s+/g, '').trim();
   if (!t) return false;
 
+  // 直接的时段词（上午/下午/晚上）与上海小时冲突
+  const saysMorning = /(今早|今天早上|早上|上午|一大早|清晨|早晨)/;
+  const saysAfternoon = /(下午|午后)/;
+  const saysEvening = /(傍晚|晚上|夜里|夜晚|今晚)/;
+
+  // 0–11: 不该说“下午/晚上”
+  if (hour >= 0 && hour < 12) {
+    if (saysAfternoon.test(t)) return true;
+    if (saysEvening.test(t)) return true;
+  }
+  // 12–17: 不该说“早上/上午”，也不该说“晚上”
+  if (hour >= 12 && hour < 18) {
+    if (saysMorning.test(t)) return true;
+    if (saysEvening.test(t)) return true;
+  }
+  // 18–23: 不该说“早上/上午/下午”
+  if (hour >= 18 && hour <= 23) {
+    if (saysMorning.test(t)) return true;
+    if (saysAfternoon.test(t)) return true;
+  }
+
   const isDaytime = hour >= 8 && hour < 19;
   const isDeepNight = hour >= 0 && hour < 6;
   const nightNowLike = /(刚下夜班|夜班挺累|夜班太累|通宵刚结束|凌晨还在忙)/;

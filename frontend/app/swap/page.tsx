@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Navbar } from '@/components/navbar'
 import { BackgroundEffects } from '@/components/background-effects'
 import { UnifiedSwapCard } from '@/components/swap/unified-swap-card'
 import { SwapTradeToolbar, type SwapModeTab } from '@/components/swap/swap-trade-toolbar'
@@ -25,7 +24,6 @@ export default function SwapPage() {
     <div className="relative min-h-screen bg-void-black text-text-primary overflow-x-hidden">
       <BackgroundEffects />
 
-      <Navbar />
       <SwapTradeToolbar tab={tab} onTabChange={setTab} />
 
       <main className="relative z-10 mx-auto max-w-lg px-4 pb-24 pt-[calc(9.75rem+var(--app-safe-top))] sm:pt-[calc(10.5rem+var(--app-safe-top))]">

@@ -1,4 +1,3 @@
-import { Navbar } from '@/components/navbar'
 import { SlotMachineClient } from '@/components/games/slots/slot-machine-client'
 
 export const metadata = {
@@ -9,7 +8,6 @@ export const metadata = {
 export default function SlotsPage() {
   return (
     <div className="min-h-screen bg-[#05050a] font-['Space_Grotesk']">
-      <Navbar />
       <SlotMachineClient />
     </div>
   )

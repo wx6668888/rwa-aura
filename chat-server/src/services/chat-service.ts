@@ -8,6 +8,10 @@ import path from 'path';
 import { ethers } from 'ethers';
 import { normalizeUtteranceKey } from '../utils/utterance-dedupe';
 import { User, Message, Room, NodeLevel, RedPacket, ChatCurrency } from '../models/types';
+import { getShanghaiHourMinute } from '../utils/shanghai-calendar';
+import { isTimeContextContradiction } from './bot-human-sim';
+import { ChatStateStore } from './chat-state-store';
+import { toPublicChatUser } from '../utils/public-chat-user';
 
 const USER_AVATAR_POOL = 50;
 
@@ -33,6 +37,7 @@ class ChatService {
   private redPackets = new Map<string, RedPacket>(); // redPacketId -> red packet
   private addressToUser = new Map<string, string>(); // address -> userId
   private messageRateLimits = new Map<string, number[]>(); // userId -> timestamps
+  private userMuteUntil = new Map<string, number>(); // userId -> mute-until timestamp(ms)
   /** 房间内最后一条真人（非机器人）文本/图片消息时间，用于机器人仅在「安静」时主动发言 */
   private roomLastHumanMessageAt = new Map<string, number>();
   private readonly dataFilePath = process.env.CHAT_DATA_FILE
@@ -73,6 +78,13 @@ class ChatService {
   private provider: ethers.JsonRpcProvider | null = null;
   /** 机器人话题池（按人设分组）持久化到 chat-data.json */
   private botTopicPools: Record<string, Array<Record<string, any>>> = {};
+  private readonly storageMode = String(process.env.CHAT_STORAGE || 'file').trim().toLowerCase();
+  private readonly dbStore = this.storageMode === 'mysql' ? new ChatStateStore() : null;
+  private isHydratingFromDb = false;
+  private persistInFlight = false;
+  private persistPending = false;
+  /** Normalized DB sync failures can make DB reads stale; degrade reads to memory until recovered. */
+  private dbReadDegraded = false;
 
   constructor() {
     // Restore from disk if available, otherwise create defaults.
@@ -81,6 +93,558 @@ class ChatService {
       this.createDefaultRooms();
     }
     this.ensureAnnouncementFeedSeeded();
+  }
+
+  async initializeStorage(): Promise<void> {
+    if (!this.dbStore) return;
+    try {
+      await this.dbStore.ensureSchema();
+      const snapshot = await this.dbStore.loadSnapshot();
+      if (snapshot && typeof snapshot === 'object') {
+        this.isHydratingFromDb = true;
+        this.applyLoadedState(snapshot as any);
+        this.isHydratingFromDb = false;
+        this.ensureAnnouncementFeedSeeded();
+        await this.dbStore.syncNormalizedFromSnapshot(this.buildStateSnapshot());
+        console.log('[ChatService] loaded state from MySQL snapshot');
+        return;
+      }
+      const initial = this.buildStateSnapshot();
+      await this.dbStore.saveSnapshot(initial);
+      await this.dbStore.syncNormalizedFromSnapshot(initial);
+      console.log('[ChatService] initialized MySQL snapshot from current state');
+    } catch (e) {
+      this.isHydratingFromDb = false;
+      console.error('[ChatService] MySQL snapshot init failed, fallback to file mode behavior:', e);
+    }
+  }
+
+  getDbStore(): ChatStateStore | null {
+    return this.dbStore;
+  }
+
+  isDbReadEnabled(): boolean {
+    return !this.dbReadDegraded && (
+      String(process.env.CHAT_DB_READ_NORMALIZED || '').trim() === '1' ||
+      String(process.env.CHAT_STORAGE || '').trim().toLowerCase() === 'mysql'
+    );
+  }
+
+  async getStorageStatus(): Promise<{
+    mode: string;
+    dbEnabled: boolean;
+    dbReadEnabled: boolean;
+    dbWriteEnabled: boolean;
+    dbHealthy: boolean;
+    snapshotUpdatedAt: number | null;
+    lastSnapshotSyncAt: number;
+    lastNormalizedSyncAt: number;
+  }> {
+    const db = this.dbStore;
+    const dbEnabled = !!db;
+    if (!db) {
+      return {
+        mode: this.storageMode,
+        dbEnabled: false,
+        dbReadEnabled: this.isDbReadEnabled(),
+        dbWriteEnabled: this.isDbWriteEnabled(),
+        dbHealthy: false,
+        snapshotUpdatedAt: null,
+        lastSnapshotSyncAt: 0,
+        lastNormalizedSyncAt: 0,
+      };
+    }
+    const [dbHealthy, snapshotUpdatedAt] = await Promise.all([db.ping(), db.getSnapshotUpdatedAt()]);
+    return {
+      mode: this.storageMode,
+      dbEnabled,
+      dbReadEnabled: this.isDbReadEnabled(),
+      dbWriteEnabled: this.isDbWriteEnabled(),
+      dbHealthy,
+      snapshotUpdatedAt,
+      lastSnapshotSyncAt: db.getLastSnapshotSyncAt(),
+      lastNormalizedSyncAt: db.getLastNormalizedSyncAt(),
+    };
+  }
+
+  isDbWriteEnabled(): boolean {
+    return (
+      String(process.env.CHAT_DB_WRITE_NORMALIZED || '').trim() === '1' ||
+      String(process.env.CHAT_STORAGE || '').trim().toLowerCase() === 'mysql'
+    );
+  }
+
+  async onUserConnected(userId: string): Promise<void> {
+    if (!userId) return;
+    if (!this.isDbWriteEnabled() || !this.dbStore) return;
+    await this.dbStore.setUserOnlineStatus(userId, true, Date.now());
+  }
+
+  async onUserDisconnected(userId: string): Promise<void> {
+    if (!userId) return;
+    if (!this.isDbWriteEnabled() || !this.dbStore) return;
+    await this.dbStore.setUserOnlineStatus(userId, false, Date.now());
+  }
+
+  async onRoomJoined(roomId: string, userId: string): Promise<void> {
+    if (!roomId || !userId) return;
+    if (!this.isDbWriteEnabled() || !this.dbStore) return;
+    await this.dbStore.addRoomMember(roomId, userId);
+  }
+
+  async onRoomLeft(roomId: string, userId: string): Promise<void> {
+    if (!roomId || !userId) return;
+    if (!this.isDbWriteEnabled() || !this.dbStore) return;
+    await this.dbStore.removeRoomMember(roomId, userId);
+  }
+
+  async getRoomsForApi(userId?: string): Promise<Room[]> {
+    const db = this.dbStore;
+    if (this.isDbReadEnabled() && db) {
+      try {
+        const rooms = await db.getRoomsForUser(userId);
+        return rooms as Room[];
+      } catch {
+        // fallback below
+      }
+    }
+    return this.getRooms().filter((r) => r.isPublic || (r.type === 'dm' && !!userId && r.memberIds.includes(userId)));
+  }
+
+  async getMessagesForApi(roomId: string, userId: string, limit = 50, before?: number): Promise<{ ok: boolean; status?: number; error?: string; messages?: any[] }> {
+    const db = this.dbStore;
+    if (this.isDbReadEnabled() && db) {
+      try {
+        const room = await db.getRoomById(roomId);
+        if (!room) return { ok: false, status: 404, error: 'Room not found' };
+        if (room.type === 'dm' && !(await db.isRoomMember(roomId, userId))) return { ok: false, status: 403, error: 'Forbidden' };
+        const messages = await db.getMessagesByRoom(roomId, limit, before);
+        const enriched = await Promise.all(
+          messages.map(async (msg) => {
+            const u = await db.getUserById(String(msg.userId));
+            if (u) return { ...msg, user: toPublicChatUser(u as any) };
+            // Fallback for legacy rows whose chat_users mapping is missing.
+            const memUser = this.getUser(String(msg.userId));
+            return { ...msg, user: memUser ? toPublicChatUser(memUser) : undefined };
+          })
+        );
+        return { ok: true, messages: enriched };
+      } catch {
+        // fallback below
+      }
+    }
+    const room = this.getRoom(roomId);
+    if (!room) return { ok: false, status: 404, error: 'Room not found' };
+    if (room.type === 'dm' && !this.isRoomMember(roomId, userId)) return { ok: false, status: 403, error: 'Forbidden' };
+    const messages = this.getMessages(roomId, limit, before).map((msg) => {
+      const u = this.getUser(msg.userId);
+      return { ...msg, user: u ? toPublicChatUser(u) : undefined };
+    });
+    return { ok: true, messages };
+  }
+
+  async getMessagesAroundForApi(roomId: string, messageId: string, userId: string, limit = 50): Promise<{ ok: boolean; status?: number; error?: string; messages?: any[] }> {
+    const db = this.dbStore;
+    if (this.isDbReadEnabled() && db) {
+      try {
+        const room = await db.getRoomById(roomId);
+        if (!room) return { ok: false, status: 404, error: 'Room not found' };
+        if (room.type === 'dm' && !(await db.isRoomMember(roomId, userId))) return { ok: false, status: 403, error: 'Forbidden' };
+        const messages = await db.getMessagesAround(roomId, messageId, limit);
+        const enriched = await Promise.all(
+          messages.map(async (msg) => {
+            const u = await db.getUserById(String(msg.userId));
+            if (u) return { ...msg, user: toPublicChatUser(u as any) };
+            const memUser = this.getUser(String(msg.userId));
+            return { ...msg, user: memUser ? toPublicChatUser(memUser) : undefined };
+          })
+        );
+        return { ok: true, messages: enriched };
+      } catch {
+        // fallback below
+      }
+    }
+    const room = this.getRoom(roomId);
+    if (!room) return { ok: false, status: 404, error: 'Room not found' };
+    if (room.type === 'dm' && !this.isRoomMember(roomId, userId)) return { ok: false, status: 403, error: 'Forbidden' };
+    const messages = this.getMessagesAround(roomId, messageId, limit).map((msg) => {
+      const u = this.getUser(msg.userId);
+      return { ...msg, user: u ? toPublicChatUser(u) : undefined };
+    });
+    return { ok: true, messages };
+  }
+
+  async searchUsersForApi(address: string, limit = 5): Promise<User[]> {
+    const db = this.dbStore;
+    if (this.isDbReadEnabled() && db) {
+      try {
+        const matches = await db.searchUsersByAddressPrefix(address, limit);
+        return matches.map((u) => toPublicChatUser(u as any)) as User[];
+      } catch {
+        // fallback below
+      }
+    }
+    return this.searchUsersByAddressPrefix(address, limit)
+      .filter((u) => !u.isBot)
+      .slice(0, limit)
+      .map((u) => toPublicChatUser(u));
+  }
+
+  async searchMessagesForApi(userId: string, q: string, limit = 40): Promise<Array<{ message: any; room: { id: string; name: string } }>> {
+    const db = this.dbStore;
+    if (this.isDbReadEnabled() && db) {
+      try {
+        const found = await db.searchMessagesGlobalByUserRooms(userId, q, limit);
+        return Promise.all(
+          found.map(async (msg) => {
+            const u = await db.getUserById(String(msg.userId));
+            const room = await db.getRoomById(String(msg.roomId));
+            return {
+              message: {
+                ...msg,
+                user: u ? toPublicChatUser(u as any) : (this.getUser(String(msg.userId)) ? toPublicChatUser(this.getUser(String(msg.userId)) as any) : undefined),
+              },
+              room: room ? { id: room.id, name: room.name } : { id: msg.roomId, name: msg.roomId },
+            };
+          })
+        );
+      } catch {
+        // fallback below
+      }
+    }
+    const found = this.searchMessagesGlobal(q, limit);
+    return found.map((msg) => {
+      const u = this.getUser(msg.userId);
+      const room = this.getRoom(msg.roomId);
+      return {
+        message: { ...msg, user: u ? toPublicChatUser(u) : undefined },
+        room: room ? { id: room.id, name: room.name } : { id: msg.roomId, name: msg.roomId },
+      };
+    });
+  }
+
+  async createReportForApi(input: {
+    reporterUserId: string;
+    targetUserId?: string;
+    roomId?: string;
+    messageId?: string;
+    category: string;
+    reasonText?: string;
+  }): Promise<{ ok: boolean; id?: string; error?: string }> {
+    const db = this.dbStore;
+    if (!db) return { ok: false, error: 'Report storage not configured' };
+    const id = uuid();
+    try {
+      await db.createReport({
+        id,
+        reporterUserId: input.reporterUserId,
+        targetUserId: input.targetUserId,
+        roomId: input.roomId,
+        messageId: input.messageId,
+        category: input.category,
+        reasonText: input.reasonText,
+        createdAt: Date.now(),
+      });
+      await db.appendAuditLog({
+        id: uuid(),
+        operatorUserId: input.reporterUserId,
+        action: 'chat.report.create',
+        targetType: 'report',
+        targetId: id,
+        detailJson: JSON.stringify({
+          category: input.category,
+          roomId: input.roomId || null,
+          messageId: input.messageId || null,
+          targetUserId: input.targetUserId || null,
+        }),
+        createdAt: Date.now(),
+      });
+      return { ok: true, id };
+    } catch (e: any) {
+      return { ok: false, error: e?.message || 'Failed to create report' };
+    }
+  }
+
+  async listReportsForAdmin(status?: string, limit = 50): Promise<any[]> {
+    const db = this.dbStore;
+    if (!db) return [];
+    return db.listReports(status, limit);
+  }
+
+  async listAuditLogsForAdmin(input?: {
+    operatorUserId?: string;
+    action?: string;
+    fromMs?: number;
+    toMs?: number;
+    limit?: number;
+    offset?: number;
+  }): Promise<any[]> {
+    const db = this.dbStore;
+    if (!db) return [];
+    return db.listAuditLogs(input);
+  }
+
+  async resolveReportForAdmin(input: {
+    reportId: string;
+    reviewerUserId: string;
+    status: 'resolved' | 'rejected' | 'escalated';
+    resolutionNote?: string;
+    actions?: {
+      deleteMessage?: boolean;
+      removeRoomMember?: boolean;
+      muteMinutes?: number;
+    };
+  }): Promise<{ ok: boolean; error?: string }> {
+    const db = this.dbStore;
+    if (!db) return { ok: false, error: 'Report storage not configured' };
+    try {
+      const report = await db.getReportById(input.reportId);
+      if (!report) return { ok: false, error: 'Report not found' };
+
+      const actions = input.actions || {};
+      const actionResults: Record<string, any> = {};
+      const targetUserId = String(report.targetUserId || '');
+      const reportRoomId = String(report.roomId || '');
+      const reportMessageId = String(report.messageId || '');
+
+      if (actions.deleteMessage && reportMessageId) {
+        let roomId = reportRoomId;
+        if (!roomId) {
+          const found = this.findMessageById(reportMessageId);
+          roomId = found?.roomId || '';
+        }
+        const deleted = roomId ? this.deleteMessage(reportMessageId, roomId) : false;
+        if (deleted && this.isDbWriteEnabled()) {
+          try {
+            await db.deleteMessageById(reportMessageId);
+          } catch {
+            // ignore db delete failure here; report flow should continue
+          }
+        }
+        actionResults.deleteMessage = { requested: true, ok: deleted, messageId: reportMessageId, roomId: roomId || null };
+      }
+
+      if (actions.removeRoomMember && reportRoomId && targetUserId) {
+        this.leaveRoom(reportRoomId, targetUserId);
+        if (this.isDbWriteEnabled()) {
+          try {
+            await db.removeRoomMember(reportRoomId, targetUserId);
+          } catch {
+            // ignore db remove failure here; report flow should continue
+          }
+        }
+        actionResults.removeRoomMember = { requested: true, ok: true, roomId: reportRoomId, userId: targetUserId };
+      }
+
+      if (Number(actions.muteMinutes || 0) > 0 && targetUserId) {
+        const muteUntilMs = Date.now() + Math.floor(Number(actions.muteMinutes || 0)) * 60_000;
+        this.setUserMuteUntil(targetUserId, muteUntilMs);
+        if (this.isDbWriteEnabled()) {
+          try {
+            await db.setUserMuteUntil(targetUserId, muteUntilMs);
+          } catch {
+            // ignore db mute failure here; report flow should continue
+          }
+        }
+        actionResults.muteUser = { requested: true, ok: true, userId: targetUserId, muteUntilMs };
+      }
+
+      const ok = await db.resolveReport(input.reportId, input.reviewerUserId, input.status, input.resolutionNote);
+      if (!ok) return { ok: false, error: 'Report not found' };
+      await db.appendAuditLog({
+        id: uuid(),
+        operatorUserId: input.reviewerUserId,
+        action: 'chat.report.resolve',
+        targetType: 'report',
+        targetId: input.reportId,
+        detailJson: JSON.stringify({
+          status: input.status,
+          resolutionNote: input.resolutionNote || null,
+          actions: actionResults,
+        }),
+        createdAt: Date.now(),
+      });
+      return { ok: true };
+    } catch (e: any) {
+      return { ok: false, error: e?.message || 'Failed to resolve report' };
+    }
+  }
+
+  private normalizeLoadedState(data: {
+    users?: User[];
+    rooms?: Room[];
+    messages?: Record<string, Message[]>;
+    redPackets?: Record<string, RedPacket>;
+    userEscrowBalances?: Record<string, Record<ChatCurrency, number>>;
+    userWithdrawnBalances?: Record<string, Record<ChatCurrency, number>>;
+    poolReservedBalances?: Record<ChatCurrency, number>;
+    addressToUser?: Record<string, string>;
+    botTopicPools?: Record<string, Array<Record<string, any>>>;
+    userMuteUntil?: Record<string, number>;
+  }) {
+    this.users = new Map((data.users || []).map((u) => [u.id, u]));
+    this.rooms = new Map((data.rooms || []).map((r) => [r.id, r]));
+    this.messages = new Map(Object.entries(data.messages || {}));
+    for (const [rid, msgs] of this.messages.entries()) {
+      if (!Array.isArray(msgs)) {
+        this.messages.set(rid, []);
+        continue;
+      }
+      if (msgs.length > MAX_MESSAGES_PER_ROOM) {
+        // Keep newest N messages; delete from earliest side.
+        this.messages.set(rid, msgs.slice(-MAX_MESSAGES_PER_ROOM));
+      }
+    }
+    for (const [rid, msgs] of this.messages.entries()) {
+      if (!Array.isArray(msgs)) {
+        this.messages.set(rid, []);
+        continue;
+      }
+      if (msgs.length > MAX_MESSAGES_PER_ROOM) {
+        // Keep newest N messages; delete from earliest side.
+        this.messages.set(rid, msgs.slice(-MAX_MESSAGES_PER_ROOM));
+      }
+    }
+
+    this.roomLastHumanMessageAt.clear();
+    for (const [roomId, msgs] of this.messages.entries()) {
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        const m = msgs[i]!;
+        if (m.type !== 'text' && m.type !== 'image') continue;
+        const u = this.users.get(m.userId);
+        if (u && !u.isBot) {
+          this.roomLastHumanMessageAt.set(roomId, m.timestamp);
+          break;
+        }
+      }
+    }
+    this.redPackets = new Map(
+      Object.entries(data.redPackets || {}).map(([id, packet]) => {
+        const p = packet as RedPacket;
+        return [
+          id,
+          {
+            ...p,
+            currency: (p.currency || 'USDT') as ChatCurrency,
+            claimRecords: Array.isArray(p.claimRecords) ? p.claimRecords : [],
+            expiresAt: p.expiresAt || (p.createdAt + this.redPacketExpireMs),
+            refundedAmount: typeof p.refundedAmount === 'number' ? p.refundedAmount : 0,
+            status: (p.status || 'active') as RedPacket['status'],
+          },
+        ];
+      })
+    );
+    this.addressToUser = new Map(Object.entries(data.addressToUser || {}));
+    this.botTopicPools = (data.botTopicPools || {}) as Record<string, Array<Record<string, any>>>;
+    this.userMuteUntil = new Map(
+      Object.entries((data.userMuteUntil || {}) as Record<string, number>).map(([k, v]) => [String(k), Number(v || 0)])
+    );
+
+    this.userEscrowBalances = new Map(Object.entries(data.userEscrowBalances || {}).map(([userId, balances]) => [userId, balances as any]));
+    this.userWithdrawnBalances = new Map(
+      Object.entries(data.userWithdrawnBalances || {}).map(([userId, balances]) => [userId, balances as any])
+    );
+    const pool = (data.poolReservedBalances || {}) as Record<ChatCurrency, number>;
+    this.poolReservedBalances = {
+      USDT: Number(pool.USDT || 0),
+      RWA: Number(pool.RWA || 0),
+    };
+  }
+
+  private applyLoadedState(data: {
+    users?: User[];
+    rooms?: Room[];
+    messages?: Record<string, Message[]>;
+    redPackets?: Record<string, RedPacket>;
+    userEscrowBalances?: Record<string, Record<ChatCurrency, number>>;
+    userWithdrawnBalances?: Record<string, Record<ChatCurrency, number>>;
+    poolReservedBalances?: Record<ChatCurrency, number>;
+    addressToUser?: Record<string, string>;
+    botTopicPools?: Record<string, Array<Record<string, any>>>;
+    userMuteUntil?: Record<string, number>;
+  }): boolean {
+    this.normalizeLoadedState(data);
+
+    let avatarBackfill = false;
+    for (const u of this.users.values()) {
+      if (u.isBot) continue;
+      if (!u.avatar) {
+        u.avatar = pickDeterministicUserAvatar(u.address);
+        avatarBackfill = true;
+      }
+    }
+
+    let roomGeneralRenamed = false;
+    const genRoom = this.rooms.get('room-general');
+    if (genRoom && /general|常规/i.test(genRoom.name)) {
+      genRoom.name = '🌐 官方群';
+      genRoom.description = 'RWA Aura official community';
+      roomGeneralRenamed = true;
+    }
+
+    const wantPrune = String(process.env.CHAT_PRUNE_TIME_CONTRADICTIONS || '').trim() === '1';
+    let pruned = 0;
+    if (wantPrune) {
+      pruned = this.pruneBotMessagesWithTimeContradictions();
+      if (pruned > 0) {
+        console.log(`[ChatService] pruned ${pruned} bot messages with time contradictions`);
+      } else {
+        console.log('[ChatService] prune time contradictions: nothing to remove');
+      }
+    }
+
+    if ((avatarBackfill || roomGeneralRenamed || pruned > 0) && !this.isHydratingFromDb) this.persistToDisk();
+    return this.rooms.size > 0;
+  }
+
+  private buildStateSnapshot() {
+    return {
+      users: Array.from(this.users.values()),
+      rooms: Array.from(this.rooms.values()),
+      messages: Object.fromEntries(this.messages.entries()),
+      redPackets: Object.fromEntries(this.redPackets.entries()),
+      addressToUser: Object.fromEntries(this.addressToUser.entries()),
+      userEscrowBalances: Object.fromEntries(
+        Array.from(this.userEscrowBalances.entries()).map(([userId, balances]) => [userId, balances])
+      ),
+      userWithdrawnBalances: Object.fromEntries(
+        Array.from(this.userWithdrawnBalances.entries()).map(([userId, balances]) => [userId, balances])
+      ),
+      poolReservedBalances: this.poolReservedBalances,
+      botTopicPools: this.botTopicPools,
+      userMuteUntil: Object.fromEntries(this.userMuteUntil.entries()),
+    };
+  }
+
+  /**
+   * 清理历史里“时间语义明显不对”的机器人文本（例：上午说下午/晚上）。
+   * 仅对机器人 text 消息生效，避免误删真人聊天记录。
+   */
+  private pruneBotMessagesWithTimeContradictions(): number {
+    let removed = 0;
+    for (const [roomId, msgs] of this.messages.entries()) {
+      if (!Array.isArray(msgs) || msgs.length === 0) continue;
+      const kept: Message[] = [];
+      for (const m of msgs) {
+        if (!m || m.type !== 'text') {
+          kept.push(m);
+          continue;
+        }
+        const u = this.users.get(m.userId);
+        if (!u || !u.isBot) {
+          kept.push(m);
+          continue;
+        }
+        const { hour } = getShanghaiHourMinute(new Date(m.timestamp));
+        if (isTimeContextContradiction(String(m.content || ''), hour)) {
+          removed += 1;
+          continue;
+        }
+        kept.push(m);
+      }
+      if (kept.length !== msgs.length) this.messages.set(roomId, kept);
+    }
+    return removed;
   }
 
   private ensureAnnouncementFeedSeeded() {
@@ -177,98 +741,44 @@ class ChatService {
         addressToUser?: Record<string, string>;
         botTopicPools?: Record<string, Array<Record<string, any>>>;
       };
-
-      this.users = new Map((data.users || []).map((u) => [u.id, u]));
-      this.rooms = new Map((data.rooms || []).map((r) => [r.id, r]));
-      this.messages = new Map(Object.entries(data.messages || {}));
-
-      this.roomLastHumanMessageAt.clear();
-      for (const [roomId, msgs] of this.messages.entries()) {
-        for (let i = msgs.length - 1; i >= 0; i--) {
-          const m = msgs[i]!;
-          if (m.type !== 'text' && m.type !== 'image') continue;
-          const u = this.users.get(m.userId);
-          if (u && !u.isBot) {
-            this.roomLastHumanMessageAt.set(roomId, m.timestamp);
-            break;
-          }
-        }
-      }
-      this.redPackets = new Map(
-        Object.entries(data.redPackets || {}).map(([id, packet]) => {
-          const p = packet as RedPacket;
-          return [
-            id,
-            {
-              ...p,
-              currency: (p.currency || 'USDT') as ChatCurrency,
-              claimRecords: Array.isArray(p.claimRecords) ? p.claimRecords : [],
-              expiresAt: p.expiresAt || (p.createdAt + this.redPacketExpireMs),
-              refundedAmount: typeof p.refundedAmount === 'number' ? p.refundedAmount : 0,
-              status: (p.status || 'active') as RedPacket['status'],
-            },
-          ];
-        })
-      );
-      this.addressToUser = new Map(Object.entries(data.addressToUser || {}));
-      this.botTopicPools = (data.botTopicPools || {}) as Record<string, Array<Record<string, any>>>;
-
-      // Ledger
-      this.userEscrowBalances = new Map(Object.entries(data.userEscrowBalances || {}).map(([userId, balances]) => [userId, balances as any]));
-      this.userWithdrawnBalances = new Map(
-        Object.entries(data.userWithdrawnBalances || {}).map(([userId, balances]) => [userId, balances as any])
-      );
-      const pool = (data.poolReservedBalances || {}) as Record<ChatCurrency, number>;
-      this.poolReservedBalances = {
-        USDT: Number(pool.USDT || 0),
-        RWA: Number(pool.RWA || 0),
-      };
-
-      let avatarBackfill = false;
-      for (const u of this.users.values()) {
-        if (u.isBot) continue;
-        if (!u.avatar) {
-          u.avatar = pickDeterministicUserAvatar(u.address);
-          avatarBackfill = true;
-        }
-      }
-
-      let roomGeneralRenamed = false;
-      const genRoom = this.rooms.get('room-general');
-      if (genRoom && /general|常规/i.test(genRoom.name)) {
-        genRoom.name = '🌐 官方群';
-        genRoom.description = 'RWA Aura official community';
-        roomGeneralRenamed = true;
-      }
-
-      if (avatarBackfill || roomGeneralRenamed) this.persistToDisk();
-
-      return this.rooms.size > 0;
+      return this.applyLoadedState(data);
     } catch (err) {
       console.error('[ChatService] Failed to load persisted data:', err);
       return false;
     }
   }
 
+  private persistToDbQueued() {
+    if (!this.dbStore) return;
+    if (this.persistInFlight) {
+      this.persistPending = true;
+      return;
+    }
+    this.persistInFlight = true;
+    this.persistPending = false;
+    const snapshot = this.buildStateSnapshot();
+    void this.dbStore
+      .saveSnapshot(snapshot)
+      .then(() => this.dbStore!.syncNormalizedFromSnapshot(snapshot))
+      .then(() => {
+        this.dbReadDegraded = false;
+      })
+      .catch((err) => {
+        console.error('[ChatService] Failed to persist MySQL snapshot:', err);
+        this.dbReadDegraded = true;
+      })
+      .finally(() => {
+        this.persistInFlight = false;
+        if (this.persistPending) this.persistToDbQueued();
+      });
+  }
+
   private persistToDisk() {
     try {
       fs.mkdirSync(path.dirname(this.dataFilePath), { recursive: true });
-      const payload = {
-        users: Array.from(this.users.values()),
-        rooms: Array.from(this.rooms.values()),
-        messages: Object.fromEntries(this.messages.entries()),
-        redPackets: Object.fromEntries(this.redPackets.entries()),
-        addressToUser: Object.fromEntries(this.addressToUser.entries()),
-        userEscrowBalances: Object.fromEntries(
-          Array.from(this.userEscrowBalances.entries()).map(([userId, balances]) => [userId, balances])
-        ),
-        userWithdrawnBalances: Object.fromEntries(
-          Array.from(this.userWithdrawnBalances.entries()).map(([userId, balances]) => [userId, balances])
-        ),
-        poolReservedBalances: this.poolReservedBalances,
-        botTopicPools: this.botTopicPools,
-      };
+      const payload = this.buildStateSnapshot();
       fs.writeFileSync(this.dataFilePath, JSON.stringify(payload, null, 2), 'utf8');
+      if (this.dbStore) this.persistToDbQueued();
     } catch (err) {
       console.error('[ChatService] Failed to persist data:', err);
     }
@@ -459,6 +969,68 @@ class ChatService {
     return userId ? this.users.get(userId) : undefined;
   }
 
+  searchUsersByAddressPrefix(prefix: string, limit = 10): User[] {
+    const p = (prefix || '').trim().toLowerCase();
+    if (!p) return [];
+    if (p.length < 6) return []; // avoid excessive scans for short prefixes
+
+    const out: User[] = [];
+    for (const u of this.users.values()) {
+      if ((u.address || '').toLowerCase().startsWith(p)) {
+        out.push(u);
+        if (out.length >= limit) break;
+      }
+    }
+    return out;
+  }
+
+  /**
+   * DM room membership check (private rooms must not be joinable by guessing roomId).
+   * Public rooms are handled elsewhere.
+   */
+  isRoomMember(roomId: string, userId: string): boolean {
+    const room = this.rooms.get(roomId);
+    if (!room) return false;
+    return room.memberIds.includes(userId);
+  }
+
+  private getOrCreateDmRoom(userAId: string, userBId: string): Room {
+    const [a, b] = userAId <= userBId ? [userAId, userBId] : [userBId, userAId];
+
+    for (const room of this.rooms.values()) {
+      if (room.type !== 'dm') continue;
+      if (room.memberIds.length !== 2) continue;
+      const r0 = room.memberIds[0];
+      const r1 = room.memberIds[1];
+      if ((r0 === a && r1 === b) || (r0 === b && r1 === a)) {
+        return room;
+      }
+    }
+
+    const room: Room = {
+      id: `dm-${uuid().slice(0, 8)}`,
+      name: 'DM',
+      description: '',
+      type: 'dm',
+      icon: '💬',
+      ownerId: a,
+      memberIds: [a, b],
+      isPublic: false,
+      minTokenGate: 0,
+      createdAt: Date.now(),
+    };
+    this.rooms.set(room.id, room);
+    this.messages.set(room.id, []);
+    this.persistToDisk();
+    return room;
+  }
+
+  getOrCreateDmRoomByAddresses(userAId: string, peerAddress: string): Room | null {
+    const userB = this.getUserByAddress(peerAddress);
+    if (!userB) return null;
+    return this.getOrCreateDmRoom(userAId, userB.id);
+  }
+
   getMessageById(messageId: string): Message | undefined {
     for (const roomMsgs of this.messages.values()) {
       const found = roomMsgs.find((m) => m.id === messageId);
@@ -483,6 +1055,16 @@ class ChatService {
       user.lastSeen = Date.now();
       this.persistToDisk();
     }
+  }
+
+  setUserMuteUntil(userId: string, untilMs: number) {
+    const ts = Math.max(0, Math.floor(Number(untilMs || 0)));
+    if (ts <= 0) {
+      this.userMuteUntil.delete(userId);
+    } else {
+      this.userMuteUntil.set(userId, ts);
+    }
+    this.persistToDisk();
   }
 
   getOnlineUsers(roomId: string): User[] {
@@ -535,6 +1117,13 @@ class ChatService {
   joinRoom(roomId: string, userId: string): boolean {
     const room = this.rooms.get(roomId);
     if (!room) return false;
+
+    // DM rooms are private: only existing members can join the socket room.
+    if (room.type === 'dm') {
+      return this.isRoomMember(roomId, userId);
+    }
+
+    // Public rooms: join will add membership.
     if (!room.memberIds.includes(userId)) {
       room.memberIds.push(userId);
       this.persistToDisk();
@@ -551,10 +1140,52 @@ class ChatService {
   }
 
   // ─── Messages ────────────────────────────────────────
-  canSendMessage(roomId: string, userId: string): { ok: boolean; error?: string } {
+  private normalizeUserTextForGuard(input: string): string {
+    return String(input || '')
+      .replace(/\s+/g, ' ')
+      .replace(/[!?？！]{2,}/g, '？')
+      .replace(/[。\.]{3,}/g, '。')
+      .trim()
+      .toLowerCase();
+  }
+
+  private textDiceSimilarity(a: string, b: string): number {
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    const toBigrams = (s: string): string[] => {
+      if (s.length < 2) return [s];
+      const arr: string[] = [];
+      for (let i = 0; i < s.length - 1; i += 1) arr.push(s.slice(i, i + 2));
+      return arr;
+    };
+    const A = toBigrams(a);
+    const B = toBigrams(b);
+    const map = new Map<string, number>();
+    for (const x of A) map.set(x, (map.get(x) || 0) + 1);
+    let inter = 0;
+    for (const x of B) {
+      const n = map.get(x) || 0;
+      if (n > 0) {
+        inter += 1;
+        map.set(x, n - 1);
+      }
+    }
+    return (2 * inter) / (A.length + B.length);
+  }
+
+  canSendMessage(roomId: string, userId: string, content?: string): { ok: boolean; error?: string } {
     const room = this.rooms.get(roomId);
     const user = this.users.get(userId);
     if (!room || !user) return { ok: false, error: 'Room or user not found' };
+    const muteUntilMs = Number(this.userMuteUntil.get(userId) || 0);
+    if (muteUntilMs > Date.now()) {
+      return { ok: false, error: `Muted until ${new Date(muteUntilMs).toISOString()}` };
+    }
+
+    // DM: sender must be a member.
+    if (room.type === 'dm' && !this.isRoomMember(roomId, userId)) {
+      return { ok: false, error: 'Not a DM participant' };
+    }
 
     // Enforce read-only channels for normal users.
     if (room.type === 'channel' && !user.isAdmin && !user.isBot) {
@@ -572,6 +1203,45 @@ class ChatService {
     }
     recent.push(now);
     this.messageRateLimits.set(userId, recent);
+
+    if (typeof content === 'string' && content.trim()) {
+      const normalized = this.normalizeUserTextForGuard(content);
+      const roomMsgs = this.getMessages(roomId, 80);
+      const selfRecentText = roomMsgs
+        .filter((m) => m.userId === userId && m.type === 'text' && now - m.timestamp <= 10 * 60_000)
+        .slice(-10);
+
+      // Low-value ping spam guard (e.g. "有人不/在吗") in short window.
+      const lowValuePing = /^(有人(吗|不|在吗)?|在吗|有人在吗|哈喽|hello)[？?。!！\s]*$/i.test(normalized);
+      if (lowValuePing) {
+        const pingHits = selfRecentText.filter((m) =>
+          /^(有人(吗|不|在吗)?|在吗|有人在吗|哈喽|hello)[？?。!！\s]*$/i.test(
+            this.normalizeUserTextForGuard(m.content || '')
+          )
+        );
+        if (pingHits.length >= 2) {
+          return { ok: false, error: 'Low-value repeated ping detected. Please add specific content.' };
+        }
+      }
+
+      // Duplicate and near-duplicate blocker in short horizon.
+      for (let i = selfRecentText.length - 1; i >= 0; i -= 1) {
+        const prev = selfRecentText[i]!;
+        const prevNorm = this.normalizeUserTextForGuard(prev.content || '');
+        const dt = now - prev.timestamp;
+        if (!prevNorm) continue;
+        if (normalized === prevNorm && dt <= 180_000) {
+          return { ok: false, error: 'Duplicate message blocked. Please avoid repeated sending.' };
+        }
+        if (normalized.length >= 8 && prevNorm.length >= 8 && dt <= 180_000) {
+          const sim = this.textDiceSimilarity(normalized, prevNorm);
+          if (sim >= 0.9) {
+            return { ok: false, error: 'Highly similar repeated message blocked.' };
+          }
+        }
+      }
+    }
+
     return { ok: true };
   }
 
@@ -581,18 +1251,19 @@ class ChatService {
     content: string,
     type: Message['type'] = 'text',
     replyTo?: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, any>,
+    opts?: { id?: string; timestamp?: number; skipPersist?: boolean }
   ): Message | null {
     if (!this.rooms.has(roomId)) return null;
 
     const msg: Message = {
-      id: uuid(),
+      id: opts?.id || uuid(),
       roomId,
       userId,
       content,
       type,
       replyTo,
-      timestamp: Date.now(),
+      timestamp: Number(opts?.timestamp || Date.now()),
       edited: false,
       metadata,
     };
@@ -610,7 +1281,9 @@ class ChatService {
       this.roomLastHumanMessageAt.set(roomId, Date.now());
     }
 
-    this.persistToDisk();
+    if (!opts?.skipPersist) {
+      this.persistToDisk();
+    }
     return msg;
   }
 
@@ -619,6 +1292,11 @@ class ChatService {
     const t = this.roomLastHumanMessageAt.get(roomId);
     if (t == null) return Number.POSITIVE_INFINITY;
     return Date.now() - t;
+  }
+
+  /** 该房间最后一次真人发言时间戳（ms）；从未有真人发过则为 0（勿与「map 未命中」混淆，持久化后会恢复） */
+  getLastHumanMessageTimestamp(roomId: string): number {
+    return this.roomLastHumanMessageAt.get(roomId) ?? 0;
   }
 
   getMessages(roomId: string, limit = 50, before?: number): Message[] {
@@ -682,6 +1360,11 @@ class ChatService {
     if (!msgs) return null;
     const msg = msgs.find((m) => m.id === messageId);
     if (!msg) return null;
+
+    const room = this.rooms.get(roomId);
+    if (room?.type === 'dm' && !this.isRoomMember(roomId, editorUserId)) {
+      return null;
+    }
 
     // Only author or admin can edit a message.
     if (msg.userId !== editorUserId) {

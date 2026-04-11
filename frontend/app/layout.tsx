@@ -6,6 +6,7 @@ import { LocaleProvider } from '@/components/locale-provider'
 import { Web3Provider } from '@/components/providers/web3-provider'
 import { EthereumSuppressScript } from '@/components/providers/ethereum-suppress-script'
 import { CapacitorNativeRuntime } from '@/components/providers/capacitor-native-runtime'
+import { ConditionalNavbar } from '@/components/conditional-navbar'
 import './globals.css'
 
 const inter = Inter({
@@ -64,6 +65,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: 'cover',
   themeColor: '#05050a',
+  // 减少移动端聚焦输入框时布局与视口剧烈跳动（尤其 Android Chrome）
+  interactiveWidget: 'resizes-content',
 }
 
 export default function RootLayout({
@@ -164,6 +167,7 @@ export default function RootLayout({
         <LocaleProvider>
           <Web3Provider>
             {children}
+            <ConditionalNavbar />
           </Web3Provider>
         </LocaleProvider>
         {process.env.VERCEL ? <Analytics /> : null}

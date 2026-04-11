@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "ts-node-dev --respawn src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "llm:smoke-compat": "node scripts/llm-smoke-compat.cjs",
+    "llm:smoke-anthropic": "node scripts/llm-smoke-anthropic.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

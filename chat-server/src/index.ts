@@ -4,6 +4,7 @@
 
 import dotenv from 'dotenv';
 import { resolve } from 'path';
+import { randomUUID } from 'crypto';
 dotenv.config();
 
 // Load backend env (token addresses / private keys) without overriding chat-server's own env.
@@ -21,6 +22,7 @@ import { chatService } from './services/chat-service';
 import { botService } from './services/bot-service';
 import { getLlmHealth } from './services/bot-llm';
 import { verifySignature, isGuestAuth } from './middleware/auth';
+import { verifyChatSessionToken } from './middleware/chat-session';
 import { toPublicChatUser } from './utils/public-chat-user';
 import { isAllowedChatImageUrl } from './utils/safe-image-url';
 import { isAllowedQuickLinkPath } from './utils/quick-link';
@@ -45,6 +47,9 @@ function parseCorsOrigins(raw: string | undefined): string | string[] {
 }
 
 const CORS_ORIGIN = parseCorsOrigins(process.env.CORS_ORIGIN);
+const useNormalizedWrite =
+  String(process.env.CHAT_DB_WRITE_NORMALIZED || '').trim() === '1' ||
+  String(process.env.CHAT_STORAGE || '').trim().toLowerCase() === 'mysql';
 
 // ─── Middleware ─────────────────────────────────────────
 app.use(cors({ origin: CORS_ORIGIN, credentials: true }));
@@ -66,10 +71,14 @@ app.get('/api/chat/health', (_req, res) => {
     bots: botService.getAllBots().length,
     activeBots: botService.getAllBots().filter((b) => b.isActive).length,
     llm: {
+      anthropicConfigured: llm.anthropicConfigured,
+      openAiCompatConfigured: llm.openAiCompatConfigured,
       groqConfigured: llm.groqConfigured,
       openRouterConfigured: llm.openRouterConfigured,
       siliconFlowConfigured: llm.siliconFlowConfigured,
       xfyunConfigured: llm.xfyunConfigured,
+      anthropicKeyCount: llm.anthropicKeyCount,
+      openAiCompatKeyCount: llm.openAiCompatKeyCount,
       groqKeyCount: llm.groqKeyCount,
       openRouterKeyCount: llm.openRouterKeyCount,
       siliconFlowKeyCount: llm.siliconFlowKeyCount,
@@ -86,10 +95,30 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   path: '/chat-ws',
 });
 
-// Socket auth middleware
+// Socket auth middleware（会话令牌优先，免重复钱包签名）
 io.use((socket, next) => {
-  const { address, signature } = socket.handshake.auth;
-  if (!address || !signature) {
+  const auth = (socket.handshake.auth || {}) as {
+    address?: string;
+    signature?: string;
+    sessionToken?: string;
+  };
+  const { address, signature, sessionToken } = auth;
+
+  if (sessionToken && typeof sessionToken === 'string' && sessionToken.length > 8) {
+    const recoveredAddr = verifyChatSessionToken(sessionToken);
+    if (!recoveredAddr) {
+      return next(new Error('Invalid or expired chat session'));
+    }
+    if (address && address.toLowerCase() !== recoveredAddr) {
+      return next(new Error('Session address mismatch'));
+    }
+    (socket as any).walletAddress = recoveredAddr;
+    const user = chatService.getUserByAddress(recoveredAddr);
+    (socket as any).userId = user?.id;
+    return next();
+  }
+
+  if (!address || signature == null || signature === '') {
     return next(new Error('Authentication required'));
   }
   const recovered = verifySignature(signature);
@@ -108,12 +137,16 @@ io.on('connection', (socket) => {
   const userId = (socket as any).userId as string;
   const address = (socket as any).walletAddress as string;
   console.log(`[WS] Connected: ${address} (${userId})`);
+  if (userId) {
+    void chatService.onUserConnected(userId).catch(() => {});
+  }
 
   // ─── Join Room ─────────────────────────────────────
   socket.on('room:join', (roomId, cb) => {
     if (!userId) return cb(false);
     const ok = chatService.joinRoom(roomId, userId);
     if (ok) {
+      void chatService.onRoomJoined(roomId, userId).catch(() => {});
       socket.join(roomId);
       const user = chatService.getUser(userId);
       if (user) {
@@ -127,21 +160,29 @@ io.on('connection', (socket) => {
   socket.on('room:leave', (roomId) => {
     socket.leave(roomId);
     if (userId) {
+      void chatService.onRoomLeft(roomId, userId).catch(() => {});
       socket.to(roomId).emit('user:leave', userId, roomId);
     }
   });
 
   // ─── Send Message ──────────────────────────────────
-  socket.on('message:send', ({ roomId, content, replyTo, messageType, metadata }, cb) => {
-    if (!userId || !content.trim()) return cb({ ok: false, error: 'Empty message' });
-    const permission = chatService.canSendMessage(roomId, userId);
+  socket.on('message:send', async ({ roomId, content, replyTo, messageType, metadata }, cb) => {
+    const sanitizeIncomingText = (raw: string) =>
+      String(raw || '')
+        .replace(/\s+/g, ' ')
+        .replace(/[!?？！]{2,}/g, '？')
+        .replace(/[。\.]{3,}/g, '。')
+        .trim();
+    const sanitizedContent = sanitizeIncomingText(String(content || ''));
+    if (!userId || !sanitizedContent) return cb({ ok: false, error: 'Empty message' });
+    const permission = chatService.canSendMessage(roomId, userId, sanitizedContent);
     if (!permission.ok) return cb({ ok: false, error: permission.error || 'Permission denied' });
     const type = messageType === 'image' ? 'image' : 'text';
-    if (type === 'image' && !isAllowedChatImageUrl(content)) {
+    if (type === 'image' && !isAllowedChatImageUrl(sanitizedContent)) {
       return cb({ ok: false, error: 'Invalid image URL (HTTPS allowlist only)' });
     }
 
-    if (type === 'text' && textContainsOffPlatformContactSolicitation(content)) {
+    if (type === 'text' && textContainsOffPlatformContactSolicitation(sanitizedContent)) {
       return cb({
         ok: false,
         error: 'Off-platform contact solicitation is not allowed',
@@ -167,14 +208,41 @@ io.on('connection', (socket) => {
       extraMeta = { quickLink: { path, label } };
     }
 
-    const msg = chatService.addMessage(roomId, userId, content.trim(), type, replyTo, extraMeta);
+    const messageId = randomUUID();
+    const messageTs = Date.now();
+    const msgDraft = {
+      id: messageId,
+      roomId,
+      userId,
+      content: sanitizedContent,
+      type,
+      replyTo,
+      timestamp: messageTs,
+      edited: false,
+      metadata: extraMeta as any,
+    };
+
+    const db = chatService.getDbStore();
+    if (useNormalizedWrite && db) {
+      try {
+        await db.upsertMessage(msgDraft as any);
+      } catch {
+        return cb({ ok: false, error: 'Failed to persist message' });
+      }
+    }
+
+    const msg = chatService.addMessage(roomId, userId, sanitizedContent, type, replyTo, extraMeta, {
+      id: messageId,
+      timestamp: messageTs,
+    });
     if (msg) {
       const user = chatService.getUser(userId);
       if (user) {
         io.to(roomId).emit('message:new', { ...msg, user: toPublicChatUser(user) });
         // Probabilistic “real user” replies (simulates chat vibe)
         if (!user.isBot) {
-          botService.maybeRespondToUserMessage(roomId, user, content.trim(), msg.id);
+          botService.maybeSendYieldSanityNudge(roomId, user, sanitizedContent, msg.id);
+          botService.maybeRespondToUserMessage(roomId, user, sanitizedContent, msg.id);
         }
       }
       cb({ ok: true, data: msg });
@@ -184,7 +252,7 @@ io.on('connection', (socket) => {
   });
 
   // ─── Edit Message ──────────────────────────────────
-  socket.on('message:edit', ({ messageId, content }, cb) => {
+  socket.on('message:edit', async ({ messageId, content }, cb) => {
     const trimmed = typeof content === 'string' ? content.trim() : '';
     const found = chatService.findMessageById(messageId);
     if (!found) {
@@ -199,6 +267,14 @@ io.on('connection', (socket) => {
     }
     const edited = chatService.editMessage(messageId, found.roomId, trimmed, userId);
     if (edited) {
+      const db = chatService.getDbStore();
+      if (useNormalizedWrite && db) {
+        try {
+          await db.markMessageEdited(messageId, trimmed);
+        } catch {
+          return cb({ ok: false, error: 'Failed to persist edited message' });
+        }
+      }
       io.to(found.roomId).emit('message:edit', edited);
       return cb({ ok: true, data: true });
     }
@@ -216,7 +292,7 @@ io.on('connection', (socket) => {
         errorCode: 'OFF_PLATFORM_CONTACT',
       });
     }
-    const permission = chatService.canSendMessage(roomId, userId);
+    const permission = chatService.canSendMessage(roomId, userId, greet || '');
     if (!permission.ok) return cb({ ok: false, error: permission.error || 'Permission denied' });
     const cur = (String(currency || 'USDT').toUpperCase() as any) === 'RWA' ? 'RWA' : 'USDT';
     const balanceCheck = await chatService.validateRedPacketBalance(userId, totalAmount, cur);
@@ -228,6 +304,15 @@ io.on('connection', (socket) => {
     const user = chatService.getUser(userId);
     if (!user) return cb({ ok: false, error: 'User not found' });
 
+    const db = chatService.getDbStore();
+    if (useNormalizedWrite && db) {
+      try {
+        await db.upsertMessage(result.message as any);
+      } catch {
+        return cb({ ok: false, error: 'Failed to persist red packet message' });
+      }
+    }
+
     const messageWithUser = { ...result.message, user: toPublicChatUser(user) };
     io.to(roomId).emit('message:new', messageWithUser);
     cb({ ok: true, data: messageWithUser });
@@ -238,6 +323,19 @@ io.on('connection', (socket) => {
     if (!userId) return cb({ ok: false, error: 'Authentication required' });
     const result = chatService.claimRedPacket(packetId, userId);
     if (!result) return cb({ ok: false, error: 'Red packet cannot be claimed' });
+    const db = chatService.getDbStore();
+    if (useNormalizedWrite && db) {
+      void db
+        .upsertMessage(result.message as any)
+        .then(() => {
+          io.to(result.packet.roomId).emit('message:edit', result.message);
+          cb({ ok: true, data: { amount: result.amount, message: result.message } });
+        })
+        .catch(() => {
+          cb({ ok: false, error: 'Failed to persist red packet claim state' });
+        });
+      return;
+    }
     io.to(result.packet.roomId).emit('message:edit', result.message);
     cb({ ok: true, data: { amount: result.amount, message: result.message } });
   });
@@ -253,6 +351,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     if (userId) {
       chatService.setUserOffline(userId);
+      void chatService.onUserDisconnected(userId).catch(() => {});
       console.log(`[WS] Disconnected: ${address}`);
     }
   });
@@ -271,30 +370,49 @@ botService.setMessageCallback((msg, roomId) => {
   io.to(roomId).emit('message:new', { ...msg, user: toPublicChatUser(msg.user) });
 });
 
-// Auto bootstrap default bots (only once per server start)
-botService.bootstrapDefaultBots();
-botService.ensureAdminSupportBot();
-botService.ensureGroupOwnerBot();
+async function startServer() {
+  await chatService.initializeStorage();
 
-setInterval(() => {
-  const changed = chatService.settleExpiredRedPackets();
-  changed.forEach((msg) => {
-    io.to(msg.roomId).emit('message:edit', msg);
-  });
-}, 15_000);
+  // Auto bootstrap default bots (only once per server start)
+  botService.bootstrapDefaultBots();
+  botService.ensureAdminSupportBot();
+  botService.ensureGroupOwnerBot();
 
-// Admin scheduled professional broadcasts (Shanghai fixed times)
-setInterval(() => {
-  try {
-    botService.runAdminScheduledBroadcastTick();
-  } catch (e) {
-    console.error('[Bot] admin scheduled broadcast tick failed:', e);
-  }
-}, 60_000);
+  setInterval(() => {
+    const changed = chatService.settleExpiredRedPackets();
+    const db = chatService.getDbStore();
+    if (useNormalizedWrite && db && changed.length > 0) {
+      void Promise.all(changed.map((msg) => db.upsertMessage(msg as any)))
+        .then(() => {
+          changed.forEach((msg) => {
+            io.to(msg.roomId).emit('message:edit', msg);
+          });
+        })
+        .catch(() => {
+          // DB sync failed: keep old behavior to avoid missing realtime updates.
+          changed.forEach((msg) => {
+            io.to(msg.roomId).emit('message:edit', msg);
+          });
+        });
+      return;
+    }
+    changed.forEach((msg) => {
+      io.to(msg.roomId).emit('message:edit', msg);
+    });
+  }, 15_000);
 
-// ─── Start Server ──────────────────────────────────────
-httpServer.listen(PORT, () => {
-  console.log(`
+  // Admin scheduled professional broadcasts (Shanghai fixed times)
+  setInterval(() => {
+    try {
+      botService.runAdminScheduledBroadcastTick();
+    } catch (e) {
+      console.error('[Bot] admin scheduled broadcast tick failed:', e);
+    }
+  }, 60_000);
+
+  // ─── Start Server ──────────────────────────────────────
+  httpServer.listen(PORT, () => {
+    console.log(`
   ╔══════════════════════════════════════════╗
   ║   🚀 RWA Aura Chat Server              ║
   ║   Port: ${PORT}                            ║
@@ -303,14 +421,20 @@ httpServer.listen(PORT, () => {
   ╚══════════════════════════════════════════╝
   `);
 
-  const burst = Number(process.env.BOT_STARTUP_BURST_COUNT ?? 0);
-  if (Number.isFinite(burst) && burst > 0) {
-    const n = Math.min(50, Math.max(1, Math.floor(burst)));
-    setTimeout(() => {
-      void botService
-        .triggerBotBurst('room-general', n)
-        .then((r) => console.log('[Bots] startup burst:', r))
-        .catch((e) => console.warn('[Bots] startup burst failed', e));
-    }, 5_000);
-  }
+    const burst = Number(process.env.BOT_STARTUP_BURST_COUNT ?? 0);
+    if (Number.isFinite(burst) && burst > 0) {
+      const n = Math.min(50, Math.max(1, Math.floor(burst)));
+      setTimeout(() => {
+        void botService
+          .triggerBotBurst('room-general', n)
+          .then((r) => console.log('[Bots] startup burst:', r))
+          .catch((e) => console.warn('[Bots] startup burst failed', e));
+      }, 5_000);
+    }
+  });
+}
+
+void startServer().catch((e) => {
+  console.error('[ChatServer] startup failed:', e);
+  process.exit(1);
 });

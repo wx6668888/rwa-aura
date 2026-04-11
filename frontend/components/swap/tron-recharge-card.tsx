@@ -157,16 +157,16 @@ export function TronRechargeCard() {
       })
       const json = await resp.json()
       if (!json?.success) {
-        throw new Error(json?.error || '创建充值订单失败')
+        throw new Error(json?.error || t('swap.tronOrderCreateFailed'))
       }
       const next = json?.data?.order as TronTopupOrder | undefined
       if (!next?.depositAddress) {
-        throw new Error('后端未返回充值地址')
+        throw new Error(t('swap.tronNoDepositAddress'))
       }
       setOrder(next)
       setCopied(false)
     } catch (e: any) {
-      setOrderError(e?.message || '创建充值订单失败')
+      setOrderError(e?.message || t('swap.tronOrderCreateFailed'))
     } finally {
       setOrderLoading(false)
     }
@@ -213,22 +213,20 @@ export function TronRechargeCard() {
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-plasma-cyan/80">
-              {(t('swap.tronRechargeKicker') || 'TRC20 Direct Top-up').trim() || 'TRC20 Direct Top-up'}
+              {t('swap.tronRechargeKicker')}
             </p>
             <h3 className="text-lg font-bold text-text-primary">
-              {(t('swap.tronRechargeTitle') || 'TRON USDT 充值购买 RWA').trim() || 'TRON USDT 充值购买 RWA'}
+              {t('swap.tronRechargeTitle')}
             </h3>
             <p className="text-[12px] leading-relaxed text-text-secondary">
-              {(t('swap.tronRechargeDesc') ||
-                '使用 TRC20-USDT 直接转账充值。系统确认到账后，将按规则为你发放对应 RWA。').trim() ||
-                '使用 TRC20-USDT 直接转账充值。系统确认到账后，将按规则为你发放对应 RWA。'}
+              {t('swap.tronRechargeDesc')}
             </p>
           </div>
 
           {!showStep1 && !isCompleted && !isExpired ? (
             <div className="shrink-0 text-right">
               <div className="inline-flex items-center rounded-full border border-plasma-cyan/25 bg-plasma-cyan/10 px-3 py-1 text-[11px] font-semibold text-text-secondary">
-                倒计时 <span className="ml-1 font-mono text-plasma-cyan">{countdownText}</span>
+                {t('swap.tronCountdown')} <span className="ml-1 font-mono text-plasma-cyan">{countdownText}</span>
               </div>
               <div className="mt-2 h-1.5 w-[148px] overflow-hidden rounded-full bg-white/[0.06]">
                 <div
@@ -247,7 +245,7 @@ export function TronRechargeCard() {
           <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-[#16161f] to-[#0c0c12] p-4">
             <div className="mb-2 flex items-center justify-between gap-3">
               <span className="text-[12px] text-text-secondary">
-                {(t('swap.tronDepositAddress') || 'TRON USDT 收款地址').trim() || 'TRON USDT 收款地址'}
+                {t('swap.tronDepositAddress')}
               </span>
               <button
                 type="button"
@@ -262,28 +260,28 @@ export function TronRechargeCard() {
                 className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border-subtle px-3 text-[11px] font-semibold text-plasma-cyan hover:border-plasma-cyan/40 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
               >
                 {copied ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                {copied ? (t('wallet.detailsCopied') || '已复制') : (t('swap.copyAddress') || '复制')}
+                {copied ? t('swap.copyDone') : t('swap.copyAddress')}
               </button>
             </div>
             <div className="break-all rounded-xl border border-border-subtle bg-surface-2 px-4 py-3 font-mono text-[12px] text-text-primary">
               {order?.depositAddress
                 ? isCompleted
-                  ? '已发放 RWA，地址已回收'
+                  ? t('swap.tronAddressReleased')
                   : isExpired
-                    ? '订单已失效，请重新获取'
+                    ? t('swap.tronOrderInvalid')
                     : remainingSeconds > 0
                       ? order.depositAddress
-                      : '地址已过期，请重新获取'
+                      : t('swap.tronAddressExpired')
                 : '—'}
             </div>
 
             {order?.orderNo && (
               <div className="mt-2 text-[10px] text-text-secondary/80">
-                订单号：<span className="font-mono">{order.orderNo}</span>
+                {t('swap.tronOrderNo')}：<span className="font-mono">{order.orderNo}</span>
                 {remainingSeconds > 0 ? (
                   <>
                     {' '}
-                    · 有效期剩余 <span className="font-mono">{remainingSeconds}s</span>
+                    · {t('swap.tronValidityRemaining')} <span className="font-mono">{remainingSeconds}s</span>
                   </>
                 ) : null}
               </div>
@@ -299,7 +297,7 @@ export function TronRechargeCard() {
               <div className="space-y-3">
                 <label className="block">
                   <span className="mb-2 block text-[12px] text-text-secondary">
-                    {(t('swap.tronRechargeAmount') || '预计充值金额').trim() || '预计充值金额'}
+                    {t('swap.tronRechargeAmount')}
                   </span>
                   <div className="flex min-h-14 items-center gap-2 overflow-hidden rounded-2xl border border-border-subtle bg-surface-2 px-3 sm:px-4">
                     <input
@@ -318,7 +316,7 @@ export function TronRechargeCard() {
 
                 <div className="block">
                   <span className="mb-2 block text-[12px] text-text-secondary">
-                    {(t('swap.tronReceiveWallet') || '接收 RWA 的钱包地址').trim() || '接收 RWA 的钱包地址'}
+                    {t('swap.tronReceiveWallet')}
                   </span>
                   <div className="flex items-center gap-2 rounded-2xl border border-border-subtle bg-surface-2 px-4">
                     <Wallet className="h-4 w-4 shrink-0 text-text-secondary" />
@@ -326,7 +324,7 @@ export function TronRechargeCard() {
                       {isConnected && address ? (
                         <span className="font-mono whitespace-nowrap">{formatEvmAddress(address)}</span>
                       ) : (
-                        <span className="text-text-secondary">{(t('swap.connectFirst') || '请先连接钱包').trim() || '请先连接钱包'}</span>
+                        <span className="text-text-secondary">{t('swap.connectFirst')}</span>
                       )}
                     </div>
                   </div>
@@ -336,13 +334,11 @@ export function TronRechargeCard() {
 
             <div className="rounded-2xl border border-plasma-cyan/15 bg-plasma-cyan/8 p-4">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-[12px] text-text-secondary">{(t('swap.tronEstimatedReceive') || '预计可获得').trim() || '预计可获得'}</span>
+                <span className="text-[12px] text-text-secondary">{t('swap.tronEstimatedReceive')}</span>
                 <span className="font-mono text-[16px] font-bold text-plasma-cyan">{estimatedRwa} RWA</span>
               </div>
               <p className="mt-2 text-[10px] leading-relaxed text-text-disabled">
-                {(t('swap.tronEstimateFootnote') ||
-                  '按 1 RWA ≈ 0.85 USDT 预估，实际到账数量以活动规则与后台清算结果为准。').trim() ||
-                  '按 1 RWA ≈ 0.85 USDT 预估，实际到账数量以活动规则与后台清算结果为准。'}
+                {t('swap.tronEstimateFootnote')}
               </p>
             </div>
           </>
@@ -357,10 +353,10 @@ export function TronRechargeCard() {
             className="w-full rounded-2xl bg-plasma-cyan py-4 text-[15px] font-bold text-void-black transition-transform hover:scale-[1.01] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
           >
             {!isConnected
-              ? (t('swap.connectFirst') || '请先连接钱包').trim() || '请先连接钱包'
+              ? t('swap.connectFirst')
               : orderLoading
-                ? '生成地址中...'
-                : '充值（生成地址）'}
+                ? t('swap.tronGeneratingAddress')
+                : t('swap.tronTopUpCta')}
           </button>
         ) : null}
 
@@ -373,7 +369,7 @@ export function TronRechargeCard() {
               disabled={!isConnected || remainingSeconds <= 0 || orderLoading || userMarkedPaid}
               className="w-full rounded-2xl bg-plasma-cyan py-4 text-[15px] font-bold text-void-black transition-transform hover:scale-[1.01] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
             >
-              {userMarkedPaid ? '已提交' : '我已充值'}
+              {userMarkedPaid ? t('swap.tronMarkedPaid') : t('swap.tronIHavePaid')}
             </button>
 
             <button
@@ -382,7 +378,7 @@ export function TronRechargeCard() {
               disabled={orderLoading}
               className="w-full rounded-2xl border border-border-subtle bg-surface-2 py-4 text-[15px] font-bold text-text-primary transition-transform hover:scale-[1.01] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
             >
-              刷新状态
+              {t('swap.tronRefreshStatus')}
             </button>
 
             <button
@@ -391,11 +387,11 @@ export function TronRechargeCard() {
               disabled={orderLoading}
               className="w-full rounded-2xl border border-border-subtle bg-surface-2/40 py-4 text-[14px] font-semibold text-text-secondary transition-transform hover:scale-[1.01] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
             >
-              重置（重新输入金额）
+              {t('swap.tronResetReenter')}
             </button>
 
             <p className="text-right text-[10px] text-text-disabled">
-              监控中：剩余 <span className="font-mono">{remainingSeconds}s</span>，到期后地址会回收
+              {t('swap.tronMonitoringHint', { seconds: remainingSeconds })}
             </p>
           </div>
         ) : null}
@@ -408,16 +404,16 @@ export function TronRechargeCard() {
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="mt-0.5 h-6 w-6 text-plasma-cyan" />
                   <div>
-                    <div className="text-[14px] font-bold text-text-primary">发放成功</div>
-                    <div className="mt-1 text-[12px] text-text-secondary/90">RWA 已发送到你的 BSC 钱包</div>
+                    <div className="text-[14px] font-bold text-text-primary">{t('swap.tronPayoutSuccess')}</div>
+                    <div className="mt-1 text-[12px] text-text-secondary/90">{t('swap.tronPayoutSentHint')}</div>
                   </div>
                 </div>
               ) : isExpired ? (
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="mt-0.5 h-6 w-6 text-[#fb7185]" />
                   <div>
-                    <div className="text-[14px] font-bold text-text-primary">未在有效期内到账</div>
-                    <div className="mt-1 text-[12px] text-text-secondary/90">地址已回收，请重新充值获取新地址</div>
+                    <div className="text-[14px] font-bold text-text-primary">{t('swap.tronNotReceivedInTime')}</div>
+                    <div className="mt-1 text-[12px] text-text-secondary/90">{t('swap.tronAddressRecycledHint')}</div>
                   </div>
                 </div>
               ) : (
@@ -428,13 +424,13 @@ export function TronRechargeCard() {
                   <div>
                     <div className="text-[14px] font-bold text-text-primary">
                       {orderStatus === 'confirmed' || orderStatus === 'paid_detected'
-                        ? '已检测到账，正在发放 RWA'
-                        : '等待入账确认'}
+                        ? t('swap.tronDetectedCrediting')
+                        : t('swap.tronWaitingConfirm')}
                     </div>
                     <div className="mt-1 text-[12px] text-text-secondary/90">
                       {orderStatus === 'confirmed' || orderStatus === 'paid_detected'
-                        ? '稍等片刻，发放完成后会自动回收地址'
-                        : '请勿重复转账；我们会持续监控直到状态更新'}
+                        ? t('swap.tronCreditingHint')
+                        : t('swap.tronMonitoringNoRepeat')}
                     </div>
                   </div>
                 </div>
@@ -447,7 +443,7 @@ export function TronRechargeCard() {
                 onClick={handleReset}
                 className="w-full rounded-2xl bg-plasma-cyan py-4 text-[15px] font-bold text-void-black transition-transform hover:scale-[1.01] hover:brightness-110"
               >
-                再充一笔
+                {t('swap.tronAnotherTopUp')}
               </button>
             ) : isExpired ? (
               <button
@@ -456,7 +452,7 @@ export function TronRechargeCard() {
                 disabled={!isConnected || orderLoading}
                 className="w-full rounded-2xl bg-plasma-cyan py-4 text-[15px] font-bold text-void-black transition-transform hover:scale-[1.01] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
               >
-                重新获取地址
+                {t('swap.tronGetNewAddress')}
               </button>
             ) : (
               <button
@@ -464,7 +460,7 @@ export function TronRechargeCard() {
                 disabled
                 className="w-full rounded-2xl bg-plasma-cyan/20 py-4 text-[15px] font-bold text-plasma-cyan transition-transform animate-pulse"
               >
-                等待发放中
+                {t('swap.tronWaitingPayout')}
               </button>
             )}
 
@@ -474,7 +470,7 @@ export function TronRechargeCard() {
               disabled={orderLoading}
               className="w-full rounded-2xl border border-border-subtle bg-surface-2 py-4 text-[15px] font-bold text-text-primary transition-transform hover:scale-[1.01] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
             >
-              再次查询订单状态
+              {t('swap.tronQueryOrderAgain')}
             </button>
 
             <button
@@ -483,7 +479,7 @@ export function TronRechargeCard() {
               disabled={orderLoading}
               className="w-full rounded-2xl border border-border-subtle bg-surface-2/40 py-4 text-[14px] font-semibold text-text-secondary transition-transform hover:scale-[1.01] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
             >
-              重置（重新开始）
+              {t('swap.tronResetStartOver')}
             </button>
           </div>
         ) : null}

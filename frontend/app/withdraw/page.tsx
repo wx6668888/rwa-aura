@@ -1,5 +1,4 @@
 import { Suspense } from 'react'
-import { Navbar } from '@/components/navbar'
 import { WithdrawPageV3 } from '@/components/withdraw/withdraw-page-v3'
 import { StakesProvider } from '@/contexts/StakesContext'
 
@@ -14,7 +13,6 @@ export const metadata = {
 export default function WithdrawPage() {
   return (
     <>
-      <Navbar />
       <StakesProvider>
         <Suspense fallback={<div className="min-h-screen bg-[#0a0a0f]" aria-hidden />}>
           <WithdrawPageV3 />

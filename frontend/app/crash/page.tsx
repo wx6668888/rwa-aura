@@ -1,4 +1,3 @@
-import { Navbar } from '@/components/navbar'
 import { CrashGameClient } from '@/components/games/crash/crash-game-client'
 
 export const metadata = {
@@ -9,7 +8,6 @@ export const metadata = {
 export default function CrashPage() {
   return (
     <div className="min-h-screen bg-[#05050a]">
-      <Navbar />
       <CrashGameClient />
     </div>
   )

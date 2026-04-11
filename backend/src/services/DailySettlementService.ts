@@ -97,10 +97,14 @@ export class DailySettlementService {
           
           // --- Rate Limit 冗余设计 ---
           // QuickNode 限制约为 15-20 RPS，每个账户结算约需 4-8 次请求。
-          // 每处理一个账户后休眠 500ms（即每秒最多处理 2 个账户），约消耗 8-16 RPS，
+          // 每处理一个账户后休眠（默认 2500ms，即每秒最多 0.4 个账户），约消耗 2-4 RPS，
           // 为其他并发业务（如前端查询、监控）预留了约 50% 的速率额度。
           if (i < users.length - 1) {
-            await new Promise((resolve) => setTimeout(resolve, 500));
+            const sleepMs = Math.max(
+              300,
+              Math.min(15_000, parseInt(process.env.DAILY_SETTLEMENT_USER_SLEEP_MS || '2500', 10) || 2500)
+            );
+            await new Promise((resolve) => setTimeout(resolve, sleepMs));
           }
         } catch (error) {
           logger.error(`Failed to settle ${user.address} (${user.asset_type}):`, error);
@@ -131,10 +135,30 @@ export class DailySettlementService {
       );
     } catch (e) {
       if (isMysqlDuplicateKey(e)) {
-        logger.info(`Already settled (unique) for ${addr} (${assetType}) at ${toTime}`);
-        return;
+        // 若上一轮异常中断留下 PENDING 占位，允许本轮清理后重试（否则会“永远卡住不发放”）
+        const rows = await query<Array<{ tx_hash: string; total_yield: string }>>(
+          `SELECT tx_hash, total_yield FROM yield_settlements WHERE user_address=? AND asset_type=? AND settlement_time=? LIMIT 1`,
+          [addr, assetType, toTime]
+        );
+        const row = rows?.[0];
+        if (row && String(row.tx_hash || '').toUpperCase() === YIELD_PENDING_TX) {
+          logger.warn(`Found stale PENDING settlement row, deleting and retrying: ${addr} (${assetType}) toTime=${toTime}`);
+          await query(
+            `DELETE FROM yield_settlements WHERE user_address=? AND asset_type=? AND settlement_time=? AND tx_hash=?`,
+            [addr, assetType, toTime, YIELD_PENDING_TX]
+          );
+          // re-insert placeholder after cleanup
+          await query(
+            `INSERT INTO yield_settlements (user_address, asset_type, settlement_time, from_time, to_time, total_yield, calculation_details, tx_hash)
+             VALUES (?, ?, ?, ?, ?, '0', NULL, ?)`,
+            [addr, assetType, toTime, fromTime, toTime, YIELD_PENDING_TX]
+          );
+        } else {
+          logger.info(`Already settled (unique) for ${addr} (${assetType}) at ${toTime}`);
+          return;
+        }
       }
-      throw e;
+      else throw e;
     }
 
     const calcAddress = (() => {
@@ -175,29 +199,53 @@ export class DailySettlementService {
     logger.info(`Updating contract: ${addr} ${assetType} yield=${yieldTokenStr}`);
 
     try {
-      let tx;
-      if (assetType === 'USDT') {
-        const rwAmount = yieldWei;
-        const usdtAmount = (yieldWei * 85n) / 100n;
-        tx = await this.stakingContract.updateUserRewards(calcAddress, rwAmount, usdtAmount, stakeId);
-      } else {
-        tx = await this.stakingContract.updateUserRewards(calcAddress, yieldWei, 0, stakeId);
+      let tx: ethers.TransactionResponse | undefined;
+      const maxRetry = Math.max(0, Math.min(10, parseInt(process.env.DAILY_SETTLEMENT_TX_RETRY || '6', 10) || 6));
+      for (let attempt = 0; attempt <= maxRetry; attempt++) {
+        try {
+          if (assetType === 'USDT') {
+            const rwAmount = yieldWei;
+            const usdtAmount = (yieldWei * 85n) / 100n;
+            tx = await this.stakingContract.updateUserRewards(calcAddress, rwAmount, usdtAmount, stakeId);
+          } else {
+            tx = await this.stakingContract.updateUserRewards(calcAddress, yieldWei, 0, stakeId);
+          }
+          // 关键：拿到 txHash 后立即落库，避免「已广播交易但 wait/receipt 被限流」导致后续补跑重复发放
+          const txHash = tx!.hash;
+          const totalYieldForDB = ethers.formatEther(yieldWei);
+          await query<ResultSetHeader>(
+            `UPDATE yield_settlements SET total_yield = ?, calculation_details = ?, tx_hash = ?
+             WHERE user_address = ? AND asset_type = ? AND settlement_time = ? AND tx_hash = ?`,
+            [totalYieldForDB, JSON.stringify(details), txHash, addr, assetType, toTime, YIELD_PENDING_TX]
+          );
+          // tx mined wait：可能在 receipt 轮询时触发 RPC 速率限制，需对同一个 txHash 做 backoff 重试，不能重发交易
+          for (let wi = 0; wi <= maxRetry; wi++) {
+            try {
+              await tx!.wait();
+              break;
+            } catch (we) {
+              const wmsg = (we as Error)?.message || String(we);
+              const isRateW = /request limit|rate limit|429|TPM|Too Many Requests|-32007/i.test(wmsg);
+              if (!isRateW || wi >= maxRetry) throw we;
+              const backoffMs = Math.min(60_000, 4_000 + wi * 5_000);
+              logger.warn(
+                `[DailySettlement] rate-limited during tx.wait(), retrying receipt in ${backoffMs}ms attempt=${wi + 1}/${maxRetry} addr=${addr}`
+              );
+              await new Promise((r) => setTimeout(r, backoffMs));
+            }
+          }
+          break;
+        } catch (e) {
+          const msg = (e as Error)?.message || String(e);
+          const isRate = /request limit|rate limit|429|TPM|Too Many Requests|-32007/i.test(msg);
+          if (!isRate || attempt >= maxRetry) throw e;
+          const backoffMs = Math.min(45_000, 4_000 + attempt * 4_000);
+          logger.warn(`[DailySettlement] rate-limited during tx, retrying in ${backoffMs}ms attempt=${attempt + 1}/${maxRetry} addr=${addr}`);
+          await new Promise((r) => setTimeout(r, backoffMs));
+        }
       }
-      await tx.wait();
+      if (!tx) throw new Error('Daily settlement tx is undefined after retries');
       logger.info(`✅ Contract updated: ${tx.hash}`);
-
-      const totalYieldForDB = ethers.formatEther(yieldWei);
-      const upd = await query<ResultSetHeader>(
-        `UPDATE yield_settlements SET total_yield = ?, calculation_details = ?, tx_hash = ?
-         WHERE user_address = ? AND asset_type = ? AND settlement_time = ? AND tx_hash = ?`,
-        [totalYieldForDB, JSON.stringify(details), tx.hash, addr, assetType, toTime, YIELD_PENDING_TX]
-      );
-      const affected = typeof upd === 'object' && upd !== null && 'affectedRows' in upd ? (upd as ResultSetHeader).affectedRows : 0;
-      if (affected !== 1) {
-        logger.error(
-          `[CRITICAL] 链上已发日结但 yield_settlements 更新行数=${affected}，请人工对账: ${addr} ${assetType} toTime=${toTime} tx=${tx.hash}`
-        );
-      }
 
       await query(
         `INSERT INTO rewards (user_address, reward_type, token_type, amount, timestamp) VALUES (?, 'daily_yield', 'RWA', ?, NOW())`,

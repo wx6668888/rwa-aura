@@ -16,7 +16,8 @@ BACKUP_ROOT="${BACKUP_ROOT:-$PROJECT_DIR/.deploy-backups}"
 ENABLE_CF_PURGE="${ENABLE_CF_PURGE:-0}"
 CF_BASE_URL="${CF_BASE_URL:-https://rwa.lat}"
 # 含常用入口页：旧 HTML 会引用已删除的 Turbopack chunk，CDN 需刷新文档（静态 chunk 本身带 hash 可长期缓存）
-CF_PURGE_PATHS="${CF_PURGE_PATHS:-/knowledge,/node/network,/withdraw,/swap,/stake}"
+# 含首页与常用入口：避免 CDN 长期缓存旧 HTML（导航/壳层修复后务必能拿到新文档）
+CF_PURGE_PATHS="${CF_PURGE_PATHS:-/,/knowledge,/node/network,/withdraw,/swap,/stake,/dashboard}"
 CF_PURGE_EVERYTHING="${CF_PURGE_EVERYTHING:-0}"
 
 log() {

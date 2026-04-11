@@ -5,6 +5,7 @@ import { useAccount } from 'wagmi'
 import { useState } from 'react'
 import { useStakingContract } from '@/hooks/useStakingContract'
 import { TransactionOverlay } from '../transaction-overlay'
+import { useLocale } from '@/components/locale-provider'
 
 interface Props {
   onMobileBack: () => void
@@ -13,6 +14,8 @@ interface Props {
 }
 
 export function PanelStRWA({ onMobileBack, data, embedded = false }: Props) {
+  const { locale } = useLocale()
+  const isZh = locale.startsWith('zh')
   const { isConnected } = useAccount()
   const [amount, setAmount] = useState('')
   const { withdrawStRWA } = useStakingContract()
@@ -27,7 +30,7 @@ export function PanelStRWA({ onMobileBack, data, embedded = false }: Props) {
 
   const handleWithdraw = async () => {
     if (!amount || parseFloat(amount) <= 0) {
-      alert('请输入有效金额')
+      alert(isZh ? '请输入有效金额' : 'Please enter a valid amount')
       return
     }
 
@@ -48,13 +51,13 @@ export function PanelStRWA({ onMobileBack, data, embedded = false }: Props) {
     } catch (err: any) {
       console.error('提取失败:', err)
       
-      let errorMessage = '提取失败，请重试'
+      let errorMessage = isZh ? '提取失败，请重试' : 'Withdrawal failed, please try again'
       if (err.message?.includes('User rejected') || err.message?.includes('User denied')) {
-        errorMessage = '您已取消交易'
+        errorMessage = isZh ? '您已取消交易' : 'You cancelled the transaction'
       } else if (err.message?.includes('insufficient funds')) {
-        errorMessage = 'BNB 余额不足，无法支付 Gas 费用'
+        errorMessage = isZh ? 'BNB 余额不足，无法支付 Gas 费用' : 'Insufficient BNB for gas fee'
       } else if (err.message?.includes('execution reverted')) {
-        errorMessage = '合约执行失败，请检查提取金额'
+        errorMessage = isZh ? '合约执行失败，请检查提取金额' : 'Contract execution failed, please check withdrawal amount'
       }
       
       setError(errorMessage)
@@ -73,12 +76,12 @@ export function PanelStRWA({ onMobileBack, data, embedded = false }: Props) {
             className="lg:hidden flex items-center gap-2 text-white/50 hover:text-[#00f5d4] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm">返回</span>
+            <span className="text-sm">{isZh ? '返回' : 'Back'}</span>
           </button>
           <div className="min-w-0 ml-auto text-right">
-            <h2 className="text-[14px] font-semibold text-[#e2e8f0] tracking-tight truncate">stRWA 凭证</h2>
+            <h2 className="text-[14px] font-semibold text-[#e2e8f0] tracking-tight truncate">{isZh ? 'stRWA 凭证' : 'stRWA Voucher'}</h2>
             <p className="text-[11px] text-[#64748b] mt-0.5 truncate max-w-[220px]">
-              质押凭证 · 无手续费 1:1 兑换 RWA
+              {isZh ? '质押凭证 · 无手续费 1:1 兑换 RWA' : 'Stake voucher · 1:1 redeem to RWA with no fee'}
             </p>
           </div>
         </div>
@@ -91,7 +94,7 @@ export function PanelStRWA({ onMobileBack, data, embedded = false }: Props) {
             {/* 数量卡片：玻璃风格 */}
             <div className="bg-white/[0.03] backdrop-blur-xl rounded-2xl p-6 border border-white/[0.06]">
               <div className="flex justify-between items-center mb-3">
-                <label className="text-sm font-semibold text-white/70">兑换数量</label>
+                <label className="text-sm font-semibold text-white/70">{isZh ? '兑换数量' : 'Redeem Amount'}</label>
               </div>
               <div className="relative">
                 <input
@@ -113,10 +116,10 @@ export function PanelStRWA({ onMobileBack, data, embedded = false }: Props) {
               <div className="mt-4 flex items-start gap-2 text-xs text-[#94a3b8]">
                 <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <div>
-                  <div>无手续费，1:1 兑换为 RWA</div>
+                  <div>{isZh ? '无手续费，1:1 兑换为 RWA' : 'No fee, 1:1 redemption to RWA'}</div>
                   {amount && parseFloat(amount) > 0 && (
                     <div className="mt-1 text-[#22c55e] font-semibold">
-                      到账: {parseFloat(amount).toFixed(2)} RWA
+                      {isZh ? '到账' : 'Received'}: {parseFloat(amount).toFixed(2)} RWA
                     </div>
                   )}
                 </div>
@@ -130,7 +133,7 @@ export function PanelStRWA({ onMobileBack, data, embedded = false }: Props) {
               className="w-full h-14 rounded-2xl bg-gradient-to-r from-[#fbbf24] to-[#f59e0b] text-[#0a0a0f] text-base font-bold flex items-center justify-center gap-2 hover:shadow-[0_0_30px_rgba(251,191,36,0.4)] hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0"
             >
               <Coins className="w-5 h-5" />
-              {loading ? '处理中...' : '兑换 stRWA'}
+              {loading ? (isZh ? '处理中...' : 'Processing...') : (isZh ? '兑换 stRWA' : 'Redeem stRWA')}
             </button>
           </div>
         ) : (
@@ -138,7 +141,7 @@ export function PanelStRWA({ onMobileBack, data, embedded = false }: Props) {
             <div className="w-20 h-20 rounded-full bg-[rgba(255,255,255,0.03)] flex items-center justify-center mb-4">
               <Coins className="w-10 h-10 text-[rgba(238,242,255,0.26)]" />
             </div>
-            <div className="text-[rgba(238,242,255,0.52)] text-[14px]">暂无 stRWA 凭证</div>
+            <div className="text-[rgba(238,242,255,0.52)] text-[14px]">{isZh ? '暂无 stRWA 凭证' : 'No stRWA voucher available'}</div>
           </div>
         )}
       </div>
