@@ -219,8 +219,8 @@
       "nodeLevel": "L1",
       "isBot": false,
       "isAdmin": false,
-      "isOnline": false,
-      "lastSeen": 1776032573206,
+      "isOnline": true,
+      "lastSeen": 1776032940762,
       "createdAt": 1775382789154,
       "avatar": "/chat-bot-icons/28.svg"
     },
