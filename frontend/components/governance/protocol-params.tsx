@@ -31,9 +31,11 @@ export function ProtocolParams() {
           <VerifiedTag label={t('gov.onChainVerified')} />
         </div>
 
-        {/* Card 2: Sell Tax */}
+        {/* Card 2: Sell Tax（ headline 与兑换/市场页一致；细项以知识库「动态卖出税」为准） */}
         <div className="rounded-xl border border-[#ffffff0d] bg-[#0d0d14] p-5 backdrop-blur-xl transition-colors hover:border-[#ffffff1a]">
-          <p className="font-[family-name:var(--font-mono)] text-[28px] font-bold text-[#00f5d4]">20%</p>
+          <p className="font-[family-name:var(--font-mono)] text-[28px] font-bold leading-tight text-[#00f5d4]">
+            {t('gov.sellTaxHeadline')}
+          </p>
           <p className="mt-1 text-[11px] uppercase tracking-wider text-[#64748b]">{t('gov.sellTax')}</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             <span className="rounded-full bg-[#1a1a2e] px-2.5 py-1 text-[11px] text-[#64748b]">

@@ -146,6 +146,7 @@ export const knowledgeCategories: KnowledgeCategory[] = [
     drawerIcon: 'ArrowLeftRight',
     articles: [
       { id: 'how-to-buy-rwa-with-usdt', categoryId: 'swap', titleKey: 'knowledge.article.how-to-buy-rwa-with-usdt.title', contentKey: 'knowledge.article.how-to-buy-rwa-with-usdt.content' },
+      { id: 'tron-usdt-buy-rwa-and-stake', categoryId: 'swap', titleKey: 'knowledge.article.tron-usdt-buy-rwa-and-stake.title', contentKey: 'knowledge.article.tron-usdt-buy-rwa-and-stake.content' },
       { id: 'where-to-see-price', categoryId: 'swap', titleKey: 'knowledge.article.where-to-see-price.title', contentKey: 'knowledge.article.where-to-see-price.content' },
       { id: 'swap-limits-slippage', categoryId: 'swap', titleKey: 'knowledge.article.swap-limits-slippage.title', contentKey: 'knowledge.article.swap-limits-slippage.content' },
       { id: 'sell-rwa-for-usdt', categoryId: 'swap', titleKey: 'knowledge.article.sell-rwa-for-usdt.title', contentKey: 'knowledge.article.sell-rwa-for-usdt.content' },
@@ -195,6 +196,9 @@ export const knowledgeCategories: KnowledgeCategory[] = [
       { id: 'compare-other-platforms', categoryId: 'compare', titleKey: 'knowledge.article.compare-other-platforms.title', contentKey: 'knowledge.article.compare-other-platforms.content' },
       { id: 'referral-link-where', categoryId: 'compare', titleKey: 'knowledge.article.referral-link-where.title', contentKey: 'knowledge.article.referral-link-where.content' },
       { id: 'calculator-where', categoryId: 'compare', titleKey: 'knowledge.article.calculator-where.title', contentKey: 'knowledge.article.calculator-where.content' },
+      { id: 'analytics-page-guide', categoryId: 'compare', titleKey: 'knowledge.article.analytics-page-guide.title', contentKey: 'knowledge.article.analytics-page-guide.content' },
+      { id: 'market-page-guide', categoryId: 'compare', titleKey: 'knowledge.article.market-page-guide.title', contentKey: 'knowledge.article.market-page-guide.content' },
+      { id: 'governance-page-readonly', categoryId: 'compare', titleKey: 'knowledge.article.governance-page-readonly.title', contentKey: 'knowledge.article.governance-page-readonly.content' },
     ],
   },
   {

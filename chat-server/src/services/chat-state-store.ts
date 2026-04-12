@@ -1,3 +1,14 @@
+/** 全员可见的官方房间 id（与 ChatService.createDefaultRooms 一致） */
+export const OFFICIAL_CHAT_ROOM_IDS = [
+  'room-general',
+  'room-announcements',
+  'room-staking',
+  'room-trading',
+  'room-vip',
+] as const;
+
+export const OFFICIAL_CHAT_ROOM_ID_SET = new Set<string>(OFFICIAL_CHAT_ROOM_IDS);
+
 type ChatStateRow = {
   state_json: string;
   updated_at: Date | string;
@@ -82,8 +93,10 @@ export class ChatStateStore {
         owner_id VARCHAR(64) NOT NULL,
         is_public TINYINT(1) NOT NULL DEFAULT 1,
         min_token_gate DOUBLE NOT NULL DEFAULT 0,
+        invite_code VARCHAR(32) NULL,
         created_at BIGINT NOT NULL,
-        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_chat_rooms_invite_code (invite_code)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
     );
     await this.pool.query(
@@ -151,6 +164,16 @@ export class ChatStateStore {
     } catch (e: any) {
       // MySQL/MariaDB compatibility: ignore when column already exists.
       if (e?.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+    try {
+      await this.pool.query(`ALTER TABLE chat_rooms ADD COLUMN invite_code VARCHAR(32) NULL`);
+    } catch (e: any) {
+      if (e?.code !== 'ER_DUP_FIELDNAME') throw e;
+    }
+    try {
+      await this.pool.query(`CREATE UNIQUE INDEX uniq_chat_rooms_invite_code ON chat_rooms (invite_code)`);
+    } catch (e: any) {
+      if (e?.code !== 'ER_DUP_KEYNAME' && e?.errno !== 1061) throw e;
     }
   }
 
@@ -238,8 +261,8 @@ export class ChatStateStore {
       for (const r of rooms) {
         await this.pool.query(
           `INSERT INTO chat_rooms
-            (id, name, description, type, icon, owner_id, is_public, min_token_gate, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, name, description, type, icon, owner_id, is_public, min_token_gate, created_at, invite_code)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON DUPLICATE KEY UPDATE
              name = VALUES(name),
              description = VALUES(description),
@@ -249,6 +272,7 @@ export class ChatStateStore {
              is_public = VALUES(is_public),
              min_token_gate = VALUES(min_token_gate),
              created_at = VALUES(created_at),
+             invite_code = VALUES(invite_code),
              updated_at = CURRENT_TIMESTAMP`,
           [
             String(r?.id || ''),
@@ -260,6 +284,7 @@ export class ChatStateStore {
             r?.isPublic ? 1 : 0,
             Number(r?.minTokenGate || 0),
             Number(r?.createdAt || 0),
+            r?.inviteCode ? String(r.inviteCode) : null,
           ]
         );
       }
@@ -402,12 +427,16 @@ export class ChatStateStore {
   }
 
   async getRoomsForUser(userId?: string): Promise<any[]> {
+    const officialPlaceholders = OFFICIAL_CHAT_ROOM_IDS.map(() => '?').join(',');
+    const officialParams = [...OFFICIAL_CHAT_ROOM_IDS];
+
     if (!userId) {
       const [rows] = await this.pool.query(
-        `SELECT id, name, description, type, icon, owner_id AS ownerId, is_public AS isPublic, min_token_gate AS minTokenGate, created_at AS createdAt
+        `SELECT id, name, description, type, icon, owner_id AS ownerId, is_public AS isPublic, min_token_gate AS minTokenGate, created_at AS createdAt, invite_code AS inviteCode
          FROM chat_rooms
-         WHERE is_public = 1
-         ORDER BY (id = 'room-general') DESC, created_at ASC, id ASC`
+         WHERE id IN (${officialPlaceholders})
+         ORDER BY (id = 'room-general') DESC, created_at ASC, id ASC`,
+        officialParams
       );
       const rooms = rows as any[];
       for (const r of rooms) r.memberIds = await this.getRoomMemberIds(String(r.id));
@@ -415,12 +444,12 @@ export class ChatStateStore {
     }
 
     const [rows] = await this.pool.query(
-      `SELECT DISTINCT r.id, r.name, r.description, r.type, r.icon, r.owner_id AS ownerId, r.is_public AS isPublic, r.min_token_gate AS minTokenGate, r.created_at AS createdAt
+      `SELECT DISTINCT r.id, r.name, r.description, r.type, r.icon, r.owner_id AS ownerId, r.is_public AS isPublic, r.min_token_gate AS minTokenGate, r.created_at AS createdAt, r.invite_code AS inviteCode
        FROM chat_rooms r
-       LEFT JOIN chat_room_members m ON m.room_id = r.id
-       WHERE r.is_public = 1 OR (r.type = 'dm' AND m.user_id = ?)
+       LEFT JOIN chat_room_members m ON m.room_id = r.id AND m.user_id = ?
+       WHERE r.id IN (${officialPlaceholders}) OR m.user_id IS NOT NULL
        ORDER BY (r.id = 'room-general') DESC, r.created_at ASC, r.id ASC`,
-      [userId]
+      [userId, ...officialParams]
     );
     const rooms = rows as any[];
     for (const r of rooms) r.memberIds = await this.getRoomMemberIds(String(r.id));
@@ -442,7 +471,7 @@ export class ChatStateStore {
 
   async getRoomById(roomId: string): Promise<any | null> {
     const [rows] = await this.pool.query(
-      `SELECT id, name, description, type, icon, owner_id AS ownerId, is_public AS isPublic, min_token_gate AS minTokenGate, created_at AS createdAt
+      `SELECT id, name, description, type, icon, owner_id AS ownerId, is_public AS isPublic, min_token_gate AS minTokenGate, created_at AS createdAt, invite_code AS inviteCode
        FROM chat_rooms WHERE id = ? LIMIT 1`,
       [roomId]
     );
@@ -524,16 +553,18 @@ export class ChatStateStore {
     const q = String(query || '').trim().toLowerCase();
     if (q.length < 2) return [];
     const lim = Math.min(200, Math.max(1, Math.floor(limit || 40)));
+    const officialPlaceholders = OFFICIAL_CHAT_ROOM_IDS.map(() => '?').join(',');
+    const officialParams = [...OFFICIAL_CHAT_ROOM_IDS];
     const [rows] = await this.pool.query(
       `SELECT m.id, m.room_id AS roomId, m.user_id AS userId, m.content, m.type, m.reply_to AS replyTo, m.ts AS timestamp, m.edited, m.metadata_json AS metadataJson
        FROM chat_messages m
        INNER JOIN chat_rooms r ON r.id = m.room_id
-       LEFT JOIN chat_room_members mem ON mem.room_id = r.id
-       WHERE (r.is_public = 1 OR (r.type = 'dm' AND mem.user_id = ?))
+       LEFT JOIN chat_room_members mem ON mem.room_id = r.id AND mem.user_id = ?
+       WHERE (r.id IN (${officialPlaceholders}) OR mem.user_id IS NOT NULL)
          AND LOWER(m.content) LIKE CONCAT('%', ?, '%')
        ORDER BY m.ts DESC
        LIMIT ?`,
-      [userId, q, lim]
+      [userId, ...officialParams, q, lim]
     );
     return (rows as any[]).map((r) => ({
       ...r,

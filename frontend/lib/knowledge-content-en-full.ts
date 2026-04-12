@@ -272,7 +272,7 @@ After that, on **each of your stakes** your referrer and their uplines get USDT 
   },
   'lottery-rules': {
     title: 'What are the lottery rules?',
-    content: `Users buy **lottery tickets** with **RWA**. Draws use on-chain randomness (e.g. **Chainlink VRF**); results are public.
+    content: `Users buy **lottery tickets** with **RWA**. Verifiable randomness and proofs are described in the **Lucky Draw → fairness / on-chain verification** section and the deployed contracts on the current network (implementations often use a VRF-style source; follow what the page shows).
 
 **Funds**: When a pool is drawn, **5%** of the pool goes to the **treasury**; the remaining **95%** is split by prize tier (e.g. 1st 48%, 2nd 24%, 3rd 14%, 4th 9%). If a tier has no winner, that share **rolls to the next draw** of the same pool.
 
@@ -312,7 +312,64 @@ All times in **UTC**. Page countdown may use chain or device time. E.g. Beijing 
     title: 'How do I buy RWA with USDT?',
     content: `On the **Swap** page choose **USDT → RWA**, enter USDT amount; the UI shows estimated RWA (including slippage/fees). **First time** you must **Approve** USDT for the contract, then click "Swap" and confirm; pay Gas and RWA is sent to your wallet.
 
-**Example**: RWA ≈ $0.85; you enter 850 USDT → ~1,000 RWA (maybe slightly less with slippage); after approve + swap you have ~1,000 RWA and 850 USDT less.`,
+**Example**: RWA ≈ $0.85; you enter 850 USDT → ~1,000 RWA (maybe slightly less with slippage); after approve + swap you have ~1,000 RWA and 850 USDT less.
+
+**If you only have USDT on Tron (TRC20)**: on the same **Swap** page open the **"TRON Top-up"** tab, send TRC20-USDT to the assigned Tron deposit address; after confirmation, RWA is credited to your connected **BSC wallet**. See the article **"How do I buy RWA with TRON USDT and stake?"** for the full flow.`,
+  },
+  'tron-usdt-buy-rwa-and-stake': {
+    title: 'How do I buy RWA with TRON USDT and stake?',
+    content: `This flow lets you use **TRC20-USDT on Tron** to obtain **RWA on BSC** without bridging exchange USDT to BSC first. **Staking is a separate on-chain step**: after RWA arrives in your wallet, you start a normal **RWA stake** on the **Stake** page.
+
+---
+
+## Where to start
+
+Open **Swap** in the nav and select the **"TRON Top-up"** tab (next to protocol swap and DEX swap).
+
+---
+
+## Before you begin
+
+1. **Connect a BSC wallet** (MetaMask, OKX / Binance Web3, etc.) on **BNB Smart Chain**. The UI shows that **RWA will be sent to this EVM address (0x…)** on BSC—not to a Tron address.  
+2. **On Tron**: hold **TRC20-USDT** and a little **TRX** for fees (per your Tron wallet).  
+3. **For staking after**: keep some **BNB** on BSC for **Approve + Stake** gas when you move to the Stake page.
+
+---
+
+## Top-up flow (TRON)
+
+1. Enter the **expected USDT amount** (the page shows **estimated RWA** using **~1 RWA = 0.85 USDT**; **actual payout follows settlement rules** shown on the page / backend).  
+2. Tap **"Top up (get address)"** to create an order and receive a **temporary Tron TRC20-USDT deposit address (T…)**.  
+3. Within the **countdown** (often about **60 minutes**, **follow the on-screen timer**), send **TRC20-USDT** from your Tron wallet to that address. If the window expires, the address may be **recycled**—**do not** send to an old address; **create a new order**.  
+4. Optionally tap **"I have paid"** / **"Refresh status"** to nudge tracking; the backend also polls the chain.  
+5. After the deposit is confirmed, **RWA is transferred to your connected BSC wallet** (on-chain transfer from the protocol’s issuance wallet). Check your wallet or BSCScan when the UI shows success.
+
+**Safety tips**
+
+- Avoid **duplicate** or **random-amount** test transfers unless the product explicitly supports them.  
+- Only send **TRC20-USDT** to the **T…** address shown for **this** order; wrong chain/token or sending after expiry can mean loss or delays.  
+- Keep the **Tron tx hash** and order id if you need support.
+
+---
+
+## How to stake after RWA arrives
+
+**RWA is not auto-staked.** Go to **Stake**:
+
+1. Choose **RWA staking**, amount, and lock (Flexible / 30 / 90 / 180 / 365 days—per UI).  
+2. **First time** you’ll usually **Approve RWA**, then **Stake**; confirm in the wallet.  
+3. Enter a **referrer address** only when your product rules say so (often first stake); wrong referrer on-chain is usually **irreversible**—see referrer articles.
+
+---
+
+## Quick comparison
+
+| Path | Network | What you do |
+|------|---------|-------------|
+| **Protocol swap** | **BSC USDT (BEP20)** | Approve + swap in wallet on BSC |
+| **TRON top-up** | **Tron TRC20-USDT** → **BSC RWA** | Send USDT on Tron; receive RWA on BSC |
+
+Either path ends with **RWA on BSC**; **staking always happens on BSC** through the Stake page.`,
   },
   'where-to-see-price': {
     title: 'Where can I see RWA price?',
@@ -415,6 +472,39 @@ When reporting an issue, include **wallet address** (e.g. 0x1234…5678), **what
     title: 'Where is the yield calculator? How do I use it?',
     content: `In the nav, open **"Yield calculator"** or **"Calculator"** (often under "Analytics"). **Use**: Enter **stake amount**, **lock** (Flexible/30/90/180/365 days), **node level** (if you want referral estimate); the page shows estimated **daily/monthly/yearly** RWA yield and possible USDT rewards. **For reference only**; not an on-chain promise. Actual yield is from chain and contract. Use it to compare different amounts and lock periods.`,
   },
+  'analytics-page-guide': {
+    title: 'How do I read the Analytics page?',
+    content: `Open **More → Analytics** (same grouping as desktop). Numbers are refreshed about **every minute** from the site’s stats API (aggregating chain + DB).
+
+**Typical widgets**  
+- **TVL / total locked**: rough value of protocol stakes (USDT, RWA, etc.).  
+- **Daily stake / withdraw**: daily network inflow vs outflow.  
+- **Daily rewards**: static RWA yield plus referral-side USDT estimates.  
+- **Referral growth / node buckets**: trend of participants and counts per node tier.  
+- **Health / fund-flow**: read-only charts for pool usage and flows.
+
+Treat the page as **indicative**; **chain and your wallet** are the source of truth. Small delays vs Dashboard are normal.`,
+  },
+  'market-page-guide': {
+    title: 'What are the K-line and depth charts on the Market page?',
+    content: `Use **Trade → Market**. The header shows **RWA/USDT** (or similar) summary; the middle switches **Candlestick / Line / Depth / Volume**.
+
+- **Candles**: OHLC per selected interval (15m–1w).  
+- **Depth**: bid/ask liquidity shape.  
+- **Volume**: activity vs price.
+
+If the UI labels data as **PancakeSwap V3** (or shows **Mock**), prices come from public DEX feeds or demo data. **Execute swaps** on the **Swap** page so the correct router and tax UI apply.`,
+  },
+  'governance-page-readonly': {
+    title: 'What is the Governance page for?',
+    content: `Open **More → Governance**. It is a **read-only transparency** screen: headline parameters (e.g. daily static yield band, **sell-tax headline range**, min stake, cooldown), treasury/community illustrations, timelock queue hints, and activity feeds.
+
+- **Sell-tax card**: shows a **typical dynamic range**; use the **Swap → sell-tax calculator** and on-chain results for each transaction (see KB “RWA dynamic sell tax”).  
+- **You cannot change contract parameters from this page** as a normal user.  
+- **Verify addresses** on the **Security** page and BSCScan.
+
+Anything rendered here is **presentation**; **on-chain state wins**.`,
+  },
   'principal-withdraw-guide': {
     title: 'How do I withdraw principal? Flexible vs locked?',
     content: `The Withdraw page separates **yield withdrawal** and **principal withdrawal**. Principal is handled in the **"Principal withdrawal"** section, not in the RWA yield card.
@@ -508,12 +598,23 @@ Claiming one does not trigger the other. If you have both, you need to **do each
 - **How to restore**: When team/personal stake again meets the requirements for the higher level, the level is restored. The system updates with chain data; no separate application is needed. Check the Nodes & Referrals page for current level and next-level requirements.`,
   },
   'direct-vs-indirect-referral': {
-    title: 'What’s the difference between direct and indirect referrals? How is reward split?',
-    content: `**Direct referral**: Someone you invite who **directly** enters your address as referrer when they stake; you get USDT reward from **that stake amount** at your node tier rate (e.g. L3 = 8%).
+    title: 'Is there only a direct-referral reward? Any multi-level referral?',
+    content: `## Summary
 
-**Indirect (multi-level)**: Your direct referral A invites B; B stakes with A’s address as referrer, so B is your **indirect** (second-level) referral. With multiple levels, **compression** applies: from the direct referrer upward, each tier gets only “my tier % minus what’s already taken by tiers below”; the total to all uppers is at most **50%** of that stake.
+- **Referrer binding and “referral reward” payouts: one level (direct) only** — only someone who puts **your address as referrer on their first qualifying stake** can generate the USDT-style referral reward for you in that sense. When your direct invitee’s downline stakes, **you do not** earn a second “generation” commission on the same mechanic as a separate MLM layer.
+- **Node tiers and team stats: the protocol looks at multi-generation team stake** — used for **team totals, retention, upgrade conditions**, etc. That is **team volume**, not the same thing as “every generation pays you the same referral cut”.
+- **Level-difference rewards** (if enabled by your tier): apply to **eligible direct-line stake events** per published rules — not “every downline at infinite depth pays you”.
 
-**Example**: C’s referrer is you (L3, 8%), your referrer is Alice (L5, 17%). When C stakes 10,000 USDT, you get 8% = 800 USDT, Alice gets the tier difference 17%−8% = 9% = 900 USDT, total 1,700 USDT. Rewards are triggered **once per stake** on that stake amount, not on referees’ daily yield.`,
+## What is “direct”?
+
+User A refers B: when B’s **first** successful stake records **A’s wallet** as referrer on-chain, A is B’s **single, permanent** referrer. Later stakes from B may continue to use that relationship per rules (see Nodes page).
+
+## B refers C — does A still earn?
+
+- **Binding**: C’s referrer is **B** if C enters B’s address. **A** does not automatically earn B’s “direct referral” commission on C’s stake as if A were C’s referrer.
+- **Still**: B’s and C’s stakes count in **team metrics** that can help **A’s node level** and related benefits — that is **team structure**, not “multi-level same payout on one stake”.
+
+The protocol keeps **direct referral payouts** easy to audit on-chain; multi-generation data is used for **tiers and risk**, alongside direct rewards.`,
   },
   'same-wallet-multiple-referrers': {
     title: 'Can one wallet be referred by more than one person?',
@@ -718,6 +819,8 @@ If it still fails, contact support with **wallet type, browser, and a screenshot
     title: 'RWA dynamic sell tax',
     content: `When you **sell RWA on a DEX** (e.g. PancakeSwap), a **dynamic sell tax** applies. Buys and normal transfers are not taxed; whitelisted addresses are exempt.
 
+**How this relates to other screens**: The **Governance** page shows a **headline range** for the sell tax; the **Swap** page’s **dynamic sell-tax calculator** and your **wallet confirmation / on-chain receipt** are authoritative for the exact rate of each sell. The sections below explain the contract-style rules (base tiers + sell-ratio add-on); if they differ momentarily from the calculator, trust the calculator + chain.
+
 ---
 
 **1. When is tax applied?**
@@ -814,6 +917,84 @@ The protocol uses your **weighted average USDT staking time** in the StakingCont
 - 30% is not above 30%, so no penalty; only base **4%** → he receives 3,000 × 96% = 2,880 RWA.  
 - If he sells **6,000 RWA**: sell ratio = 60%, extra = 60 − 30 = 30%, rate = 4% + 30% = **34%**, he receives 6,000 × 66% = 3,960 RWA.`,
   },
+  'yield-calculation': {
+    title: 'How is yield calculated? Why does my daily amount change?',
+    content: `## Base rate
+
+**0.8% per day** on your effective stake (before lock multiplier). Lock multipliers follow the **Stake** page (Flexible = 1×, 30d ≈ 1.3×, 90d ≈ 1.6×, 180d = 2×, 365d ≈ 2.5× — **use the UI**).
+
+**APY (illustrative)**: 0.8% × 365 ≈ 292% before multipliers; with lock bonuses the UI shows higher effective daily %.
+
+## Settlement time
+
+Rewards are settled on a **daily cycle at UTC 00:00** (same moment as other help docs). The wallet/UI may refresh within about **two hours** after settlement.
+
+## USDT stake → RWA-denominated math
+
+For USDT stakes, the protocol typically uses an **RWA-equivalent notion** (commonly **1 USDT ≈ 0.85 RWA** for yield math — **follow the live UI**). Example: 1,000 USDT flexible → ≈ 1,176 RWA-equivalent × 0.8% ≈ **9.41 RWA/day** if RWA = $1.
+
+## Why daily RWA changes
+
+- Partial stakes/withdraws during the day change the time-weighted balance.  
+- Lock expiry moves you from a higher multiplier back to flexible.  
+- RWA price moves the same USDT-equivalent into a different RWA count.
+
+## Claims vs “24h”
+
+If a FAQ mentions “full 24h”, it refers to the **settlement window** between two UTC 0:00 ticks — not that rewards are wrong if you staked mid-day.
+
+**Source of truth**: numbers on **Withdraw** (pending RWA) and on-chain events; the site is a dashboard.`,
+  },
+  'referral-quality-score': {
+    title: 'What is “referral quality”? Why should I care?',
+    content: `On **Nodes & Referrals** you may see a **referral quality** card. It is not gamification — it helps you see whether your **direct invites** actually stake and stay.
+
+## Score (0–100)
+
+Higher usually means: more **effective** directs, higher **average stake**, better **retention** (fewer “deposit and instantly leave” patterns).
+
+## S / A / B / C / D bands
+
+A coarse bucket per direct downline (stake + time heuristics):
+
+- **S / A / B**: healthier contributors.  
+- **C**: early / still growing.  
+- **D**: below effective thresholds or weak retention.
+
+## Effective-direct rate
+
+≈ (S+A+B count) / (all directs) × 100%. Ten “D” profiles are usually weaker than three solid “B” profiles.
+
+## Retention % (estimate)
+
+Shows whether the team tends to withdraw principal immediately after staking — a **signal**, not audited accounting.
+
+## “Penalty reasons”
+
+Examples: **too concentrated** in one whale wallet, or **too many D**. Treat them as a checklist to coach invites: **≥ ~100 USDT equivalent first stake**, keep them active a few days, diversify midsize members.
+
+Data comes from backend analytics used by the **/api/quality/:address** style endpoints; refresh the page if numbers look stale.`,
+  },
+  'project-dividend-mechanism': {
+    title: 'What is the project dividend? How do I participate?',
+    content: `> **Note**: If the site ships a **Team dividend** page, **claimable amounts, schedules, and transactions on that page + contracts override** this conceptual article.
+
+**Project dividend** is an additional distribution channel funded from treasury-side investment returns (besides daily staking yield and referral rewards). Exact percentages and cadence follow **governance + product announcements**.
+
+## Typical idea (illustrative)
+
+When you stake USDT, the **50/50** split sends half to the community reward side and half toward treasury operations. When treasury investments return cash flow, part can be routed to a **user dividend pool** while part is reinvested or kept as buffers — **see the dividend UI** for the live split.
+
+## Eligibility (conceptual)
+
+Usually tied to **your share of the tracked “treasury-side stake footprint”** and/or node tier rules. Again: **the dividend page is authoritative**.
+
+## How to claim
+
+Use the protocol’s **Dividend / 分红** surface (if enabled): connect wallet, pick the correct **chain**, and follow **Claim** buttons. You still pay **BNB gas**.
+
+If no dividend page is available in your build, ignore this section until the feature is live.`,
+  },
   'beginner-full-tutorial': {
     title: 'RWA Protocol · Complete Beginner Investment Guide',
     content: `Step-by-step for users with no experience: from downloading an exchange app to completing your first stake and cashing out.
@@ -823,7 +1004,7 @@ The protocol uses your **weighted average USDT staking time** in the StakingCont
 
 1. What you need
 2. Step 1: Download and register on an exchange
-3. Step 2: KYC verification
+3. Step 2: Exchange verification (if required)
 4. Step 3: Buy USDT
 5. Step 4: Use a wallet (exchange in-app recommended)
 6. Step 5: Withdraw USDT from exchange to wallet
@@ -836,7 +1017,7 @@ The protocol uses your **weighted average USDT staking time** in the StakingCont
 ## 1. What you need
 
 - **Phone**: Smartphone with internet (Android or iOS).
-- **ID**: For exchange and wallet verification.
+- **Government ID**: Only if **your exchange** requires identity checks; **RWA Protocol itself does not run KYC** — you only connect a self-custody Web3 wallet.
 - **Bank card**: To buy USDT with fiat (or other payment methods supported by the exchange).
 - **Network**: Prefer stable Wi‑Fi or 4G/5G; avoid public Wi‑Fi for large operations.
 
@@ -866,15 +1047,13 @@ This guide uses **OKX** and **Binance**; either is fine (flow is similar).
 6. After signup, enable **2FA** (e.g. Google Authenticator or SMS) under Security.
 
 ---
-## 3. Step 2: KYC verification
+## 3. Step 2: Exchange verification (if required)
 
-You usually need to complete identity verification before buying or withdrawing.
+Centralised exchanges may ask you to verify identity **before fiat purchase or large withdrawals**. That process lives **inside OKX/Binance/etc.** — not on the RWA Protocol website. If you already have USDT on-chain from another source, you can skip exchange KYC and only manage your Web3 wallet.
 
-1. In the app, open “**Identity verification**” or “**KYC**” (often under Profile).
-2. Choose document type (e.g. **ID card**).
-3. Take photos of **ID front and back** and complete **face verification**.
-4. Enter your real name and ID number (must match the document).
-5. Submit and wait for review (often minutes to a few hours). Once approved, you can buy and withdraw.
+1. Open the exchange app’s **Profile / Security / Verification** area when prompted.  
+2. Follow the exchange’s instructions (documents, selfie, etc.).  
+3. Wait for approval if required, then continue with **Buy USDT** below.
 
 ---
 ## 4. Step 3: Buy USDT
@@ -1131,7 +1310,7 @@ Once you have USDT in your wallet (from protocol withdraw or RWA swap):
 | Step | Task | Done |
 |------|------|------|
 | 1 | Download exchange app (OKX/Binance) and register | ☐ |
-| 2 | Complete KYC | ☐ |
+| 2 | Complete exchange verification (if the exchange asks) | ☐ |
 | 3 | Buy USDT with fiat on the exchange | ☐ |
 | 4 | Use OKX/Binance Web3 wallet (or install MetaMask); back up seed | ☐ |
 | 5 | Ensure BSC network and copy BSC receive address | ☐ |

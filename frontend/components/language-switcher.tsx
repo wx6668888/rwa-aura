@@ -57,19 +57,22 @@ export function LanguageSwitcher() {
   }
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative shrink-0" ref={ref}>
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 rounded-full px-3 py-2 text-sm text-[#64748b] transition-colors hover:bg-[#13131e] hover:text-[#f1f5f9] whitespace-nowrap shrink-0"
+        className="flex items-center gap-1.5 rounded-full px-2 py-2 text-sm text-[#64748b] transition-colors hover:bg-[#13131e] hover:text-[#f1f5f9] whitespace-nowrap sm:gap-2 sm:px-3"
         aria-label="Switch language"
       >
         <Globe className="h-4 w-4 shrink-0" />
+        <span className="max-w-[2.75rem] truncate font-mono text-[11px] font-semibold uppercase text-[#94a3b8] sm:hidden">
+          {locale}
+        </span>
         <span className="hidden sm:inline">{languageNames[locale] || current.label}</span>
       </button>
 
       {open && (
-        <div className="absolute start-0 top-full z-[100] mt-2 min-w-[180px] overflow-hidden rounded-xl border border-[#64748b]/30 bg-[#334155]/60 backdrop-blur-3xl shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+        <div className="absolute start-0 top-full z-[220] mt-2 min-w-[180px] overflow-hidden rounded-xl border border-[#64748b]/30 bg-[#334155]/60 backdrop-blur-3xl shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
           {localeOptions.map((option) => (
             <button
               key={option.value}

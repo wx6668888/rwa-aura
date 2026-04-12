@@ -54,13 +54,13 @@ export function EmojiPickerModal({ open, onClose, onPick }: Props) {
             {t('chat.emojiPickerClose')}
           </button>
         </div>
-        <div className="flex gap-1 px-2 pt-2 overflow-x-auto scrollbar-thin">
+        <div className="flex gap-1.5 px-2 pt-2 overflow-x-auto scrollbar-thin [scrollbar-gutter:stable]">
           {EMOJI_CATEGORIES.map((c) => (
             <button
               key={c.id}
               type="button"
               onClick={() => setTab(c.id)}
-              className={`shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-mono transition-colors ${
+              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium leading-none transition-colors ${
                 tab === c.id
                   ? 'border border-white/20 bg-[#0d9488] text-white'
                   : 'text-text-disabled hover:bg-surface-2'

@@ -11,6 +11,11 @@ import { getBaseDisplayedMemberCount } from '@/lib/chat-member-display';
 import { chatHttpUrl } from '@/lib/chat-api';
 import { chatAuthHeadersReady } from '@/lib/chat-auth-storage';
 import { ChatMembersModal } from './ChatMembersModal';
+import { LazyDotLottieAnimation, encodePublicLottieSrc } from '@/components/lazy-dot-lottie';
+
+const GENERAL_ROOM_FIRST_VISIT_LS_KEY = 'rwa_chat_room_general_welcome_v1';
+const GENERAL_ROOM_WELCOME_LOTTIE_SRC = encodePublicLottieSrc('/欢迎.lottie');
+const GENERAL_ROOM_CONFETTI_LOTTIE_SRC = encodePublicLottieSrc('/礼花.lottie');
 
 /** Group consecutive messages from same user within 5 minutes */
 function groupMessages(messages: ChatMessage[]): { type: 'messages' | 'date'; data: any }[] {
@@ -74,6 +79,7 @@ export default function ChatRoom() {
   const { toasts, addToast, removeToast } = useToast();
   const [memberModalOpen, setMemberModalOpen] = React.useState(false);
   const [mentionText, setMentionText] = React.useState('');
+  const [showGeneralFirstVisitWelcome, setShowGeneralFirstVisitWelcome] = React.useState(false);
   const baseMemberDisplay = useMemo(
     () => getBaseDisplayedMemberCount(activeRoom),
     [activeRoom?.id, activeRoom?.memberIds?.length]
@@ -84,6 +90,43 @@ export default function ChatRoom() {
   React.useEffect(() => {
     setMemberDisplayBump(0);
   }, [activeRoomId]);
+
+  /** 首次进入总群：展示机器人欢迎（localStorage 持久化；rAF 延后写入以兼容 React Strict Mode 双挂载） */
+  React.useEffect(() => {
+    if (!isAuthenticated || activeRoom?.id !== 'room-general') {
+      setShowGeneralFirstVisitWelcome(false);
+      return;
+    }
+    let cancelled = false;
+    let raf1 = 0;
+    let raf2 = 0;
+    try {
+      if (typeof window !== 'undefined' && window.localStorage.getItem(GENERAL_ROOM_FIRST_VISIT_LS_KEY)) {
+        setShowGeneralFirstVisitWelcome(false);
+        return;
+      }
+    } catch {
+      setShowGeneralFirstVisitWelcome(false);
+      return;
+    }
+    setShowGeneralFirstVisitWelcome(true);
+    raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(() => {
+        if (!cancelled) {
+          try {
+            window.localStorage.setItem(GENERAL_ROOM_FIRST_VISIT_LS_KEY, '1');
+          } catch {
+            /* ignore */
+          }
+        }
+      });
+    });
+    return () => {
+      cancelled = true;
+      if (raf1) window.cancelAnimationFrame(raf1);
+      if (raf2) window.cancelAnimationFrame(raf2);
+    };
+  }, [isAuthenticated, activeRoom?.id]);
 
   React.useEffect(() => {
     if (!activeRoomId || !isAuthenticated) return;
@@ -101,6 +144,12 @@ export default function ChatRoom() {
     if (!a.startsWith('0x') || a.length < 12) return a || '—';
     return `${a.slice(0, 6)}…${a.slice(-4)}`;
   }, []);
+
+  const generalWelcomeDisplayName = useMemo(() => {
+    if (!currentUser?.address) return '—';
+    const nick = (currentUser.nickname || '').trim();
+    return nick || shortAddr(currentUser.address);
+  }, [currentUser?.address, currentUser?.nickname, shortAddr]);
 
   React.useEffect(() => {
     setActiveDmPeer(null);
@@ -256,44 +305,55 @@ export default function ChatRoom() {
     );
   }
 
+  const isRoomGeneral = activeRoom.id === 'room-general';
+
+  const memberCountButton = (
+    <button
+      type="button"
+      onClick={() => setMemberModalOpen(true)}
+      className="flex shrink-0 items-center gap-1.5 rounded-md px-1 py-0.5 font-mono text-[10px] text-text-disabled transition-colors hover:bg-surface-2/80 hover:text-text-secondary"
+      aria-label={t('chat.memberListOpenAria')}
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+      {displayedMemberCount.toLocaleString(locale === 'zh' ? 'zh-CN' : locale === 'ko' ? 'ko-KR' : 'en-US')}
+    </button>
+  );
+
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-void-black">
       {/* Channel header */}
-      <div className="h-12 px-4 flex items-center justify-between border-b border-border-subtle bg-surface-1/50 backdrop-blur-sm flex-shrink-0">
-        <div className="flex items-center gap-2.5">
-          <span className="text-text-disabled font-mono text-lg">#</span>
-          <div>
-            <h3 className="text-[13px] font-heading font-semibold text-text-primary leading-none">
-              {getRoomDisplayName(activeRoom)}
-            </h3>
-            <p className="text-[10px] text-text-disabled mt-0.5 leading-none truncate max-w-[200px]">
-              {getRoomDisplayDescription(activeRoom)}
-            </p>
+      <div className="flex h-12 flex-shrink-0 items-center justify-between border-b border-border-subtle bg-surface-1/50 px-4 backdrop-blur-sm">
+        {isRoomGeneral ? (
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <span className="shrink-0 font-mono text-lg text-text-disabled">#</span>
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-text-secondary">
+                {currentUser?.address ? shortAddr(currentUser.address) : '—'}
+              </span>
+              {memberCountButton}
+            </div>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setMemberModalOpen(true)}
-            className="flex items-center gap-1.5 text-[10px] text-text-disabled font-mono hover:text-text-secondary transition-colors rounded-md px-1 -mr-1 py-0.5 hover:bg-surface-2/80"
-            aria-label={t('chat.memberListOpenAria')}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-            {displayedMemberCount.toLocaleString(
-              locale === 'zh' ? 'zh-CN' : locale === 'ko' ? 'ko-KR' : 'en-US'
-            )}
-          </button>
-
-          <button type="button" className="w-7 h-7 rounded-md hover:bg-surface-2 flex items-center justify-center text-text-disabled hover:text-text-secondary transition-colors" aria-hidden>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
-            </svg>
-          </button>
-        </div>
+        ) : (
+          <>
+            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+              <span className="shrink-0 font-mono text-lg text-text-disabled">#</span>
+              <div className="min-w-0">
+                <h3 className="font-heading text-[13px] font-semibold leading-none text-text-primary">
+                  {getRoomDisplayName(activeRoom)}
+                </h3>
+                <p className="mt-0.5 max-w-[200px] truncate text-[10px] leading-none text-text-disabled">
+                  {getRoomDisplayDescription(activeRoom)}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">{memberCountButton}</div>
+          </>
+        )}
       </div>
 
       {/* Messages area */}
@@ -308,21 +368,89 @@ export default function ChatRoom() {
             <div className="w-4 h-4 border-2 border-plasma-cyan/30 border-t-plasma-cyan rounded-full animate-spin" />
           </div>
         )}
+        {isRoomGeneral && showGeneralFirstVisitWelcome ? (
+          <div className="px-4 pb-2 pt-3">
+            <div className="relative overflow-hidden rounded-[1.35rem] border border-white/[0.08] bg-gradient-to-br from-[#171722]/98 via-[#12121a]/98 to-[#0f0f16]/98 shadow-[0_8px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.04)]">
+              <div className="flex min-w-0 max-w-full justify-center px-4 pb-1 pt-4">
+                <div className="relative h-[min(11rem,55vw)] w-[min(11rem,55vw)] max-h-[280px] max-w-[min(100%,280px)] shrink-0">
+                  <div className="relative z-0 h-full w-full">
+                    <LazyDotLottieAnimation
+                      src={GENERAL_ROOM_WELCOME_LOTTIE_SRC}
+                      className="h-full w-full object-contain"
+                      autoplay
+                      loop
+                      speed={1}
+                      rootMargin="120px"
+                      posterSrc=""
+                    />
+                  </div>
+                  <div
+                    className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
+                    aria-hidden
+                  >
+                    <LazyDotLottieAnimation
+                      src={GENERAL_ROOM_CONFETTI_LOTTIE_SRC}
+                      className="h-full w-full object-contain opacity-[0.92]"
+                      autoplay
+                      loop
+                      speed={1}
+                      rootMargin="120px"
+                      posterSrc=""
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="relative z-0 px-4 py-3.5">
+                <div className="flex gap-2.5">
+                  <div
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[15px]"
+                    style={{
+                      background: 'linear-gradient(135deg, #00f5d420, #8b5cf620)',
+                      border: '1px solid #00f5d430',
+                    }}
+                    aria-hidden
+                  >
+                    🤖
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-mono text-[10px] uppercase tracking-wide text-text-disabled">
+                      {t('chat.firstVisitBotLabel')}
+                    </div>
+                    <p className="mt-1 text-[13px] leading-[1.75] tracking-[0.012em] text-[#e8edf5]">
+                      {t('chat.firstVisitBotWelcome', { name: generalWelcomeDisplayName })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
         {/* Welcome banner */}
         {messages.length === 0 && (
           <div className="px-4 pt-8 pb-4">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3 text-2xl"
-              style={{ background: 'linear-gradient(135deg, #00f5d415, #8b5cf615)', border: '1px solid #00f5d420' }}>
+            <div
+              className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl text-2xl"
+              style={{
+                background: 'linear-gradient(135deg, #00f5d415, #8b5cf615)',
+                border: '1px solid #00f5d420',
+              }}
+            >
               #
             </div>
-            <h2 className="text-xl font-heading font-bold text-text-primary mb-1">
-              {t('chat.welcomeTo', {
-                channel: getRoomDisplayName(activeRoom),
-              })}
-            </h2>
-            <p className="text-[12px] text-text-secondary">
-              {t('chat.startOfConversation', { description: getRoomDisplayDescription(activeRoom) || '—' })}
-            </p>
+            {isRoomGeneral ? (
+              <h2 className="mb-1 font-heading text-xl font-bold text-text-primary">{t('chat.community')}</h2>
+            ) : (
+              <>
+                <h2 className="mb-1 font-heading text-xl font-bold text-text-primary">
+                  {t('chat.welcomeTo', {
+                    channel: getRoomDisplayName(activeRoom),
+                  })}
+                </h2>
+                <p className="text-[12px] text-text-secondary">
+                  {t('chat.startOfConversation', { description: getRoomDisplayDescription(activeRoom) || '—' })}
+                </p>
+              </>
+            )}
           </div>
         )}
 
@@ -366,7 +494,7 @@ export default function ChatRoom() {
       <div className="flex flex-shrink-0 flex-col border-t border-border-subtle/60 bg-void-black/95 backdrop-blur-sm">
         <ChatInput
           onToast={addToast}
-          channelName={getRoomDisplayName(activeRoom)}
+          channelName={isRoomGeneral ? t('chat.community') : getRoomDisplayName(activeRoom)}
           mentionText={mentionText}
           onMentionConsumed={() => setMentionText('')}
         />
@@ -380,7 +508,9 @@ export default function ChatRoom() {
           roomId={activeRoom.id}
           selfId={currentUser?.id}
           getAuthHeaders={getAuthHeaders}
-          title={t('chat.memberListTitle', { channel: getRoomDisplayName(activeRoom) })}
+          title={t('chat.memberListTitle', {
+            channel: isRoomGeneral ? t('chat.community') : getRoomDisplayName(activeRoom),
+          })}
           labels={{
             loading: t('chat.memberListLoading'),
             empty: t('chat.memberListEmpty'),

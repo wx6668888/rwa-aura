@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { chatHttpUrl } from '@/lib/chat-api';
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 import type { ChatUser } from './chat-context';
+import { ChatUserAvatarThumb } from './UserBadge';
 
 const MEMBER_PREVIEW_MAX = 100;
 
@@ -129,18 +130,7 @@ export function ChatMembersModal(props: {
                   key={u.id}
                   className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-surface-2/80 transition-colors"
                 >
-                  <div
-                    className="w-8 h-8 rounded-lg flex-shrink-0 overflow-hidden border border-border-subtle bg-surface-2"
-                    style={{ background: u.avatar ? undefined : 'linear-gradient(135deg, #0d9488, #0f766e)' }}
-                  >
-                    {u.avatar ? (
-                      <img src={u.avatar} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[11px] font-bold text-white">
-                        {(u.nickname || '?').slice(0, 1).toUpperCase()}
-                      </div>
-                    )}
-                  </div>
+                  <ChatUserAvatarThumb user={u} size={32} />
                   <div className="min-w-0 flex-1">
                     <div className="text-[12px] font-medium text-text-primary truncate flex items-center gap-1.5">
                       <span className="truncate">{u.nickname || shortAddr(u.address)}</span>

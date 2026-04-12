@@ -65,6 +65,8 @@ export interface ChatRoom {
   icon?: string;
   memberIds: string[];
   isPublic: boolean;
+  /** 用户自建群邀请码 */
+  inviteCode?: string;
 }
 
 interface ChatContextType {
@@ -116,6 +118,8 @@ interface ChatContextType {
   getAuthHeaders: () => Record<string, string>;
   clearActionError: () => void;
   createGroupRoom: (name: string, description: string) => Promise<ChatRoom>;
+  /** 通过邀请码加入自建群并切换到该房间 */
+  joinGroupByInviteCode: (code: string) => Promise<ChatRoom>;
   /** 按地址创建/打开 1v1 私聊（返回房间，且会切换到该房间） */
   openDmByAddress: (peerAddress: string) => Promise<ChatRoom | null>;
   fetchWalletBalances: () => Promise<void>;
@@ -774,6 +778,32 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [getAuthHeaders]
   );
 
+  const joinGroupByInviteCode = useCallback(
+    async (code: string) => {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      };
+      if (!headers['x-wallet-address'] || (!headers['x-chat-session'] && !headers['x-wallet-signature'])) {
+        throw new Error('Not authenticated');
+      }
+      const res = await fetch(chatHttpUrl('rooms/join-by-code'), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ code: code.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.room?.id) {
+        throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to join group');
+      }
+      const room = data.room as ChatRoom;
+      await loadRooms();
+      setActiveRoom(room.id);
+      return room;
+    },
+    [getAuthHeaders, loadRooms, setActiveRoom]
+  );
+
   const createGroupRoom = useCallback(
     async (name: string, description: string) => {
       const headers: Record<string, string> = {
@@ -988,6 +1018,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       getAuthHeaders,
       clearActionError,
       createGroupRoom,
+      joinGroupByInviteCode,
       openDmByAddress,
       updateMyNickname,
     }}>

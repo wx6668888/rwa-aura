@@ -63,6 +63,8 @@ export interface Room {
   isPublic: boolean;
   minTokenGate: number;      // minimum RWA balance required (0 = no gate)
   createdAt: number;
+  /** 用户自建群邀请码（如 RWA + 7 位）；官方房为空 */
+  inviteCode?: string;
 }
 
 /** community=氛围组；admin_support=官方客服；group_owner=群主 */

@@ -35,7 +35,8 @@ import {
   Share2,
 } from 'lucide-react'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
-import { warmConnectModal } from '@/lib/wallet-connect-preconnect'
+import { useRwaConnectMenu } from '@/components/providers/rwa-connect-wallet-context'
+import { useChatSheet } from '@/components/providers/chat-sheet-context'
 import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
 import { LanguageSwitcher } from '@/components/language-switcher'
@@ -43,7 +44,6 @@ import { WalletDetailsModal } from '@/components/wallet-details-modal'
 import { LazyDotLottieAnimation } from '@/components/lazy-dot-lottie'
 import { MobileOfficialSupportSheet } from '@/components/mobile-official-support-sheet'
 
-const CHAT_LOTTIE_SRC = new URL('./assets/chat.lottie', import.meta.url).toString()
 const SUPPORT_MENU_LOTTIE = '/在线客服.lottie'
 /** 侧栏 / 顶栏「群聊」菜单图标（public） */
 const GROUP_CHAT_MENU_LOTTIE = '/Chat.lottie'
@@ -294,6 +294,8 @@ function MobileNavItem({
 
 export function Navbar() {
   const router = useRouter()
+  const { openConnectMenu } = useRwaConnectMenu()
+  const { openChatSheet } = useChatSheet()
   const { locale } = useLocale()
   const { t } = useTranslation(locale)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -659,9 +661,21 @@ export function Navbar() {
                 </div>
               )
             })}
-            <Link
+            <a
               href="/chat"
-              onClick={(e) => navigateFromMenuLink(e, '/chat')}
+              onClick={(e) => {
+                if (e.button !== 0) return
+                if (e.metaKey || e.ctrlKey || e.shiftKey) return
+                const onChat = pathname === '/chat' || pathname.startsWith('/chat/')
+                if (onChat) {
+                  navigateFromMenuLink(e, '/chat')
+                  return
+                }
+                e.preventDefault()
+                e.stopPropagation()
+                openChatSheet()
+                startTransition(() => closeDesktopMenus())
+              }}
               className={`relative flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-all whitespace-nowrap ${
                 isActive('/chat')
                   ? 'text-[#00f5d4]'
@@ -685,7 +699,7 @@ export function Navbar() {
                   style={{ boxShadow: '0 0 8px #00f5d440' }}
                 />
               )}
-            </Link>
+            </a>
           </div>
 
           {/* Right: Wallet（桌面端单行不换行） */}
@@ -696,7 +710,6 @@ export function Navbar() {
                 chain,
                 openAccountModal,
                 openChainModal,
-                openConnectModal,
                 mounted,
               }) => {
                 const ready = mounted
@@ -718,8 +731,7 @@ export function Navbar() {
                         return (
                           <button
                             onClick={() => {
-                              warmConnectModal()
-                              openConnectModal()
+                              openConnectMenu()
                             }}
                             type="button"
                             className="rounded-full bg-[#00f5d4] px-5 py-2 font-[family-name:var(--font-space-grotesk)] text-sm font-semibold text-[#05050a] transition-all hover:scale-[1.02] hover:brightness-110"
@@ -834,16 +846,28 @@ export function Navbar() {
                       onClose={() => setMobileOpen(false)}
                     />
                   ))}
-                  <div className="mt-1 space-y-0.5 border-t border-[#ffffff0d] pt-2">
-                    <Link
+                </div>
+                <div className="shrink-0 border-t border-[#ffffff0d] p-3 pt-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <a
                       href="/chat"
                       onClick={(e) => {
+                        if (e.button !== 0) return
+                        if (e.metaKey || e.ctrlKey || e.shiftKey) return
+                        const onChat = pathname === '/chat' || pathname.startsWith('/chat/')
+                        if (onChat) {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          void router.push('/chat')
+                          startTransition(() => setMobileOpen(false))
+                          return
+                        }
                         e.preventDefault()
                         e.stopPropagation()
-                        void router.push('/chat')
                         startTransition(() => setMobileOpen(false))
+                        openChatSheet()
                       }}
-                      className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-base font-semibold transition-all hover:bg-[#13131e] ${
+                      className={`flex min-h-[3.25rem] flex-row items-center justify-start gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold leading-snug transition-all hover:bg-[#13131e] ${
                         isActive('/chat') ? 'bg-[#00f5d4]/10 text-[#00f5d4]' : 'text-[#e2e8f0]'
                       }`}
                     >
@@ -857,8 +881,8 @@ export function Navbar() {
                           rootMargin="80px"
                         />
                       </span>
-                      <span>{t('swap.toolbarGroupChat')}</span>
-                    </Link>
+                      <span className="min-w-0 flex-1 break-words">{t('swap.toolbarGroupChat')}</span>
+                    </a>
                     <button
                       type="button"
                       onClick={(e) => {
@@ -867,7 +891,7 @@ export function Navbar() {
                         startTransition(() => setMobileOpen(false))
                         setSupportSheetOpen(true)
                       }}
-                      className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-base font-semibold text-[#e2e8f0] transition-all hover:bg-[#13131e]"
+                      className="flex min-h-[3.25rem] flex-row items-center justify-start gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold leading-snug text-[#e2e8f0] transition-all hover:bg-[#13131e]"
                     >
                       <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden">
                         <LazyDotLottieAnimation
@@ -879,33 +903,10 @@ export function Navbar() {
                           rootMargin="80px"
                         />
                       </span>
-                      <span>{t('nav.supportSheetTitle')}</span>
+                      <span className="min-w-0 flex-1 break-words">{t('nav.supportSheetTitle')}</span>
                     </button>
                   </div>
                 </div>
-                {/* 右下角动图：进入社区群聊 /chat */}
-                <Link
-                  href="/chat"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    void router.push('/chat')
-                    startTransition(() => setMobileOpen(false))
-                  }}
-                  className="pointer-events-auto absolute bottom-0 right-[-6px] z-[2] block h-[13rem] w-[13rem] cursor-pointer overflow-hidden border-0 bg-transparent p-0 text-left"
-                  aria-label={t('swap.toolbarGroupChat')}
-                  title={t('swap.toolbarGroupChat')}
-                >
-                  <LazyDotLottieAnimation
-                    src={CHAT_LOTTIE_SRC}
-                    className="h-full w-full"
-                    autoplay
-                    loop
-                    speed={1}
-                    rootMargin="200px 0px 200px 0px"
-                    posterSrc=""
-                  />
-                </Link>
               </div>
             </div>
           </div>

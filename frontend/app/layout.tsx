@@ -7,6 +7,7 @@ import { Web3Provider } from '@/components/providers/web3-provider'
 import { EthereumSuppressScript } from '@/components/providers/ethereum-suppress-script'
 import { CapacitorNativeRuntime } from '@/components/providers/capacitor-native-runtime'
 import { ConditionalNavbar } from '@/components/conditional-navbar'
+import { AppChatLayer } from '@/components/providers/app-chat-layer'
 import './globals.css'
 
 const inter = Inter({
@@ -166,8 +167,10 @@ export default function RootLayout({
         <CapacitorNativeRuntime />
         <LocaleProvider>
           <Web3Provider>
-            {children}
-            <ConditionalNavbar />
+            <AppChatLayer>
+              {children}
+              <ConditionalNavbar />
+            </AppChatLayer>
           </Web3Provider>
         </LocaleProvider>
         {process.env.VERCEL ? <Analytics /> : null}

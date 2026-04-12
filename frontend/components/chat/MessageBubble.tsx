@@ -83,9 +83,17 @@ export function MessageGroup({ messages, isOwn, onToast, onMentionUser }: Messag
   };
   const user = messages[0]?.user || fallbackUser;
 
+  /** 与 MobileOfficialSupportSheet 用户气泡对齐；正文排版与 peerBubbleText 一致 */
   const ownBubble =
-    'rounded-2xl px-3 py-2 my-0.5 text-left inline-block max-w-full ' +
-    'border border-white/20 bg-[#0f766e] text-white';
+    'rounded-2xl px-4 py-3 my-0.5 text-left inline-block max-w-full ' +
+    'border border-[#00f5d4]/22 bg-gradient-to-br from-[#00f5d4]/18 to-[#00c9a3]/10 text-[#ecfeff] ' +
+    'shadow-[0_4px_20px_rgba(0,245,212,0.08)] ring-1 ring-[#00f5d4]/22 ' +
+    'text-[13px] leading-[1.78] tracking-[0.015em]';
+  /** 与 MobileOfficialSupportSheet 助手气泡对齐（他人消息） */
+  const peerBubbleCard =
+    'rounded-[1.35rem] border border-white/[0.07] bg-gradient-to-br from-[#171722]/98 via-[#12121a]/98 to-[#0f0f16]/98 ' +
+    'shadow-[0_8px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.04)]';
+  const peerBubbleText = 'text-[13px] leading-[1.78] tracking-[0.015em] text-[#e8edf5]';
 
   const getSafeQuickLinkPath = (msg: ChatMessage): string => {
     const raw = (msg.metadata as any)?.quickLink?.path;
@@ -238,20 +246,20 @@ export function MessageGroup({ messages, isOwn, onToast, onMentionUser }: Messag
                 </div>
               ) : getSafeQuickLinkPath(msg) ? (
                 <div
-                  className={`my-0.5 inline-block max-w-full text-left rounded-2xl px-3 py-2 border ${
-                    isOwn
-                      ? ownBubble
-                      : 'bg-surface-2/90 border-border-subtle text-text-primary'
+                  className={`my-0.5 inline-block max-w-full text-left ${
+                    isOwn ? ownBubble : `${peerBubbleCard} px-4 py-3 ${peerBubbleText}`
                   }`}
                 >
                   <div
-                    className={`mb-1 font-mono text-[10px] ${isOwn ? 'text-white/60' : 'text-text-disabled'}`}
+                    className={`mb-1 font-mono text-[10px] ${isOwn ? 'text-white/60' : 'text-[#94a3b8]'}`}
                   >
                     {t('chat.quickLinkCardHint')}
                   </div>
                   <Link
                     href={getSafeQuickLinkPath(msg)}
-                    className="break-words text-[13px] font-medium text-white hover:underline"
+                    className={`break-words text-[13px] font-medium hover:underline ${
+                      isOwn ? 'text-white' : 'text-[#5eead4]'
+                    }`}
                   >
                     {getSafeQuickLinkLabel(msg)}
                   </Link>
@@ -275,9 +283,11 @@ export function MessageGroup({ messages, isOwn, onToast, onMentionUser }: Messag
                   const displayContent = stripSupportLinkLines(msg.content);
                   return (
                 <div
-                  className={`break-words whitespace-pre-wrap py-[1px] text-[13px] leading-[1.45] ${
-                    isOwn ? ownBubble : 'text-text-primary'
-                  }`}
+                  className={
+                    isOwn
+                      ? `break-words whitespace-pre-wrap ${ownBubble}`
+                      : `break-words whitespace-pre-wrap my-0.5 inline-block max-w-full text-left px-4 py-3 ${peerBubbleCard} ${peerBubbleText}`
+                  }
                 >
                   {displayContent}
                   {supportLinks.length > 0 && (

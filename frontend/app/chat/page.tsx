@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useAccount, useSignMessage } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
-import { ChatProvider, useChat } from '@/components/chat/chat-context';
+import { useChat } from '@/components/chat/chat-context';
 import RoomList from '@/components/chat/RoomList';
 import ChatRoom from '@/components/chat/ChatRoom';
 import RedWalletPanel from '@/components/chat/RedWalletPanel';
@@ -508,9 +508,7 @@ function ChatApp() {
 export default function ChatPage() {
   return (
     <ChatErrorBoundary>
-      <ChatProvider>
-        <ChatApp />
-      </ChatProvider>
+      <ChatApp />
     </ChatErrorBoundary>
   );
 }

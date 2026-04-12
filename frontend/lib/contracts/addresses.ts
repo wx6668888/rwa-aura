@@ -31,6 +31,8 @@ export const CONTRACT_ADDRESSES = {
       process.env.NEXT_PUBLIC_TEAM_DIVIDEND_POOL_BSC || '0x1616E70452c5A4adcF9faA93c5a4A691d0215924',
     ReferralRewardPool:
       process.env.NEXT_PUBLIC_REFERRAL_REWARD_POOL_BSC || '0x80748B89042Ee30953E55856Cac473D1126720A6',
+    /** 聊天红包 transferFrom 的 spender，须与 chat-server 热钱包一致；优先用 GET /api/chat/config/redpacket */
+    redPacketSpender: (process.env.NEXT_PUBLIC_CHAT_REDPACKET_SPENDER || '').trim(),
   },
 } as const
 

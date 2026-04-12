@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useChat, type ChatMessage, type ChatUser } from './chat-context';
+import { ChatUserAvatarThumb } from './UserBadge';
 import { useLocale } from '@/components/locale-provider';
 import { useTranslation } from '@/lib/i18n';
 import { chatHttpUrl } from '@/lib/chat-api';
@@ -19,7 +20,6 @@ export default function RoomList(
     rooms,
     activeRoomId,
     setActiveRoom,
-    isConnected,
     createGroupRoom,
     openDmByAddress,
     isAuthenticated,
@@ -43,8 +43,8 @@ export default function RoomList(
   const [userSearchLoading, setUserSearchLoading] = React.useState(false);
   const [dmAdding, setDmAdding] = React.useState(false);
   const [dmAddError, setDmAddError] = React.useState('');
-  const [supportOpening, setSupportOpening] = React.useState(false);
   const [dmPeerByRoomId, setDmPeerByRoomId] = React.useState<Record<string, ChatUser>>({});
+  const [postCreateInvite, setPostCreateInvite] = React.useState<string | null>(null);
 
   const addressQuery = search.trim();
   const isAddressQuery =
@@ -135,9 +135,8 @@ export default function RoomList(
     setCreateErr('');
     setCreating(true);
     try {
-      await createGroupRoom(newName.trim(), newDesc.trim());
-      setShowNewGroup(false);
-      closeMobileSidebar?.();
+      const room = await createGroupRoom(newName.trim(), newDesc.trim());
+      setPostCreateInvite((room.inviteCode || '').trim() || null);
       setNewName('');
       setNewDesc('');
     } catch (e: unknown) {
@@ -205,56 +204,66 @@ export default function RoomList(
     })();
   }, [rooms, isAuthenticated, getAuthHeaders]);
 
-  return (
-    <div className="flex flex-col h-full bg-surface-1 min-h-0">
-      {/* Brand header */}
-      <div className="px-4 pt-5 pb-3">
-        <div className="flex items-center gap-2.5 mb-1">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center font-heading font-bold text-sm text-white"
-            style={{ background: 'linear-gradient(135deg, #0d9488, #0f766e)', border: '1px solid rgba(255,255,255,0.2)' }}
-          >
-            R
-          </div>
-          <div>
-            <h2 className="text-[13px] font-heading font-bold text-text-primary leading-none">RWA Aura</h2>
-            <p className="text-[10px] text-text-secondary mt-0.5 font-mono">{t('chat.community')}</p>
-          </div>
-        </div>
-      </div>
+  const officialGeneralRoom = rooms.find((r) => r.id === 'room-general');
+  const myRooms = rooms.filter((r) => {
+    if (r.type === 'group') return true;
+    if (r.type === 'dm') {
+      const peer = dmPeerByRoomId[r.id];
+      if (peer?.address?.toLowerCase() === OFFICIAL_SUPPORT_BOT_ADDRESS) return false;
+      return true;
+    }
+    return false;
+  });
 
-      {/* Search */}
-      <div className="px-3 pb-2">
+  const qLow = search.trim().toLowerCase();
+  const officialLabel = officialGeneralRoom ? getRoomDisplayName(officialGeneralRoom) : t('chat.roomGeneral');
+  const showOfficialRow =
+    isAuthenticated &&
+    !isAddressQuery &&
+    (!search.trim() || officialLabel.toLowerCase().includes(qLow));
+
+  const filteredMyRooms = myRooms.filter((r) => {
+    if (!search.trim() || isAddressQuery) return true;
+    return getRoomDisplayName(r).toLowerCase().includes(qLow);
+  });
+
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-surface-1">
+      <div className="px-3 pb-2 pt-3">
         <div className="relative">
-          <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-disabled" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+          <svg
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-disabled"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           <input
             type="text"
             placeholder={t('chat.search')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-surface-2 border border-border-subtle rounded-lg pl-8 pr-3 py-1.5 text-[12px] text-text-primary placeholder-text-disabled
-              focus:outline-none focus:border-plasma-cyan/30 focus:ring-1 focus:ring-plasma-cyan/10 transition-all"
+            className="chat-dapp-input w-full rounded-lg border border-border-subtle bg-surface-2 py-1.5 pl-8 pr-3 text-text-primary placeholder-text-disabled transition-all focus:border-plasma-cyan/30 focus:outline-none focus:ring-1 focus:ring-plasma-cyan/10"
           />
         </div>
-      </div>
-
-      {/* Section label + new group */}
-      <div className="px-4 pt-2 pb-1 flex items-center justify-between gap-2">
-        <span className="text-[10px] font-mono font-semibold text-text-disabled uppercase tracking-[0.12em]">{t('chat.channels')}</span>
-        {isAuthenticated && (
+        {isAuthenticated ? (
           <button
             type="button"
             onClick={() => {
               setCreateErr('');
+              setPostCreateInvite(null);
               setShowNewGroup(true);
             }}
-            className="text-[10px] font-mono px-2 py-1 rounded-md bg-[#0d9488] text-white border border-white/15 hover:bg-[#0f766e] transition-colors shrink-0"
+            className="mt-2 w-full rounded-lg border border-white/15 bg-[#0d9488] py-2 text-[12px] font-medium text-white transition-colors hover:bg-[#0f766e]"
           >
             + {t('chat.newGroup')}
           </button>
-        )}
+        ) : null}
       </div>
 
       {showNewGroup && (
@@ -264,19 +273,49 @@ export default function RoomList(
               <h3 className="text-sm font-heading font-semibold text-text-primary">{t('chat.newGroupTitle')}</h3>
               <button
                 type="button"
-                onClick={() => setShowNewGroup(false)}
+                onClick={() => {
+                  setShowNewGroup(false);
+                  setPostCreateInvite(null);
+                }}
                 className="text-[11px] text-text-secondary hover:text-text-primary"
               >
-                {t('chat.newGroupCancel')}
+                {postCreateInvite ? t('chat.inviteClose') : t('chat.newGroupCancel')}
               </button>
             </div>
+            {postCreateInvite ? (
+              <div className="space-y-3">
+                <p className="text-[12px] text-text-secondary leading-snug">{t('chat.groupCreatedInvite')}</p>
+                <div className="flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-2 px-3 py-2.5">
+                  <code className="flex-1 min-w-0 text-[13px] font-mono text-plasma-cyan tracking-wide break-all">{postCreateInvite}</code>
+                  <button
+                    type="button"
+                    className="shrink-0 text-[10px] font-mono px-2 py-1 rounded-md bg-[#0d9488] text-white border border-white/15"
+                    onClick={() => void navigator.clipboard.writeText(postCreateInvite)}
+                  >
+                    {t('chat.inviteCopy')}
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className="w-full text-[12px] font-medium py-2.5 rounded-lg bg-[#0d9488] text-white border border-white/15"
+                  onClick={() => {
+                    setShowNewGroup(false);
+                    setPostCreateInvite(null);
+                    closeMobileSidebar?.();
+                  }}
+                >
+                  {t('chat.inviteDone')}
+                </button>
+              </div>
+            ) : (
+              <>
             <label className="block text-[10px] text-text-disabled mb-1 font-mono uppercase">{t('chat.newGroupName')}</label>
             <input
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder={t('chat.newGroupNamePh')}
-              className="w-full bg-surface-2 border border-border-subtle rounded-lg px-3 py-2 text-[13px] text-text-primary mb-3 focus:outline-none focus:border-plasma-cyan/30"
+              className="chat-dapp-input mb-3 w-full rounded-lg border border-border-subtle bg-surface-2 px-3 py-2 text-text-primary focus:border-plasma-cyan/30 focus:outline-none"
             />
             <label className="block text-[10px] text-text-disabled mb-1 font-mono uppercase">{t('chat.newGroupDesc')}</label>
             <textarea
@@ -284,7 +323,7 @@ export default function RoomList(
               onChange={(e) => setNewDesc(e.target.value)}
               placeholder={t('chat.newGroupDescPh')}
               rows={2}
-              className="w-full bg-surface-2 border border-border-subtle rounded-lg px-3 py-2 text-[13px] text-text-primary mb-3 resize-none focus:outline-none focus:border-plasma-cyan/30"
+              className="chat-dapp-input mb-3 w-full resize-none rounded-lg border border-border-subtle bg-surface-2 px-3 py-2 text-text-primary focus:border-plasma-cyan/30 focus:outline-none"
             />
             {createErr && <p className="text-[11px] text-danger mb-2">{createErr}</p>}
             <button
@@ -295,122 +334,130 @@ export default function RoomList(
             >
               {creating ? t('chat.connecting') : t('chat.newGroupCreate')}
             </button>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {/* Room list + 聊天记录搜索 + 保留条数说明 */}
-      <div className="flex-1 overflow-y-auto px-2 pb-2 scrollbar-thin scrollbar-thumb-white/5 scrollbar-track-transparent min-h-0">
-        {isAuthenticated && (
+      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/5">
+        {showOfficialRow ? (
           <button
             type="button"
-            disabled={supportOpening}
-            onClick={async () => {
-              setDmAddError('');
-              setSupportOpening(true);
-              try {
-                await openDmByAddress(OFFICIAL_SUPPORT_BOT_ADDRESS);
-                closeMobileSidebar?.();
-              } catch (e: unknown) {
-                setDmAddError(e instanceof Error ? e.message : 'Failed to open support chat');
-              } finally {
-                setSupportOpening(false);
-              }
+            onClick={() => {
+              setActiveRoom('room-general');
+              closeMobileSidebar?.();
             }}
-            className="w-full text-left px-2.5 py-2 rounded-lg transition-all duration-150 flex items-center gap-2.5 group mb-[6px] bg-[#0d9488]/18 text-[#9ffcf1] border border-[#0d9488]/45 hover:bg-[#0d9488]/28 disabled:opacity-60"
+            className={`group mb-1 flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-all duration-150 ${
+              activeRoomId === 'room-general'
+                ? 'bg-[#0f766e] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]'
+                : 'text-text-secondary hover:bg-surface-2 hover:text-text-primary'
+            }`}
           >
-            <div className="w-7 h-7 rounded-md flex items-center justify-center text-[13px] flex-shrink-0 border border-[#0d9488]/45 bg-[#0d9488]/22">
-              ✓
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[12px] font-medium truncate leading-none">
-                {locale === 'en' ? 'Official Support' : '官方客服'}
-              </div>
-              <div className="mt-1 font-mono text-[9px] text-[#9ffcf1]/80">
-                {locale === 'en' ? 'Direct private chat' : '一键私聊官方助手'}
-              </div>
-            </div>
-          </button>
-        )}
-
-        {rooms
-          .filter((r) => {
-            if (!search.trim()) return true;
-            if (isAddressQuery) return true; // address mode: don't filter rooms by address
-            const dn = getRoomDisplayName(r).toLowerCase();
-            return dn.includes(search.toLowerCase());
-          })
-          .map((room) => {
-          const isActive = room.id === activeRoomId;
-          const displayName = getRoomDisplayName(room);
-          return (
-            <button
-              type="button"
-              key={room.id}
-              onClick={() => {
-                setActiveRoom(room.id);
-                closeMobileSidebar?.();
-              }}
-              className={`w-full text-left px-2.5 py-2 rounded-lg transition-all duration-150 flex items-center gap-2.5 group mb-[2px]
-                ${isActive
-                  ? 'bg-[#0f766e] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]'
-                  : 'text-text-secondary hover:bg-surface-2 hover:text-text-primary'
-                }`}
+            <div
+              className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-[13px] transition-all ${
+                activeRoomId === 'room-general' ? '' : 'opacity-50 group-hover:opacity-80'
+              }`}
+              style={
+                activeRoomId === 'room-general'
+                  ? {
+                      background: 'rgba(255,255,255,0.14)',
+                      border: '1px solid rgba(255,255,255,0.28)',
+                      color: '#fff',
+                    }
+                  : {
+                      background: 'var(--surface-2)',
+                      border: '1px solid var(--border-subtle)',
+                    }
+              }
             >
-              {/* Channel icon */}
-              <div className={`w-7 h-7 rounded-md flex items-center justify-center text-[13px] flex-shrink-0 transition-all
-                ${isActive
-                  ? ''
-                  : 'opacity-50 group-hover:opacity-80'}`}
-                style={isActive ? {
-                  background: 'rgba(255,255,255,0.14)',
-                  border: '1px solid rgba(255,255,255,0.28)',
-                  color: '#fff',
-                } : {
-                  background: 'var(--surface-2)',
-                  border: '1px solid var(--border-subtle)',
-                }}
+              #
+            </div>
+            <div className="min-w-0 flex-1">
+              <div
+                className={`truncate text-[12px] font-medium leading-none ${
+                  activeRoomId === 'room-general' ? 'text-white' : ''
+                }`}
               >
-                {room.type === 'dm' ? (
-                  dmPeerByRoomId[room.id]?.avatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={dmPeerByRoomId[room.id]!.avatar} alt="" className="w-full h-full object-cover rounded-md" />
-                  ) : (
-                    <span>{dmPeerByRoomId[room.id]?.address ? '💬' : (room.icon || '💬')}</span>
-                  )
-                ) : room.type === 'channel' ? '#' : room.icon || '#'}
+                {officialLabel}
               </div>
+            </div>
+            {activeRoomId === 'room-general' ? <div className="h-4 w-1 shrink-0 rounded-full bg-white/90" /> : null}
+          </button>
+        ) : null}
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className={`text-[12px] font-medium truncate leading-none ${isActive ? 'text-white' : ''}`}>
-                  {displayName}
-                </div>
-                {room.type === 'channel' && (
+        {!isAddressQuery && isAuthenticated ? (
+          <>
+            <div className="px-1 pb-1 pt-1 text-[10px] font-mono font-semibold uppercase tracking-[0.12em] text-text-disabled">
+              {t('chat.sidebarMyGroups')}
+            </div>
+            {filteredMyRooms.map((room) => {
+              const isActive = room.id === activeRoomId;
+              const displayName = getRoomDisplayName(room);
+              return (
+                <button
+                  type="button"
+                  key={room.id}
+                  onClick={() => {
+                    setActiveRoom(room.id);
+                    closeMobileSidebar?.();
+                  }}
+                  className={`group mb-[2px] flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-all duration-150 ${
+                    isActive
+                      ? 'bg-[#0f766e] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]'
+                      : 'text-text-secondary hover:bg-surface-2 hover:text-text-primary'
+                  }`}
+                >
                   <div
-                    className={`mt-1 font-mono text-[9px] ${isActive ? 'text-white/65' : 'text-text-disabled'}`}
+                    className={`flex h-7 w-7 flex-shrink-0 items-center justify-center text-[13px] transition-all ${
+                      isActive ? '' : 'opacity-50 group-hover:opacity-80'
+                    }`}
+                    style={
+                      isActive
+                        ? {
+                            background: 'rgba(255,255,255,0.14)',
+                            border: '1px solid rgba(255,255,255,0.28)',
+                            color: '#fff',
+                          }
+                        : {
+                            background: 'var(--surface-2)',
+                            border: '1px solid var(--border-subtle)',
+                          }
+                    }
                   >
-                    {t('chat.readOnly')}
+                    {room.type === 'dm' ? (
+                      dmPeerByRoomId[room.id]?.address ? (
+                        <ChatUserAvatarThumb
+                          user={dmPeerByRoomId[room.id]!}
+                          size={28}
+                          roundedClassName="rounded-md"
+                          className="bg-transparent"
+                        />
+                      ) : (
+                        <span>{room.icon || '💬'}</span>
+                      )
+                    ) : (
+                      room.icon || '#'
+                    )}
                   </div>
-                )}
-                {room.type === 'dm' && (
-                  <div className={`mt-1 font-mono text-[9px] ${isActive ? 'text-white/65' : 'text-text-disabled'}`}>
-                    {dmPeerByRoomId[room.id]?.address
-                      ? (dmPeerByRoomId[room.id]!.address.toLowerCase() === OFFICIAL_SUPPORT_BOT_ADDRESS
-                        ? (locale === 'en' ? 'Official assistant' : '官方助手')
-                        : shortAddr(dmPeerByRoomId[room.id]!.address))
-                      : 'DM'}
+                  <div className="min-w-0 flex-1">
+                    <div className={`truncate text-[12px] font-medium leading-none ${isActive ? 'text-white' : ''}`}>
+                      {displayName}
+                    </div>
+                    {room.type === 'dm' && dmPeerByRoomId[room.id]?.address ? (
+                      <div
+                        className={`mt-1 font-mono text-[9px] ${isActive ? 'text-white/65' : 'text-text-disabled'}`}
+                      >
+                        {shortAddr(dmPeerByRoomId[room.id]!.address)}
+                      </div>
+                    ) : null}
                   </div>
-                )}
-              </div>
-
-              {/* Active indicator */}
-              {isActive && (
-                <div className="h-4 w-1 rounded-full bg-white/90" />
-              )}
-            </button>
-          );
-        })}
+                  {isActive ? <div className="h-4 w-1 shrink-0 rounded-full bg-white/90" /> : null}
+                </button>
+              );
+            })}
+          </>
+        ) : null}
 
         {!isAddressQuery && search.trim().length >= 2 && isAuthenticated && (
           <div className="mt-3 border-t border-border-subtle/80 pt-2 px-1">
@@ -472,17 +519,7 @@ export default function RoomList(
               <div className="flex flex-col gap-1.5 mt-2 px-1 pb-1">
                 {userSearchResults.map((u) => (
                   <div key={u.id} className="flex items-center gap-2.5">
-                    <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center overflow-hidden border border-border-subtle bg-surface-2 flex-shrink-0"
-                      style={{ background: u.avatar ? undefined : 'linear-gradient(135deg, #0d9488, #0f766e)' }}
-                    >
-                      {u.avatar ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={u.avatar} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-[11px] font-bold text-white">{(u.nickname || 'U').slice(0, 1).toUpperCase()}</span>
-                      )}
-                    </div>
+                    <ChatUserAvatarThumb user={u} size={28} />
                     <div className="min-w-0 flex-1">
                       <div className="text-[12px] font-medium truncate">{u.nickname || u.address}</div>
                       <div className="text-[10px] font-mono text-text-disabled truncate">{u.address}</div>
@@ -516,29 +553,18 @@ export default function RoomList(
         {isAddressQuery && !isAuthenticated && search.trim().length >= 6 && (
           <p className="mt-2 px-1 text-[10px] text-text-disabled">{t('chat.searchLoginHint')}</p>
         )}
-
-        <p className="mt-3 px-2.5 pb-1 text-[9px] leading-relaxed text-text-disabled/90 border-t border-border-subtle/60 pt-2">
-          {t('chat.retentionNotice')}
-        </p>
       </div>
 
-      {/* Connection status */}
-      <div className="px-4 py-3 border-t border-border-subtle">
-        {isAuthenticated && (
+      <div className="shrink-0 border-t border-border-subtle px-3 py-3">
+        {isAuthenticated ? (
           <button
             type="button"
             onClick={() => onOpenWallet?.()}
-            className="mb-3 h-9 w-full rounded-lg border border-white/15 bg-[#0d9488] text-[12px] font-medium text-white transition-colors hover:bg-[#0f766e]"
+            className="h-9 w-full rounded-lg border border-white/15 bg-[#0d9488] text-[12px] font-medium text-white transition-colors hover:bg-[#0f766e]"
           >
             {t('chat.redWalletTitle')}
           </button>
-        )}
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-success animate-pulse' : 'bg-danger'}`} />
-          <span className="text-[10px] font-mono text-text-disabled">
-            {isConnected ? t('chat.connected') : t('chat.disconnected')}
-          </span>
-        </div>
+        ) : null}
       </div>
     </div>
   );

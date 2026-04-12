@@ -62,7 +62,8 @@ import { WalletResumeSync } from '@/components/providers/wallet-resume-sync'
 import { ChatAuthSync } from '@/components/providers/chat-auth-sync'
 import { Toaster } from 'sonner'
 import { ConnectWalletErrorListener } from '@/components/connect-wallet-error-listener'
-import { WalletConnectDisclaimer } from '@/components/wallet-connect-disclaimer'
+import { WalletConnectDisclaimer, rwaConnectGuideHref } from '@/components/wallet-connect-disclaimer'
+import { RwaConnectWalletMenuProvider } from '@/components/providers/rwa-connect-wallet-context'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -142,16 +143,18 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
           locale={getRainbowKitLocale(locale)}
           appInfo={{
             appName: 'RWA Protocol',
-            learnMoreUrl: locale === 'zh' ? 'https://ethereum.org/zh/wallets/' : 'https://ethereum.org/wallets/',
+            learnMoreUrl: rwaConnectGuideHref(),
             disclaimer: WalletConnectDisclaimer,
           }}
         >
-          <ConnectWalletErrorListener />
-          <WalletResumeSync />
-          <ChatAuthSync />
-          <AndroidWalletConnectHint />
-          <Toaster position="top-center" richColors closeButton theme="dark" />
-          {children}
+          <RwaConnectWalletMenuProvider>
+            <ConnectWalletErrorListener />
+            <WalletResumeSync />
+            <ChatAuthSync />
+            <AndroidWalletConnectHint />
+            <Toaster position="top-center" richColors closeButton theme="dark" />
+            {children}
+          </RwaConnectWalletMenuProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

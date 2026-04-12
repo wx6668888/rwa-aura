@@ -60,6 +60,15 @@ router.get('/auth/message', (_req: Request, res: Response) => {
   res.json({ message: getAuthMessage() });
 });
 
+/** 发红包 ERC20 approve 所需：spender=热钱包，token 地址与精度（无需登录） */
+router.get('/config/redpacket', (_req: Request, res: Response) => {
+  const cfg = chatService.getRedPacketPublicConfig();
+  if (!cfg) {
+    return res.status(503).json({ error: 'redpacket_chain_not_configured' });
+  }
+  res.json(cfg);
+});
+
 /**
  * 官方客服 AI（底部弹层）：无需登录/签名；按客户端 IP 限流。
  * Body: { message: string, history?: { role:'user'|'assistant', content:string }[] }
@@ -287,6 +296,20 @@ router.post('/rooms', authMiddleware, (req: Request, res: Response) => {
   if (!name) return res.status(400).json({ error: 'name required' });
   const room = chatService.createRoom(name, description || '', userId, type);
   res.json({ room });
+});
+
+router.post('/rooms/join-by-code', authMiddleware, (req: Request, res: Response) => {
+  const userId = (req as any).userId as string | undefined;
+  if (!userId) return res.status(401).json({ error: 'Authentication required' });
+  const code = String(req.body?.code ?? '').trim();
+  if (!code) return res.status(400).json({ error: 'code required' });
+  const out = chatService.joinGroupByInviteCode(userId, code);
+  if (!out.ok || !out.room) {
+    const status = out.error === 'Room not found' ? 404 : 400;
+    return res.status(status).json({ error: out.error || 'Failed to join' });
+  }
+  void chatService.onRoomJoined(out.room.id, userId).catch(() => {});
+  res.json({ room: out.room });
 });
 
 // ─── Messages ──────────────────────────────────────────

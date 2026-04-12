@@ -124,7 +124,7 @@ export default function RedWalletPanel({ onClose, compact = false }: { onClose?:
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               inputMode="decimal"
-              className="flex-1 h-10 rounded-lg border border-border-subtle bg-surface-1 px-3 text-sm text-text-primary placeholder:text-text-disabled outline-none focus:border-border-active"
+              className="chat-dapp-input h-10 flex-1 rounded-lg border border-border-subtle bg-surface-1 px-3 text-text-primary outline-none placeholder:text-text-disabled focus:border-border-active"
               placeholder="0"
             />
             <div className="text-[12px] text-text-secondary font-mono w-[52px] text-right">{currency}</div>

@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { useAccount } from 'wagmi'
 import { X, Send, Copy, ThumbsUp, ThumbsDown, RotateCw } from 'lucide-react'
-import { LazyDotLottieAnimation } from '@/components/lazy-dot-lottie'
+import { LazyDotLottieAnimation, encodePublicLottieSrc } from '@/components/lazy-dot-lottie'
 import { chatHttpUrl } from '@/lib/chat-api'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { useLocale } from '@/components/locale-provider'
@@ -18,7 +18,9 @@ const SUPPORT_AVATAR_LOTTIE_SRC = '/在线客服.lottie'
 /** 公开目录：等待回答动效（文件名含中文） */
 const SUPPORT_WAIT_LOTTIE_SRC = '/等待Onsite.lottie'
 /** 打开会话首条：欢迎动效 */
-const SUPPORT_WELCOME_LOTTIE_SRC = '/欢迎.lottie'
+const SUPPORT_WELCOME_LOTTIE_SRC = encodePublicLottieSrc('/欢迎.lottie')
+/** 叠在欢迎动效之上（同区域、更高 z-index） */
+const SUPPORT_CONFETTI_LOTTIE_SRC = encodePublicLottieSrc('/礼花.lottie')
 /** 持久化欢迎条 id，便于识别旧数据 */
 const SHEET_WELCOME_MESSAGE_ID = 'sheet-welcome-v1'
 
@@ -896,16 +898,32 @@ export function MobileOfficialSupportSheet({ open, onClose }: Props) {
                   <div className="w-full max-w-[92%] min-w-0 shrink overflow-hidden rounded-[1.35rem] border border-white/[0.07] bg-gradient-to-br from-[#171722]/98 via-[#12121a]/98 to-[#0f0f16]/98 px-4 py-3.5 shadow-[0_8px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.04)]">
                     {isWelcomeBubble ? (
                       <div className="mb-3 flex min-w-0 max-w-full justify-center overflow-hidden">
-                        <div className="aspect-square h-[min(8.5rem,min(62vw,40vh))] w-[min(8.5rem,min(62vw,40vh))] shrink-0">
-                          <LazyDotLottieAnimation
-                            src={SUPPORT_WELCOME_LOTTIE_SRC}
-                            className="h-full w-full"
-                            autoplay
-                            loop
-                            speed={1}
-                            rootMargin="400px 0px 400px 0px"
-                            posterSrc=""
-                          />
+                        <div className="relative aspect-square h-[min(8.5rem,min(62vw,40vh))] w-[min(8.5rem,min(62vw,40vh))] shrink-0">
+                          <div className="relative z-0 h-full w-full">
+                            <LazyDotLottieAnimation
+                              src={SUPPORT_WELCOME_LOTTIE_SRC}
+                              className="h-full w-full"
+                              autoplay
+                              loop
+                              speed={1}
+                              rootMargin="400px 0px 400px 0px"
+                              posterSrc=""
+                            />
+                          </div>
+                          <div
+                            className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
+                            aria-hidden
+                          >
+                            <LazyDotLottieAnimation
+                              src={SUPPORT_CONFETTI_LOTTIE_SRC}
+                              className="h-full w-full object-contain opacity-[0.92]"
+                              autoplay
+                              loop
+                              speed={1}
+                              rootMargin="400px 0px 400px 0px"
+                              posterSrc=""
+                            />
+                          </div>
                         </div>
                       </div>
                     ) : null}

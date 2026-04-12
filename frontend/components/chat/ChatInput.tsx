@@ -68,7 +68,7 @@ export default function ChatInput({ onToast, channelName = '…', mentionText, o
     sendMessage(input);
     setInput('');
     if (textareaRef.current) {
-      textareaRef.current.style.height = '40px';
+      textareaRef.current.style.height = 'auto'
     }
   }, [input, sendMessage]);
 
@@ -90,8 +90,8 @@ export default function ChatInput({ onToast, channelName = '…', mentionText, o
 
     const ta = textareaRef.current;
     if (ta) {
-      ta.style.height = '40px';
-      ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
+      ta.style.height = 'auto';
+      ta.style.height = `${Math.min(ta.scrollHeight, 120)}px`;
     }
 
     if (!typingTimeout.current) {
@@ -221,9 +221,7 @@ export default function ChatInput({ onToast, channelName = '…', mentionText, o
             onKeyDown={handleKeyDown}
             placeholder={t('chat.messagePlaceholder', { channel: channelName })}
             rows={1}
-            className="w-full bg-transparent px-3 pb-2 text-[13px] text-text-primary placeholder-text-disabled
-              focus:outline-none resize-none leading-[1.5] min-h-[40px] max-h-[120px]"
-            style={{ height: '40px' }}
+            className="chat-dapp-input w-full resize-none bg-transparent px-3 pb-2 text-text-primary placeholder-text-disabled focus:outline-none min-h-[44px] max-h-[120px]"
             maxLength={2000}
             autoComplete="off"
           />

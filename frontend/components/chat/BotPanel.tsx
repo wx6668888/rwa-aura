@@ -110,13 +110,13 @@ export default function BotPanel() {
             placeholder={t('chat.botName')}
             value={newBot.name}
             onChange={(e) => setNewBot({ ...newBot, name: e.target.value })}
-            className="w-full bg-surface-1 border border-border-subtle rounded-lg px-3 py-2 text-[12px] text-text-primary placeholder-text-disabled focus:outline-none focus:border-void-purple/30 mb-2"
+            className="chat-dapp-input mb-2 w-full rounded-lg border border-border-subtle bg-surface-1 px-3 py-2 text-text-primary placeholder-text-disabled focus:border-void-purple/30 focus:outline-none"
           />
           <textarea
             placeholder={t('chat.botPersona')}
             value={newBot.persona}
             onChange={(e) => setNewBot({ ...newBot, persona: e.target.value })}
-            className="w-full bg-surface-1 border border-border-subtle rounded-lg px-3 py-2 text-[12px] text-text-primary placeholder-text-disabled focus:outline-none focus:border-void-purple/30 h-16 resize-none mb-2"
+            className="chat-dapp-input mb-2 h-16 w-full resize-none rounded-lg border border-border-subtle bg-surface-1 px-3 py-2 text-text-primary placeholder-text-disabled focus:border-void-purple/30 focus:outline-none"
           />
           <div className="flex gap-2">
             <button

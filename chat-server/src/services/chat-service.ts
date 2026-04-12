@@ -10,7 +10,7 @@ import { normalizeUtteranceKey } from '../utils/utterance-dedupe';
 import { User, Message, Room, NodeLevel, RedPacket, ChatCurrency } from '../models/types';
 import { getShanghaiHourMinute } from '../utils/shanghai-calendar';
 import { isTimeContextContradiction } from './bot-human-sim';
-import { ChatStateStore } from './chat-state-store';
+import { ChatStateStore, OFFICIAL_CHAT_ROOM_ID_SET } from './chat-state-store';
 import { toPublicChatUser } from '../utils/public-chat-user';
 
 const USER_AVATAR_POOL = 50;
@@ -25,6 +25,17 @@ export function pickDeterministicUserAvatar(address: string): string {
   const h = BigInt(ethers.id(address.toLowerCase()));
   const idx = Number((h % BigInt(USER_AVATAR_POOL)) + BigInt(1));
   return `/chat-bot-icons/${String(idx).padStart(2, '0')}.svg`;
+}
+
+const INVITE_SUFFIX_ALPH = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+
+function randomInviteSuffix7(): string {
+  const bytes = ethers.randomBytes(12);
+  let s = '';
+  for (let i = 0; i < 7; i += 1) {
+    s += INVITE_SUFFIX_ALPH[Number(bytes[i]) % INVITE_SUFFIX_ALPH.length]!;
+  }
+  return s;
 }
 
 class ChatService {
@@ -208,7 +219,10 @@ class ChatService {
         // fallback below
       }
     }
-    return this.getRooms().filter((r) => r.isPublic || (r.type === 'dm' && !!userId && r.memberIds.includes(userId)));
+    return this.getRooms().filter((r) => {
+      if (!userId) return OFFICIAL_CHAT_ROOM_ID_SET.has(r.id);
+      return OFFICIAL_CHAT_ROOM_ID_SET.has(r.id) || r.memberIds.includes(userId);
+    });
   }
 
   async getMessagesForApi(roomId: string, userId: string, limit = 50, before?: number): Promise<{ ok: boolean; status?: number; error?: string; messages?: any[] }> {
@@ -1096,6 +1110,19 @@ class ChatService {
     return out;
   }
 
+  private inviteCodeTaken(code: string): boolean {
+    const c = String(code || '').toUpperCase();
+    return Array.from(this.rooms.values()).some((r) => (r.inviteCode || '').toUpperCase() === c);
+  }
+
+  private generateUniqueInviteCode(): string {
+    for (let i = 0; i < 48; i += 1) {
+      const code = `RWA${randomInviteSuffix7()}`;
+      if (!this.inviteCodeTaken(code)) return code;
+    }
+    return `RWA${uuid().replace(/-/g, '').slice(0, 7).toUpperCase()}`;
+  }
+
   createRoom(name: string, description: string, ownerId: string, type: Room['type'] = 'group'): Room {
     const room: Room = {
       id: `room-${uuid().slice(0, 8)}`,
@@ -1104,14 +1131,33 @@ class ChatService {
       type,
       ownerId,
       memberIds: [ownerId],
-      isPublic: true,
+      isPublic: false,
       minTokenGate: 0,
       createdAt: Date.now(),
+      inviteCode: type === 'group' ? this.generateUniqueInviteCode() : undefined,
     };
     this.rooms.set(room.id, room);
     this.messages.set(room.id, []);
     this.persistToDisk();
     return room;
+  }
+
+  /** 通过群邀请码加入用户自建群（非官方房） */
+  joinGroupByInviteCode(userId: string, rawCode: string): { ok: boolean; error?: string; room?: Room } {
+    if (!userId) return { ok: false, error: 'Not authenticated' };
+    const code = String(rawCode || '').replace(/\s+/g, '').toUpperCase();
+    if (!/^RWA[A-Z0-9]{7}$/.test(code)) return { ok: false, error: 'Invalid invite code' };
+    const room = Array.from(this.rooms.values()).find((r) => (r.inviteCode || '').toUpperCase() === code);
+    if (!room) return { ok: false, error: 'Room not found' };
+    if (room.type !== 'group') return { ok: false, error: 'Cannot join this room by code' };
+    if (OFFICIAL_CHAT_ROOM_ID_SET.has(room.id)) {
+      return { ok: false, error: 'Open official rooms from the channel list' };
+    }
+    if (!room.memberIds.includes(userId)) {
+      room.memberIds.push(userId);
+      this.persistToDisk();
+    }
+    return { ok: true, room };
   }
 
   joinRoom(roomId: string, userId: string): boolean {
@@ -1123,12 +1169,16 @@ class ChatService {
       return this.isRoomMember(roomId, userId);
     }
 
-    // Public rooms: join will add membership.
-    if (!room.memberIds.includes(userId)) {
-      room.memberIds.push(userId);
-      this.persistToDisk();
+    const openJoin = OFFICIAL_CHAT_ROOM_ID_SET.has(room.id) || room.isPublic;
+    if (openJoin) {
+      if (!room.memberIds.includes(userId)) {
+        room.memberIds.push(userId);
+        this.persistToDisk();
+      }
+      return true;
     }
-    return true;
+
+    return this.isRoomMember(roomId, userId);
   }
 
   leaveRoom(roomId: string, userId: string) {
@@ -1608,6 +1658,34 @@ class ChatService {
    * - escrow: 已领取但未提现
    * - withdrawn: 已提现累计
    */
+  /**
+   * 前端发红包前需对 spender 做 ERC20 approve；地址须与热钱包一致。
+   * 不返回私钥；仅公开链上可见信息。
+   */
+  getRedPacketPublicConfig(): {
+    spender: string;
+    chainId: number;
+    usdt: { address: string; decimals: number } | null;
+    rwa: { address: string; decimals: number } | null;
+  } | null {
+    const pk = this.hotWalletPrivateKey;
+    if (!pk) return null;
+    try {
+      const normalizedPk = pk.startsWith('0x') ? pk : `0x${pk}`;
+      const spender = new ethers.Wallet(normalizedPk).address.toLowerCase();
+      const usdt = this.usdtTokenAddress
+        ? { address: this.usdtTokenAddress.toLowerCase(), decimals: this.usdtTokenDecimals }
+        : null;
+      const rwa = this.rwaTokenAddress
+        ? { address: this.rwaTokenAddress.toLowerCase(), decimals: this.rwaTokenDecimals }
+        : null;
+      if (!usdt && !rwa) return null;
+      return { spender, chainId: 56, usdt, rwa };
+    } catch {
+      return null;
+    }
+  }
+
   getChatWalletBalances(userId: string): { walletAddress: string; escrow: Record<ChatCurrency, number>; withdrawn: Record<ChatCurrency, number> } {
     const user = this.users.get(userId);
     const walletAddress = user?.address || '';

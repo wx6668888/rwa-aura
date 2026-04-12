@@ -147,7 +147,13 @@ const contentZh: Record<string, ArticleContent> = {
   },
   'how-to-buy-rwa-with-usdt': {
     title: '如何用 USDT 购买 RWA？',
-    content: '在「兑换」页连接钱包，选择 USDT → RWA，输入数量并确认交易。需先授权 USDT 再兑换。',
+    content:
+      '在「兑换」页：可用 BSC 上 USDT→RWA 协议兑换（先授权再换）；若只有波场 TRC20-USDT，可切到「TRON 充值」标签按订单地址转账，RWA 发到已连接的 BSC 钱包。',
+  },
+  'tron-usdt-buy-rwa-and-stake': {
+    title: '如何用 TRON USDT 购买 RWA 并质押？',
+    content:
+      '兑换页「TRON 充值」：连接 BSC 钱包（收 RWA 的 0x 地址）→ 填金额生成 Tron 收款地址 → 在有效期内转 TRC20-USDT → 到账后 RWA 到 BSC 钱包；再到「质押」页自行做 RWA 质押（非自动质押）。预估约 1 RWA≈0.85 USDT，以实际清算为准。',
   },
   'where-to-see-price': {
     title: '在哪里查看 RWA 行情？',
@@ -334,7 +340,13 @@ const contentEn: Record<string, ArticleContent> = {
   },
   'how-to-buy-rwa-with-usdt': {
     title: 'How do I buy RWA with USDT?',
-    content: 'On the Swap page, connect wallet, select USDT → RWA, enter amount and confirm. You may need to approve USDT first.',
+    content:
+      'On Swap: use **USDT → RWA** on BSC (approve + swap), or open the **TRON Top-up** tab, send TRC20-USDT to the order address, and receive RWA on your connected BSC wallet.',
+  },
+  'tron-usdt-buy-rwa-and-stake': {
+    title: 'How do I buy RWA with TRON USDT and stake?',
+    content:
+      'Swap → **TRON Top-up**: connect a BSC wallet (0x receives RWA) → enter amount → get a temporary Tron T… address → send TRC20-USDT within the countdown → RWA is issued on BSC; then go to **Stake** for RWA staking (not auto-staked). ~1 RWA ≈ 0.85 USDT estimate; actual settlement applies.',
   },
   'where-to-see-price': {
     title: 'Where can I see RWA price?',

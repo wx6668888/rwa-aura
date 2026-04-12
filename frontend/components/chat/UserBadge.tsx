@@ -2,6 +2,128 @@
 
 import React from 'react';
 import { ChatUser } from './chat-context';
+import {
+  getChatDicebearDataUri,
+  localCalendarDateKey,
+  shouldUseDicebearAvatar,
+} from '@/lib/chat-dicebear-avatar';
+
+function useAvatarDayKey(): string {
+  const [dayKey, setDayKey] = React.useState(() => localCalendarDateKey());
+  React.useEffect(() => {
+    const sync = () => setDayKey(localCalendarDateKey());
+    const id = window.setInterval(sync, 60_000);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') sync();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, []);
+  return dayKey;
+}
+
+type AvatarImgResolved =
+  | { kind: 'img'; src: string; invert: boolean; contain: boolean }
+  | { kind: 'none' };
+
+/** 与真人相同：社区机器人用 adventurer（地址 seed + 日盐）；官方/群主机器人保留自定义图 */
+function shouldUseAdventurerDicebear(user: ChatUser): boolean {
+  if (user.isBot && user.isAdmin) return false;
+  const av = (user.avatar || '').trim();
+  if (av.startsWith('http') || av.startsWith('/api/')) return false;
+  if (user.isBot && !user.isAdmin) return true;
+  return shouldUseDicebearAvatar({ isBot: false, avatar: user.avatar });
+}
+
+function resolveChatUserAvatarImage(user: ChatUser, dayKey: string): AvatarImgResolved {
+  const av = (user.avatar || '').trim();
+  const customRemote = av.startsWith('http') || av.startsWith('/api/');
+
+  if (user.isBot && user.isAdmin) {
+    if (customRemote) return { kind: 'img', src: av, invert: false, contain: false };
+    if (av.startsWith('/'))
+      return { kind: 'img', src: av, invert: true, contain: true };
+    return { kind: 'none' };
+  }
+
+  if (shouldUseAdventurerDicebear(user)) {
+    const addr = (user.address || '').trim() || 'guest';
+    return { kind: 'img', src: getChatDicebearDataUri(addr, dayKey), invert: false, contain: false };
+  }
+  if (av && (av.startsWith('/') || av.startsWith('http'))) {
+    return { kind: 'img', src: av, invert: false, contain: false };
+  }
+  return { kind: 'none' };
+}
+
+export type ChatAvatarUserLike = Pick<ChatUser, 'address' | 'nickname' | 'avatar' | 'isBot' | 'isAdmin'>;
+
+/** 列表/侧栏用小方头像：DiceBear 或站内图，与 UserAvatar 规则一致 */
+export function ChatUserAvatarThumb({
+  user,
+  size = 28,
+  className = '',
+  roundedClassName = 'rounded-lg',
+}: {
+  user: ChatAvatarUserLike;
+  size?: number;
+  className?: string;
+  roundedClassName?: string;
+}) {
+  const dayKey = useAvatarDayKey();
+  const safe: ChatUser = {
+    id: 'thumb',
+    address: user.address || '',
+    nickname: user.nickname || '',
+    avatar: user.avatar,
+    nodeLevel: 'L1',
+    isBot: user.isBot,
+    isAdmin: Boolean(user.isAdmin),
+    isOnline: false,
+  };
+  const resolved = resolveChatUserAvatarImage(safe, dayKey);
+  const initial = user.isBot
+    ? (user.address || '').toLowerCase().startsWith('0x') && (user.address || '').length >= 4
+      ? (user.address || '').slice(2, 4).toUpperCase()
+      : '?'
+    : (user.nickname?.[0] || user.address?.[0] || '?').toUpperCase();
+
+  return (
+    <div
+      className={`flex-shrink-0 overflow-hidden flex items-center justify-center ${roundedClassName} ${className}`}
+      style={{
+        width: size,
+        height: size,
+        background:
+          resolved.kind === 'none'
+            ? 'linear-gradient(135deg, #0d9488, #0f766e)'
+            : 'transparent',
+      }}
+    >
+      {resolved.kind === 'img' ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={resolved.src}
+          alt=""
+          className={resolved.contain ? 'w-full h-full object-contain pointer-events-none' : 'w-full h-full object-cover pointer-events-none'}
+          style={
+            resolved.invert
+              ? {
+                  filter: 'brightness(0) invert(1) opacity(0.88)',
+                }
+              : undefined
+          }
+          draggable={false}
+        />
+      ) : (
+        <span className="text-[11px] font-bold text-white leading-none">{initial}</span>
+      )}
+    </div>
+  );
+}
 
 const LEVEL_CONFIG: Record<string, { name: string; icon: string; color: string; glow: string; tier: 'base' | 'mid' | 'high' | 'elite' }> = {
   L1: { name: 'Quantum',   icon: '\u26A1', color: '#64748b', glow: '0 0 6px #64748b40', tier: 'base' },
@@ -93,8 +215,9 @@ export default function UserBadge({ user, size = 'md', showLevel = true }: UserB
   );
 }
 
-/** Avatar circle with level-colored ring；机器人可带 /chat-bot-icons/*.svg */
+/** Avatar circle：无外层描边；真人/社区机器人 DiceBear adventurer；官方机器人可保留 SVG */
 export function UserAvatar({ user, size = 32 }: { user?: ChatUser | null; size?: number }) {
+  const dayKey = useAvatarDayKey();
   const safeUser: ChatUser = user || {
     id: 'unknown',
     address: '',
@@ -114,11 +237,12 @@ export function UserAvatar({ user, size = 32 }: { user?: ChatUser | null; size?:
   const isElite = config.tier === 'elite';
   const isAdmin = Boolean(safeUser.isAdmin);
 
-  const iconSrc =
-    safeUser.avatar && (safeUser.avatar.startsWith('/') || safeUser.avatar.startsWith('http'))
-      ? safeUser.avatar
-      : null;
+  const resolved = React.useMemo(
+    () => resolveChatUserAvatarImage(safeUser, dayKey),
+    [dayKey, safeUser.address, safeUser.avatar, safeUser.id, safeUser.isBot, safeUser.isAdmin, safeUser.nickname]
+  );
 
+  const showLevelTint = resolved.kind === 'none';
   return (
     <div
       className={`relative flex-shrink-0 rounded-full flex items-center justify-center font-heading font-bold select-none overflow-hidden
@@ -126,24 +250,29 @@ export function UserAvatar({ user, size = 32 }: { user?: ChatUser | null; size?:
       style={{
         width: size,
         height: size,
-        fontSize: size * (safeUser.isBot && !iconSrc ? 0.3 : 0.4),
-        background: `linear-gradient(135deg, ${config.color}20, ${config.color}08)`,
-        border: `1.5px solid ${config.color}50`,
+        fontSize: size * (safeUser.isBot && resolved.kind === 'none' ? 0.3 : 0.4),
+        background: showLevelTint ? `linear-gradient(135deg, ${config.color}20, ${config.color}08)` : 'transparent',
         color: config.color,
-        boxShadow: isElite ? config.glow : undefined,
+        boxShadow: isElite && showLevelTint ? config.glow : undefined,
       }}
     >
-      {iconSrc ? (
-        // Lucide SVG 默认深色描边，在暗色底上提亮
+      {resolved.kind === 'img' ? (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={iconSrc}
+          src={resolved.src}
           alt=""
-          className="object-contain pointer-events-none"
-          style={{
-            width: Math.round(size * 0.62),
-            height: Math.round(size * 0.62),
-            filter: 'brightness(0) invert(1) opacity(0.88)',
-          }}
+          className={`pointer-events-none ${resolved.contain ? 'object-contain' : 'object-cover w-full h-full'}`}
+          style={
+            resolved.contain
+              ? {
+                  width: Math.round(size * 0.62),
+                  height: Math.round(size * 0.62),
+                  filter: resolved.invert ? 'brightness(0) invert(1) opacity(0.88)' : undefined,
+                }
+              : resolved.invert
+                ? { filter: 'brightness(0) invert(1) opacity(0.88)' }
+                : undefined
+          }
           draggable={false}
         />
       ) : (
@@ -166,17 +295,6 @@ export function UserAvatar({ user, size = 32 }: { user?: ChatUser | null; size?:
         >
           ✓
         </div>
-      )}
-      {safeUser.isOnline && (
-        <div
-          className="absolute -bottom-[1px] -right-[1px] rounded-full border-2"
-          style={{
-            width: size * 0.3,
-            height: size * 0.3,
-            background: '#10b981',
-            borderColor: 'var(--void-black)',
-          }}
-        />
       )}
     </div>
   );

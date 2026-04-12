@@ -1,9 +1,11 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { BarChart3, MessageCircle } from 'lucide-react'
 import { useLocale } from '@/components/locale-provider'
 import { useTranslation } from '@/lib/i18n'
+import { useChatSheet } from '@/components/providers/chat-sheet-context'
 
 export type SwapModeTab = 'protocol' | 'tron' | 'dex'
 
@@ -16,8 +18,11 @@ const iconBtn =
   'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#ffffff0d] bg-[#0d0d14]/90 text-[#94a3b8] transition-colors hover:border-plasma-cyan/25 hover:bg-[#13131e] hover:text-plasma-cyan'
 
 export function SwapTradeToolbar({ tab, onTabChange }: Props) {
+  const pathname = usePathname() || ''
+  const { openChatSheet } = useChatSheet()
   const { locale } = useLocale()
   const { t } = useTranslation(locale)
+  const onChatRoute = pathname === '/chat' || pathname.startsWith('/chat/')
 
   const tabs: { id: SwapModeTab; label: string }[] = [
     { id: 'protocol', label: t('swap.tabProtocol') },
@@ -69,14 +74,26 @@ export function SwapTradeToolbar({ tab, onTabChange }: Props) {
           >
             <BarChart3 className="h-4 w-4" />
           </Link>
-          <Link
-            href="/chat"
-            className={iconBtn}
-            title={t('swap.toolbarGroupChat')}
-            aria-label={t('swap.toolbarGroupChat')}
-          >
-            <MessageCircle className="h-4 w-4" />
-          </Link>
+          {onChatRoute ? (
+            <Link
+              href="/chat"
+              className={iconBtn}
+              title={t('swap.toolbarGroupChat')}
+              aria-label={t('swap.toolbarGroupChat')}
+            >
+              <MessageCircle className="h-4 w-4" />
+            </Link>
+          ) : (
+            <button
+              type="button"
+              className={iconBtn}
+              title={t('swap.toolbarGroupChat')}
+              aria-label={t('swap.toolbarGroupChat')}
+              onClick={() => openChatSheet()}
+            >
+              <MessageCircle className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
     </div>
