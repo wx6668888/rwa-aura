@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: rwa-chat-server
+    env: node
+    rootDir: chat-server
+    buildCommand: npm install && npx tsc
+    startCommand: node dist/index.js
+    plan: free
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: CORS_ORIGIN
+        value: https://frontend-sigma-seven-54.vercel.app
+      - key: NODE_ENV
+        value: production
